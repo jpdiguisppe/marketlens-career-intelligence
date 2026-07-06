@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException
@@ -8,7 +9,7 @@ from app.skill_extractor import count_skills, extract_skills
 app = FastAPI(
     title="MarketLens API",
     description="Backend API for analyzing job postings and career skill signals.",
-    version="0.2.0",
+    version="0.3.0",
 )
 
 
@@ -36,6 +37,19 @@ class SkillExtractionResponse(BaseModel):
 
 job_postings: List[JobPosting] = []
 next_job_posting_id = 1
+
+
+def _group_skill_counts_by_posting_field(field_name: str) -> dict[str, dict[str, int]]:
+    grouped_descriptions: dict[str, list[str]] = defaultdict(list)
+
+    for posting in job_postings:
+        group_name = getattr(posting, field_name) or "Uncategorized"
+        grouped_descriptions[group_name].append(posting.description)
+
+    return {
+        group_name: count_skills(descriptions)
+        for group_name, descriptions in grouped_descriptions.items()
+    }
 
 
 @app.get("/")
@@ -89,3 +103,13 @@ def extract_skills_from_text(request: SkillExtractionRequest) -> SkillExtraction
 def get_top_skills() -> dict[str, int]:
     descriptions = [posting.description for posting in job_postings]
     return count_skills(descriptions)
+
+
+@app.get("/skills/top-by-company")
+def get_top_skills_by_company() -> dict[str, dict[str, int]]:
+    return _group_skill_counts_by_posting_field("company")
+
+
+@app.get("/skills/top-by-role")
+def get_top_skills_by_role() -> dict[str, dict[str, int]]:
+    return _group_skill_counts_by_posting_field("role_category")
