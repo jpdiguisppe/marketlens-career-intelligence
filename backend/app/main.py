@@ -1,17 +1,22 @@
 import csv
 import io
 from collections import defaultdict
-from typing import List, Optional
+from typing import Optional
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
-from pydantic import BaseModel, Field, ValidationError
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from sqlalchemy.orm import Session
 
+from app.database import Base, engine, get_db
+from app.models import JobPostingDB
 from app.skill_extractor import count_skills, extract_skills
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="MarketLens API",
     description="Backend API for analyzing job postings and career skill signals.",
-    version="0.4.0",
+    version="0.5.0",
 )
 
 
@@ -25,6 +30,8 @@ class JobPostingCreate(BaseModel):
 
 
 class JobPosting(JobPostingCreate):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     extracted_skills: list[str] = Field(default_factory=list)
 
@@ -44,32 +51,41 @@ class CSVImportResponse(BaseModel):
     errors: list[str]
 
 
-job_postings: List[JobPosting] = []
-next_job_posting_id = 1
-
 REQUIRED_CSV_COLUMNS = {"company", "title", "description"}
 OPTIONAL_CSV_COLUMNS = {"location", "role_category", "experience_level"}
 SUPPORTED_CSV_COLUMNS = REQUIRED_CSV_COLUMNS | OPTIONAL_CSV_COLUMNS
 
 
-def _create_job_posting(posting: JobPostingCreate) -> JobPosting:
-    global next_job_posting_id
+def _to_api_job_posting(posting: JobPostingDB) -> JobPosting:
+    return JobPosting.model_validate(posting)
 
-    created_posting = JobPosting(
-        id=next_job_posting_id,
-        extracted_skills=extract_skills(posting.description),
-        **posting.model_dump(),
+
+def _create_job_posting(db: Session, posting: JobPostingCreate) -> JobPosting:
+    db_posting = JobPostingDB(
+        company=posting.company,
+        title=posting.title,
+        location=posting.location,
+        role_category=posting.role_category,
+        experience_level=posting.experience_level,
+        description=posting.description,
     )
-    job_postings.append(created_posting)
-    next_job_posting_id += 1
+    db_posting.extracted_skills = extract_skills(posting.description)
 
-    return created_posting
+    db.add(db_posting)
+    db.commit()
+    db.refresh(db_posting)
+
+    return _to_api_job_posting(db_posting)
 
 
-def _group_skill_counts_by_posting_field(field_name: str) -> dict[str, dict[str, int]]:
+def _list_db_postings(db: Session) -> list[JobPostingDB]:
+    return db.query(JobPostingDB).order_by(JobPostingDB.id).all()
+
+
+def _group_skill_counts_by_posting_field(db: Session, field_name: str) -> dict[str, dict[str, int]]:
     grouped_descriptions: dict[str, list[str]] = defaultdict(list)
 
-    for posting in job_postings:
+    for posting in _list_db_postings(db):
         group_name = getattr(posting, field_name) or "Uncategorized"
         grouped_descriptions[group_name].append(posting.description)
 
@@ -133,17 +149,20 @@ def health_check() -> dict[str, str]:
 
 
 @app.post("/job-postings", response_model=JobPosting, status_code=201)
-def create_job_posting(posting: JobPostingCreate) -> JobPosting:
-    return _create_job_posting(posting)
+def create_job_posting(posting: JobPostingCreate, db: Session = Depends(get_db)) -> JobPosting:
+    return _create_job_posting(db, posting)
 
 
 @app.get("/job-postings", response_model=list[JobPosting])
-def list_job_postings() -> list[JobPosting]:
-    return job_postings
+def list_job_postings(db: Session = Depends(get_db)) -> list[JobPosting]:
+    return [_to_api_job_posting(posting) for posting in _list_db_postings(db)]
 
 
 @app.post("/job-postings/import-csv", response_model=CSVImportResponse, status_code=201)
-async def import_job_postings_from_csv(file: UploadFile = File(...)) -> CSVImportResponse:
+async def import_job_postings_from_csv(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+) -> CSVImportResponse:
     file_contents = await file.read()
 
     if not file_contents:
@@ -177,7 +196,7 @@ async def import_job_postings_from_csv(file: UploadFile = File(...)) -> CSVImpor
 
         try:
             posting_create = _posting_from_csv_row(row, normalized_fieldnames, row_number)
-            created_postings.append(_create_job_posting(posting_create))
+            created_postings.append(_create_job_posting(db, posting_create))
         except (ValueError, ValidationError) as exc:
             errors.append(str(exc))
 
@@ -196,12 +215,19 @@ async def import_job_postings_from_csv(file: UploadFile = File(...)) -> CSVImpor
 
 
 @app.get("/job-postings/{posting_id}", response_model=JobPosting)
-def get_job_posting(posting_id: int) -> JobPosting:
-    for posting in job_postings:
-        if posting.id == posting_id:
-            return posting
+def get_job_posting(posting_id: int, db: Session = Depends(get_db)) -> JobPosting:
+    posting = db.get(JobPostingDB, posting_id)
 
-    raise HTTPException(status_code=404, detail="Job posting not found")
+    if posting is None:
+        raise HTTPException(status_code=404, detail="Job posting not found")
+
+    return _to_api_job_posting(posting)
+
+
+@app.delete("/job-postings", status_code=204)
+def delete_all_job_postings(db: Session = Depends(get_db)) -> None:
+    db.query(JobPostingDB).delete()
+    db.commit()
 
 
 @app.post("/skills/extract", response_model=SkillExtractionResponse)
@@ -210,16 +236,16 @@ def extract_skills_from_text(request: SkillExtractionRequest) -> SkillExtraction
 
 
 @app.get("/skills/top")
-def get_top_skills() -> dict[str, int]:
-    descriptions = [posting.description for posting in job_postings]
+def get_top_skills(db: Session = Depends(get_db)) -> dict[str, int]:
+    descriptions = [posting.description for posting in _list_db_postings(db)]
     return count_skills(descriptions)
 
 
 @app.get("/skills/top-by-company")
-def get_top_skills_by_company() -> dict[str, dict[str, int]]:
-    return _group_skill_counts_by_posting_field("company")
+def get_top_skills_by_company(db: Session = Depends(get_db)) -> dict[str, dict[str, int]]:
+    return _group_skill_counts_by_posting_field(db, "company")
 
 
 @app.get("/skills/top-by-role")
-def get_top_skills_by_role() -> dict[str, dict[str, int]]:
-    return _group_skill_counts_by_posting_field("role_category")
+def get_top_skills_by_role(db: Session = Depends(get_db)) -> dict[str, dict[str, int]]:
+    return _group_skill_counts_by_posting_field(db, "role_category")
