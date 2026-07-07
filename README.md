@@ -30,11 +30,26 @@ The FastAPI backend currently supports:
 - `POST /job-postings` — manually add one job posting
 - `GET /job-postings` — list saved job postings
 - `GET /job-postings/{posting_id}` — retrieve one saved job posting
+- `DELETE /job-postings` — clear all saved job postings
 - `POST /job-postings/import-csv` — upload a CSV file of job postings
 - `POST /skills/extract` — extract skills from pasted text
 - `GET /skills/top` — view overall skill frequency
 - `GET /skills/top-by-company` — compare skill frequency by company
 - `GET /skills/top-by-role` — compare skill frequency by role category
+
+## Persistence
+
+MarketLens now uses SQLAlchemy for database-backed storage.
+
+For local development, the backend defaults to SQLite:
+
+```text
+sqlite:///./marketlens.db
+```
+
+That means saved and imported job postings persist after the backend restarts.
+
+Later, the same database layer can use PostgreSQL by setting a `DATABASE_URL` environment variable.
 
 ## CSV Format
 
@@ -83,7 +98,7 @@ http://127.0.0.1:8000/docs
 
 - **Frontend:** React + TypeScript
 - **Backend:** Python + FastAPI
-- **Database:** PostgreSQL
+- **Database:** SQLite locally, PostgreSQL later
 - **AI/NLP:** skill dictionary first, AI-assisted extraction later
 - **Charts:** Recharts or Chart.js
 - **DevOps:** Docker + GitHub Actions
@@ -94,7 +109,9 @@ http://127.0.0.1:8000/docs
 ```text
 backend/
   app/
+    database.py
     main.py
+    models.py
     skill_extractor.py
   requirements.txt
 frontend/
@@ -121,7 +138,8 @@ README.md
 - Add create/list API endpoints
 - Add sample job posting data
 - Add CSV import for batches of job postings
-- Store postings in PostgreSQL
+- Add database-backed persistence
+- Prepare PostgreSQL support through `DATABASE_URL`
 
 ### Phase 3: Skill Extraction
 
@@ -165,4 +183,4 @@ README.md
 
 ## Status
 
-MarketLens is currently at **Backend MVP v0.4**. The backend can accept manual job postings, import postings from CSV, extract skills, and return skill-frequency comparisons overall, by company, and by role category.
+MarketLens is currently at **Backend MVP v0.5**. The backend can accept manual job postings, import postings from CSV, persist postings in a local SQLite database, extract skills, and return skill-frequency comparisons overall, by company, and by role category.
