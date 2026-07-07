@@ -10,7 +10,7 @@ MarketLens turns messy job postings into evidence. Instead of guessing what to l
 
 ## MVP Goal
 
-The first version of MarketLens will focus on a Job Skill Analyzer.
+The first version of MarketLens focuses on a Job Skill Analyzer.
 
 Users will be able to:
 
@@ -21,6 +21,63 @@ Users will be able to:
 - Compare skill requirements across companies and role categories
 - Paste a resume and compare it against target job postings
 - Generate a skill-gap report with recommended learning priorities
+
+## Current Backend Features
+
+The FastAPI backend currently supports:
+
+- `GET /health` — health check
+- `POST /job-postings` — manually add one job posting
+- `GET /job-postings` — list saved job postings
+- `GET /job-postings/{posting_id}` — retrieve one saved job posting
+- `POST /job-postings/import-csv` — upload a CSV file of job postings
+- `POST /skills/extract` — extract skills from pasted text
+- `GET /skills/top` — view overall skill frequency
+- `GET /skills/top-by-company` — compare skill frequency by company
+- `GET /skills/top-by-role` — compare skill frequency by role category
+
+## CSV Format
+
+CSV imports should use this header row:
+
+```csv
+company,title,location,role_category,experience_level,description
+```
+
+Required columns:
+
+- `company`
+- `title`
+- `description`
+
+Optional columns:
+
+- `location`
+- `role_category`
+- `experience_level`
+
+A sample file is included at:
+
+```text
+data/sample_job_postings.csv
+```
+
+## Running the Backend Locally
+
+From the project root:
+
+```bash
+cd backend
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m uvicorn app.main:app --reload
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8000/docs
+```
 
 ## Planned Tech Stack
 
@@ -38,6 +95,7 @@ Users will be able to:
 backend/
   app/
     main.py
+    skill_extractor.py
   requirements.txt
 frontend/
 data/
@@ -61,8 +119,9 @@ README.md
 
 - Define job posting data model
 - Add create/list API endpoints
-- Store postings in PostgreSQL
 - Add sample job posting data
+- Add CSV import for batches of job postings
+- Store postings in PostgreSQL
 
 ### Phase 3: Skill Extraction
 
@@ -101,7 +160,9 @@ README.md
 - Role comparison between backend, systems, cloud, and AI jobs
 - Vector search over job postings
 - Authentication and saved user profiles
+- Browser extension for saving postings from job sites
+- Public job API integrations
 
 ## Status
 
-MarketLens is currently in the project setup and MVP planning stage.
+MarketLens is currently at **Backend MVP v0.4**. The backend can accept manual job postings, import postings from CSV, extract skills, and return skill-frequency comparisons overall, by company, and by role category.
