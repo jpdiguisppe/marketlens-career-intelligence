@@ -37,6 +37,18 @@ The FastAPI backend currently supports:
 - `GET /skills/top-by-company` — compare skill frequency by company
 - `GET /skills/top-by-role` — compare skill frequency by role category
 
+## Current Frontend Features
+
+The React frontend currently supports:
+
+- Dashboard summary cards
+- Saved job posting table
+- Overall top skills list with simple bar visuals
+- Skills grouped by company
+- Skills grouped by role category
+- Refresh button for reloading backend data
+- Empty and error states
+
 ## Persistence
 
 MarketLens now uses SQLAlchemy for database-backed storage.
@@ -94,6 +106,34 @@ Then open:
 http://127.0.0.1:8000/docs
 ```
 
+## Running the Frontend Locally
+
+Open a second terminal tab from the project root:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Then open:
+
+```text
+http://localhost:5173
+```
+
+The frontend expects the backend to be running at:
+
+```text
+http://127.0.0.1:8000
+```
+
+You can override that by creating a local `.env` file inside `frontend/`:
+
+```text
+VITE_API_BASE_URL=http://127.0.0.1:8000
+```
+
 ## Planned Tech Stack
 
 - **Frontend:** React + TypeScript
@@ -115,6 +155,16 @@ backend/
     skill_extractor.py
   requirements.txt
 frontend/
+  src/
+    api.ts
+    App.tsx
+    main.tsx
+    styles.css
+    types.ts
+  package.json
+  tsconfig.json
+  tsconfig.node.json
+  index.html
 data/
   sample_job_postings.csv
 docs/
@@ -183,4 +233,4 @@ README.md
 
 ## Status
 
-MarketLens is currently at **Backend MVP v0.5**. The backend can accept manual job postings, import postings from CSV, persist postings in a local SQLite database, extract skills, and return skill-frequency comparisons overall, by company, and by role category.
+MarketLens is currently at **Full-Stack MVP v0.1**. The backend can accept manual job postings, import postings from CSV, persist postings in a local SQLite database, extract skills, and return skill-frequency comparisons. The frontend can display those insights in a React dashboard.
