@@ -1,12 +1,38 @@
 # MarketLens Career Intelligence
 
-MarketLens is a career intelligence platform that analyzes job postings to identify in-demand skills, compare role requirements, and generate personalized skill-gap insights for early-career software, AI, cloud, and systems roles.
+MarketLens is a full-stack career intelligence platform that analyzes saved job postings to identify in-demand skills, compare role requirements, and generate personalized resume skill-gap insights for early-career software, AI, cloud, and systems roles.
 
 ## Problem
 
 Career advice is often vague, and job descriptions are noisy. Students and early-career candidates are told to “learn cloud,” “build projects,” or “get better at AI,” but it is hard to know which skills are actually showing up in the roles they want.
 
 MarketLens turns messy job postings into evidence. Instead of guessing what to learn next, users can analyze real postings and see which skills, tools, and experience patterns appear most often.
+
+## Demo
+
+### Resume Gap Analysis
+
+MarketLens compares pasted resume text against the skills extracted from saved job postings, then returns a match score, matched skills, missing skills, and learning priorities.
+
+![MarketLens resume gap analysis](docs/images/marketlens-resume-gap-analysis.png)
+
+### Skill Trend Dashboard
+
+The dashboard summarizes saved postings, unique skills, top skills, company-specific skill signals, role-category skill signals, and saved job posting details.
+
+![MarketLens skills dashboard](docs/images/marketlens-skills-dashboard.png)
+
+### Saved Job Postings
+
+Imported postings are persisted in a local database and displayed with extracted technical skills.
+
+![MarketLens saved job postings](docs/images/marketlens-job-postings.png)
+
+### FastAPI Documentation
+
+The backend exposes documented API endpoints through Swagger UI, including CSV import, skill extraction, skill comparison, and resume analysis.
+
+![MarketLens API docs](docs/images/marketlens-api-docs.png)
 
 ## MVP Goal
 
@@ -188,6 +214,11 @@ frontend/
 data/
   sample_job_postings.csv
 docs/
+  images/
+    marketlens-api-docs.png
+    marketlens-job-postings.png
+    marketlens-resume-gap-analysis.png
+    marketlens-skills-dashboard.png
   project-plan.md
   database-schema.md
 README.md
