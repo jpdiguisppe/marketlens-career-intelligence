@@ -31,10 +31,27 @@ SKILL_PATTERNS: dict[str, list[str]] = {
 }
 
 
-def _contains_term(text: str, term: str) -> bool:
+def _term_pattern(term: str) -> str:
     escaped_term = re.escape(term.lower())
-    pattern = rf"(?<![a-zA-Z0-9]){escaped_term}(?![a-zA-Z0-9])"
-    return re.search(pattern, text.lower()) is not None
+    return rf"(?<![a-zA-Z0-9]){escaped_term}(?![a-zA-Z0-9])"
+
+
+def _contains_term(text: str, term: str) -> bool:
+    return re.search(_term_pattern(term), text.lower()) is not None
+
+
+def _remove_term(text: str, term: str) -> str:
+    return re.sub(_term_pattern(term), " ", text.lower())
+
+
+def _detect_git_skill(text: str) -> bool:
+    """Detect Git/source-control skill without treating GitHub Actions as Git by itself."""
+    text_without_github_actions = _remove_term(text, "github actions")
+
+    return any(
+        _contains_term(text_without_github_actions, pattern)
+        for pattern in SKILL_PATTERNS["Git"]
+    )
 
 
 def extract_skills(text: str) -> list[str]:
@@ -42,6 +59,11 @@ def extract_skills(text: str) -> list[str]:
     detected_skills: list[str] = []
 
     for skill_name, patterns in SKILL_PATTERNS.items():
+        if skill_name == "Git":
+            if _detect_git_skill(text):
+                detected_skills.append(skill_name)
+            continue
+
         if any(_contains_term(text, pattern) for pattern in patterns):
             detected_skills.append(skill_name)
 
