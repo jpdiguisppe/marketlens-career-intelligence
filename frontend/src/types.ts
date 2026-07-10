@@ -12,3 +12,19 @@ export type JobPosting = {
 export type SkillCounts = Record<string, number>;
 
 export type GroupedSkillCounts = Record<string, SkillCounts>;
+
+export type ResumeAnalysisRequest = {
+  resume_text: string;
+  target_role_category?: string | null;
+};
+
+export type ResumeAnalysisResponse = {
+  resume_skills: string[];
+  target_skills: string[];
+  matched_skills: string[];
+  missing_skills: string[];
+  match_percentage: number;
+  learning_priorities: string[];
+  postings_analyzed: number;
+  target_role_category: string | null;
+};
