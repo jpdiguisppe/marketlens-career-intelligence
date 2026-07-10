@@ -17,7 +17,9 @@ body {
     #f5f7fb;
 }
 
-button {
+button,
+select,
+textarea {
   font: inherit;
 }
 
@@ -96,6 +98,21 @@ h1 {
   margin-bottom: 0;
 }
 
+.compact-error {
+  margin-top: 16px;
+  margin-bottom: 0;
+}
+
+.notice-box {
+  margin-top: 16px;
+  border: 1px solid #fde68a;
+  border-radius: 18px;
+  padding: 14px 16px;
+  color: #92400e;
+  background: #fffbeb;
+  font-weight: 700;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -150,6 +167,10 @@ h1 {
   margin-bottom: 18px;
 }
 
+.panel-header.align-start {
+  align-items: flex-start;
+}
+
 .panel-header h2 {
   margin: 0;
   font-size: 1.12rem;
@@ -160,6 +181,12 @@ h1 {
   color: #64748b;
   font-size: 0.9rem;
   font-weight: 700;
+}
+
+.panel-subtitle {
+  margin: 8px 0 0;
+  color: #64748b;
+  line-height: 1.5;
 }
 
 .empty-text {
@@ -199,17 +226,120 @@ h1 {
   gap: 14px;
 }
 
-.group-card {
+.group-card,
+.analysis-card,
+.score-card {
   border: 1px solid #e2e8f0;
   border-radius: 18px;
   padding: 16px;
   background: #ffffff;
 }
 
-.group-card h3 {
+.group-card h3,
+.analysis-card h3 {
   margin-bottom: 12px;
   color: #0f172a;
   font-size: 1rem;
+}
+
+.resume-panel {
+  background:
+    linear-gradient(135deg, rgba(239, 246, 255, 0.92), rgba(255, 255, 255, 0.94));
+}
+
+.resume-form {
+  display: grid;
+  gap: 12px;
+}
+
+.form-label,
+.form-control span {
+  color: #334155;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.resume-textarea,
+.select-input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  color: #172033;
+  background: #ffffff;
+  outline: none;
+}
+
+.resume-textarea:focus,
+.select-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.resume-textarea {
+  min-height: 170px;
+  padding: 14px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.form-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.form-control {
+  display: grid;
+  flex: 1;
+  gap: 8px;
+}
+
+.select-input {
+  padding: 11px 12px;
+}
+
+.analyze-button {
+  min-width: 160px;
+}
+
+.analysis-results {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.score-card {
+  display: grid;
+  gap: 8px;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.score-card span {
+  color: #93c5fd;
+  font-weight: 800;
+}
+
+.score-card strong {
+  color: #ffffff;
+  font-size: 2.6rem;
+  line-height: 1;
+}
+
+.score-card p {
+  margin-bottom: 0;
+  color: #cbd5e1;
+}
+
+.analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.priority-card {
+  border-color: #bfdbfe;
+  background: #eff6ff;
 }
 
 .pill-row {
@@ -297,7 +427,17 @@ td {
   }
 
   .stats-grid,
-  .dashboard-grid {
+  .dashboard-grid,
+  .analysis-grid {
     grid-template-columns: 1fr;
+  }
+
+  .form-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .analyze-button {
+    width: 100%;
   }
 }
