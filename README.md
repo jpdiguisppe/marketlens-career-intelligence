@@ -79,6 +79,17 @@ The React frontend currently supports:
 - Refresh button for reloading backend data
 - Empty and error states
 
+## Quality and CI
+
+MarketLens includes automated quality checks so future changes are less likely to break existing behavior.
+
+Current checks include:
+
+- Backend unit tests for skill extraction
+- Backend API tests for job posting creation, CSV import, skill counting, and resume analysis
+- Frontend production build validation
+- GitHub Actions continuous integration on pushes and pull requests to `main`
+
 ## Resume Gap Analysis
 
 The resume analyzer compares skills extracted from pasted resume text against skills extracted from saved job postings.
@@ -179,6 +190,25 @@ You can override that by creating a local `.env` file inside `frontend/`:
 VITE_API_BASE_URL=http://127.0.0.1:8000
 ```
 
+## Running Quality Checks Locally
+
+Run backend tests:
+
+```bash
+cd backend
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m pytest
+```
+
+Run the frontend production build:
+
+```bash
+cd frontend
+npm install
+npm run build
+```
+
 ## Planned Tech Stack
 
 - **Frontend:** React + TypeScript
@@ -192,12 +222,18 @@ VITE_API_BASE_URL=http://127.0.0.1:8000
 ## Project Structure
 
 ```text
+.github/
+  workflows/
+    ci.yml
 backend/
   app/
     database.py
     main.py
     models.py
     skill_extractor.py
+  tests/
+    test_api.py
+    test_skill_extractor.py
   requirements.txt
 frontend/
   src/
@@ -263,13 +299,13 @@ README.md
 - Compare resume skills against selected postings
 - Generate strong matches, missing skills, and suggested learning priorities
 
-### Phase 6: Polish and Deployment
+### Phase 6: Polish, Quality, and Deployment
 
-- Add Docker setup
-- Add tests
-- Add GitHub Actions
-- Deploy the app
 - Add screenshots and a demo write-up
+- Add backend tests
+- Add GitHub Actions CI
+- Add Docker setup
+- Deploy the app
 
 ## Long-Term Ideas
 
@@ -281,7 +317,8 @@ README.md
 - Authentication and saved user profiles
 - Browser extension for saving postings from job sites
 - Public job API integrations
+- Production security hardening, rate limiting, and monitoring
 
 ## Status
 
-MarketLens is currently at **Full-Stack MVP v0.2**. The backend can accept manual job postings, import postings from CSV, persist postings in a local SQLite database, extract skills, return skill-frequency comparisons, and compare resume skills against target postings. The frontend displays those insights in a React dashboard with a resume gap analysis workflow.
+MarketLens is currently at **Full-Stack MVP v0.3**. The backend can accept manual job postings, import postings from CSV, persist postings in a local SQLite database, extract skills, return skill-frequency comparisons, and compare resume skills against target postings. The frontend displays those insights in a React dashboard with a resume gap analysis workflow. The repo now includes backend tests and GitHub Actions CI for backend tests and frontend build validation.
