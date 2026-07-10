@@ -10,9 +10,9 @@ MarketLens turns messy job postings into evidence. Instead of guessing what to l
 
 ## MVP Goal
 
-The first version of MarketLens focuses on a Job Skill Analyzer.
+The first version of MarketLens focuses on a Job Skill Analyzer and Resume Gap Analyzer.
 
-Users will be able to:
+Users can:
 
 - Add job postings manually or through a CSV import
 - Store posting details such as company, title, location, role category, and description
@@ -36,6 +36,7 @@ The FastAPI backend currently supports:
 - `GET /skills/top` — view overall skill frequency
 - `GET /skills/top-by-company` — compare skill frequency by company
 - `GET /skills/top-by-role` — compare skill frequency by role category
+- `POST /resume/analyze` — compare resume skills against saved postings
 
 ## Current Frontend Features
 
@@ -46,12 +47,30 @@ The React frontend currently supports:
 - Overall top skills list with simple bar visuals
 - Skills grouped by company
 - Skills grouped by role category
+- Resume gap analysis panel
+- Target role category dropdown generated from saved postings
+- Match score, matched skills, missing skills, resume skills, and learning priorities
 - Refresh button for reloading backend data
 - Empty and error states
 
+## Resume Gap Analysis
+
+The resume analyzer compares skills extracted from pasted resume text against skills extracted from saved job postings.
+
+Users can compare against all saved postings or narrow the analysis to one role category, such as `Backend SWE`, `Systems/Cloud`, or `Data/Backend`.
+
+The analysis returns:
+
+- Resume skills found
+- Target skills from job postings
+- Matched skills
+- Missing skills
+- Match percentage
+- Learning priorities based on missing high-frequency skills
+
 ## Persistence
 
-MarketLens now uses SQLAlchemy for database-backed storage.
+MarketLens uses SQLAlchemy for database-backed storage.
 
 For local development, the backend defaults to SQLite:
 
@@ -162,6 +181,7 @@ frontend/
     styles.css
     types.ts
   package.json
+  package-lock.json
   tsconfig.json
   tsconfig.node.json
   index.html
@@ -233,4 +253,4 @@ README.md
 
 ## Status
 
-MarketLens is currently at **Full-Stack MVP v0.1**. The backend can accept manual job postings, import postings from CSV, persist postings in a local SQLite database, extract skills, and return skill-frequency comparisons. The frontend can display those insights in a React dashboard.
+MarketLens is currently at **Full-Stack MVP v0.2**. The backend can accept manual job postings, import postings from CSV, persist postings in a local SQLite database, extract skills, return skill-frequency comparisons, and compare resume skills against target postings. The frontend displays those insights in a React dashboard with a resume gap analysis workflow.
