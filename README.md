@@ -88,6 +88,7 @@ Current checks include:
 - Backend unit tests for skill extraction
 - Backend API tests for job posting creation, CSV import, skill counting, and resume analysis
 - Frontend production build validation
+- Docker image build validation for the backend and frontend
 - GitHub Actions continuous integration on pushes and pull requests to `main`
 
 ## Resume Gap Analysis
@@ -117,6 +118,12 @@ sqlite:///./marketlens.db
 
 That means saved and imported job postings persist after the backend restarts.
 
+In Docker, the backend uses a named Docker volume and stores SQLite data at:
+
+```text
+/app/data/marketlens.db
+```
+
 Later, the same database layer can use PostgreSQL by setting a `DATABASE_URL` environment variable.
 
 ## CSV Format
@@ -143,6 +150,44 @@ A sample file is included at:
 
 ```text
 data/sample_job_postings.csv
+```
+
+## Running with Docker
+
+From the project root:
+
+```bash
+docker compose up --build
+```
+
+Then open:
+
+```text
+http://localhost:5173
+```
+
+The backend API will be available at:
+
+```text
+http://localhost:8000
+```
+
+FastAPI docs will be available at:
+
+```text
+http://localhost:8000/docs
+```
+
+Stop the containers with:
+
+```bash
+docker compose down
+```
+
+To also delete the Docker-managed SQLite database volume:
+
+```bash
+docker compose down -v
 ```
 
 ## Running the Backend Locally
@@ -209,6 +254,13 @@ npm install
 npm run build
 ```
 
+Build Docker images:
+
+```bash
+docker build -t marketlens-backend ./backend
+docker build --build-arg VITE_API_BASE_URL=http://localhost:8000 -t marketlens-frontend ./frontend
+```
+
 ## Planned Tech Stack
 
 - **Frontend:** React + TypeScript
@@ -234,6 +286,8 @@ backend/
   tests/
     test_api.py
     test_skill_extractor.py
+  .dockerignore
+  Dockerfile
   requirements.txt
 frontend/
   src/
@@ -242,6 +296,9 @@ frontend/
     main.tsx
     styles.css
     types.ts
+  .dockerignore
+  Dockerfile
+  nginx.conf
   package.json
   package-lock.json
   tsconfig.json
@@ -257,6 +314,7 @@ docs/
     marketlens-skills-dashboard.png
   project-plan.md
   database-schema.md
+docker-compose.yml
 README.md
 ```
 
@@ -321,4 +379,4 @@ README.md
 
 ## Status
 
-MarketLens is currently at **Full-Stack MVP v0.3**. The backend can accept manual job postings, import postings from CSV, persist postings in a local SQLite database, extract skills, return skill-frequency comparisons, and compare resume skills against target postings. The frontend displays those insights in a React dashboard with a resume gap analysis workflow. The repo now includes backend tests and GitHub Actions CI for backend tests and frontend build validation.
+MarketLens is currently at **Full-Stack MVP v0.4**. The backend can accept manual job postings, import postings from CSV, persist postings in a local SQLite database, extract skills, return skill-frequency comparisons, and compare resume skills against target postings. The frontend displays those insights in a React dashboard with a resume gap analysis workflow. The repo now includes backend tests, GitHub Actions CI, and Docker support for running the full stack locally.
