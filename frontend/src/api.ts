@@ -1,4 +1,10 @@
-import type { GroupedSkillCounts, JobPosting, SkillCounts } from "./types";
+import type {
+  GroupedSkillCounts,
+  JobPosting,
+  ResumeAnalysisRequest,
+  ResumeAnalysisResponse,
+  SkillCounts,
+} from "./types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 
@@ -10,6 +16,31 @@ async function fetchJson<T>(path: string): Promise<T> {
   }
 
   return response.json() as Promise<T>;
+}
+
+async function postJson<TResponse, TRequest>(path: string, body: TRequest): Promise<TResponse> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    let detail = `${response.status} ${response.statusText}`;
+
+    try {
+      const errorBody = (await response.json()) as { detail?: string };
+      detail = errorBody.detail ?? detail;
+    } catch {
+      // Keep the default error message if the response is not JSON.
+    }
+
+    throw new Error(`Request failed: ${detail}`);
+  }
+
+  return response.json() as Promise<TResponse>;
 }
 
 export async function getJobPostings(): Promise<JobPosting[]> {
@@ -26,4 +57,8 @@ export async function getTopSkillsByCompany(): Promise<GroupedSkillCounts> {
 
 export async function getTopSkillsByRole(): Promise<GroupedSkillCounts> {
   return fetchJson<GroupedSkillCounts>("/skills/top-by-role");
+}
+
+export async function analyzeResume(request: ResumeAnalysisRequest): Promise<ResumeAnalysisResponse> {
+  return postJson<ResumeAnalysisResponse, ResumeAnalysisRequest>("/resume/analyze", request);
 }
