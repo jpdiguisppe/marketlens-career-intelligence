@@ -1,12 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 
 import {
+  analyzeResume,
   getJobPostings,
   getTopSkills,
   getTopSkillsByCompany,
   getTopSkillsByRole,
 } from "./api";
-import type { GroupedSkillCounts, JobPosting, SkillCounts } from "./types";
+import type {
+  GroupedSkillCounts,
+  JobPosting,
+  ResumeAnalysisResponse,
+  SkillCounts,
+} from "./types";
 
 type DashboardData = {
   jobs: JobPosting[];
@@ -41,6 +48,22 @@ function countUniqueSkills(jobs: JobPosting[]): number {
 function getTopSkillName(topSkills: SkillCounts): string {
   const topSkill = sortSkillCounts(topSkills)[0];
   return topSkill ? topSkill[0] : "None yet";
+}
+
+function SkillPills({ skills, emptyText }: { skills: string[]; emptyText: string }) {
+  if (skills.length === 0) {
+    return <p className="empty-text">{emptyText}</p>;
+  }
+
+  return (
+    <div className="pill-row">
+      {skills.map((skill) => (
+        <span className="skill-pill" key={skill}>
+          {skill}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 function SkillList({ title, skills }: { title: string; skills: SkillCounts }) {
@@ -104,6 +127,152 @@ function GroupedSkillPanel({ title, groups }: { title: string; groups: GroupedSk
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ResumeAnalyzer({
+  hasJobs,
+  roleCategories,
+}: {
+  hasJobs: boolean;
+  roleCategories: string[];
+}) {
+  const [resumeText, setResumeText] = useState("");
+  const [targetRoleCategory, setTargetRoleCategory] = useState("");
+  const [analysis, setAnalysis] = useState<ResumeAnalysisResponse | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!resumeText.trim()) {
+      setAnalysisError("Paste resume text before running the analysis.");
+      return;
+    }
+
+    try {
+      setIsAnalyzing(true);
+      setAnalysisError(null);
+
+      const result = await analyzeResume({
+        resume_text: resumeText,
+        target_role_category: targetRoleCategory || null,
+      });
+
+      setAnalysis(result);
+    } catch (error) {
+      setAnalysis(null);
+      setAnalysisError(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong while analyzing the resume.",
+      );
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }
+
+  return (
+    <section className="panel panel-wide resume-panel">
+      <div className="panel-header align-start">
+        <div>
+          <h2>Resume Gap Analysis</h2>
+          <p className="panel-subtitle">
+            Paste resume text and compare it against the skills showing up in your saved job postings.
+          </p>
+        </div>
+      </div>
+
+      <form className="resume-form" onSubmit={handleSubmit}>
+        <label className="form-label" htmlFor="resume-text">
+          Resume text
+        </label>
+        <textarea
+          id="resume-text"
+          className="resume-textarea"
+          placeholder="Paste resume bullets, project descriptions, coursework, and skills here..."
+          value={resumeText}
+          onChange={(event) => setResumeText(event.target.value)}
+        />
+
+        <div className="form-row">
+          <label className="form-control" htmlFor="target-role-category">
+            <span>Target role category</span>
+            <select
+              id="target-role-category"
+              className="select-input"
+              value={targetRoleCategory}
+              onChange={(event) => setTargetRoleCategory(event.target.value)}
+            >
+              <option value="">All saved postings</option>
+              {roleCategories.map((roleCategory) => (
+                <option key={roleCategory} value={roleCategory}>
+                  {roleCategory}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <button
+            className="refresh-button analyze-button"
+            disabled={isAnalyzing || !hasJobs}
+            type="submit"
+          >
+            {isAnalyzing ? "Analyzing..." : "Analyze resume"}
+          </button>
+        </div>
+      </form>
+
+      {!hasJobs && (
+        <div className="notice-box">
+          Import or add job postings first so MarketLens has target skills to compare against.
+        </div>
+      )}
+
+      {analysisError && (
+        <div className="error-box compact-error">
+          <strong>Could not analyze resume.</strong>
+          <p>{analysisError}</p>
+        </div>
+      )}
+
+      {analysis && (
+        <div className="analysis-results">
+          <div className="score-card">
+            <span>Match Score</span>
+            <strong>{analysis.match_percentage}%</strong>
+            <p>
+              Compared against {analysis.postings_analyzed} posting
+              {analysis.postings_analyzed === 1 ? "" : "s"}
+              {analysis.target_role_category ? ` in ${analysis.target_role_category}` : " across all roles"}.
+            </p>
+          </div>
+
+          <div className="analysis-grid">
+            <div className="analysis-card">
+              <h3>Matched Skills</h3>
+              <SkillPills skills={analysis.matched_skills} emptyText="No matched skills found yet." />
+            </div>
+
+            <div className="analysis-card">
+              <h3>Missing Skills</h3>
+              <SkillPills skills={analysis.missing_skills} emptyText="No missing target skills found." />
+            </div>
+
+            <div className="analysis-card">
+              <h3>Resume Skills Found</h3>
+              <SkillPills skills={analysis.resume_skills} emptyText="No known skills found in resume text." />
+            </div>
+
+            <div className="analysis-card priority-card">
+              <h3>Learning Priorities</h3>
+              <SkillPills skills={analysis.learning_priorities} emptyText="No learning priorities yet." />
+            </div>
+          </div>
         </div>
       )}
     </section>
@@ -175,6 +344,18 @@ function App() {
     () => countUniqueSkills(dashboardData.jobs),
     [dashboardData.jobs],
   );
+
+  const roleCategories = useMemo(() => {
+    const categories = new Set<string>();
+
+    dashboardData.jobs.forEach((job) => {
+      if (job.role_category) {
+        categories.add(job.role_category);
+      }
+    });
+
+    return Array.from(categories).sort((a, b) => a.localeCompare(b));
+  }, [dashboardData.jobs]);
 
   async function loadDashboardData() {
     try {
@@ -249,6 +430,7 @@ function App() {
       </section>
 
       <section className="dashboard-grid">
+        <ResumeAnalyzer hasJobs={dashboardData.jobs.length > 0} roleCategories={roleCategories} />
         <SkillList title="Top Skills Overall" skills={dashboardData.topSkills} />
         <GroupedSkillPanel title="Skills by Company" groups={dashboardData.skillsByCompany} />
         <GroupedSkillPanel title="Skills by Role Category" groups={dashboardData.skillsByRole} />
