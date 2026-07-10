@@ -1,0 +1,30 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.db
+*.sqlite
+*.sqlite3
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Local environment files
+.env
+.env.*
+
+# OS/editor files
+.DS_Store
+.vscode/
+.idea/
+
+# Docs/assets not needed in container builds
+docs/images/
