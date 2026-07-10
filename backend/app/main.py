@@ -17,7 +17,7 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title="MarketLens API",
     description="Backend API for analyzing job postings and career skill signals.",
-    version="0.5.1",
+    version="0.6.0",
 )
 
 app.add_middleware(
@@ -63,6 +63,30 @@ class CSVImportResponse(BaseModel):
     errors: list[str]
 
 
+class ResumeAnalysisRequest(BaseModel):
+    resume_text: str = Field(
+        ...,
+        min_length=1,
+        examples=["Python, Java, SQL, React, Git, Agile, and REST API project experience."],
+    )
+    target_role_category: Optional[str] = Field(
+        default=None,
+        examples=["Backend SWE"],
+        description="Optional role category to compare against. If omitted, all saved postings are used.",
+    )
+
+
+class ResumeAnalysisResponse(BaseModel):
+    resume_skills: list[str]
+    target_skills: list[str]
+    matched_skills: list[str]
+    missing_skills: list[str]
+    match_percentage: float
+    learning_priorities: list[str]
+    postings_analyzed: int
+    target_role_category: Optional[str]
+
+
 REQUIRED_CSV_COLUMNS = {"company", "title", "description"}
 OPTIONAL_CSV_COLUMNS = {"location", "role_category", "experience_level"}
 SUPPORTED_CSV_COLUMNS = REQUIRED_CSV_COLUMNS | OPTIONAL_CSV_COLUMNS
@@ -105,6 +129,13 @@ def _group_skill_counts_by_posting_field(db: Session, field_name: str) -> dict[s
         group_name: count_skills(descriptions)
         for group_name, descriptions in grouped_descriptions.items()
     }
+
+
+def _sort_skills_by_target_frequency(skills: set[str], target_skill_counts: dict[str, int]) -> list[str]:
+    return sorted(
+        skills,
+        key=lambda skill: (-target_skill_counts.get(skill, 0), skill.lower()),
+    )
 
 
 def _normalize_csv_fieldnames(fieldnames: list[str]) -> dict[str, str]:
@@ -261,3 +292,51 @@ def get_top_skills_by_company(db: Session = Depends(get_db)) -> dict[str, dict[s
 @app.get("/skills/top-by-role")
 def get_top_skills_by_role(db: Session = Depends(get_db)) -> dict[str, dict[str, int]]:
     return _group_skill_counts_by_posting_field(db, "role_category")
+
+
+@app.post("/resume/analyze", response_model=ResumeAnalysisResponse)
+def analyze_resume(request: ResumeAnalysisRequest, db: Session = Depends(get_db)) -> ResumeAnalysisResponse:
+    all_postings = _list_db_postings(db)
+    target_postings = all_postings
+
+    if request.target_role_category:
+        target_postings = [
+            posting
+            for posting in all_postings
+            if posting.role_category == request.target_role_category
+        ]
+
+    if not target_postings:
+        raise HTTPException(
+            status_code=400,
+            detail="No saved job postings found for that target role category.",
+        )
+
+    resume_skills = extract_skills(request.resume_text)
+    resume_skill_set = set(resume_skills)
+
+    target_descriptions = [posting.description for posting in target_postings]
+    target_skill_counts = count_skills(target_descriptions)
+    target_skills = list(target_skill_counts.keys())
+    target_skill_set = set(target_skills)
+
+    matched_skill_set = resume_skill_set & target_skill_set
+    missing_skill_set = target_skill_set - resume_skill_set
+
+    matched_skills = _sort_skills_by_target_frequency(matched_skill_set, target_skill_counts)
+    missing_skills = _sort_skills_by_target_frequency(missing_skill_set, target_skill_counts)
+
+    match_percentage = 0.0
+    if target_skills:
+        match_percentage = round((len(matched_skills) / len(target_skills)) * 100, 1)
+
+    return ResumeAnalysisResponse(
+        resume_skills=resume_skills,
+        target_skills=target_skills,
+        matched_skills=matched_skills,
+        missing_skills=missing_skills,
+        match_percentage=match_percentage,
+        learning_priorities=missing_skills[:5],
+        postings_analyzed=len(target_postings),
+        target_role_category=request.target_role_category,
+    )
