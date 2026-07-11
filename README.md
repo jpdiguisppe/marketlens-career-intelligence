@@ -124,7 +124,7 @@ In Docker, the backend uses a named Docker volume and stores SQLite data at:
 /app/data/marketlens.db
 ```
 
-Later, the same database layer can use PostgreSQL by setting a `DATABASE_URL` environment variable.
+For public deployment, MarketLens should use PostgreSQL by setting a `DATABASE_URL` environment variable.
 
 ## CSV Format
 
@@ -188,6 +188,29 @@ To also delete the Docker-managed SQLite database volume:
 
 ```bash
 docker compose down -v
+```
+
+## Railway Deployment
+
+MarketLens is prepared for Railway deployment as an isolated monorepo with separate backend and frontend services plus a Railway Postgres database.
+
+Deployment guide:
+
+```text
+docs/railway-deployment.md
+```
+
+Expected Railway services:
+
+- `backend` from `/backend`
+- `frontend` from `/frontend`
+- `Postgres` database service
+
+Important production variables:
+
+```text
+DATABASE_URL=<Railway Postgres connection string>
+VITE_API_BASE_URL=<public backend Railway URL>
 ```
 
 ## Running the Backend Locally
@@ -265,11 +288,11 @@ docker build --build-arg VITE_API_BASE_URL=http://localhost:8000 -t marketlens-f
 
 - **Frontend:** React + TypeScript
 - **Backend:** Python + FastAPI
-- **Database:** SQLite locally, PostgreSQL later
+- **Database:** SQLite locally, PostgreSQL in deployment
 - **AI/NLP:** skill dictionary first, AI-assisted extraction later
 - **Charts:** Recharts or Chart.js
 - **DevOps:** Docker + GitHub Actions
-- **Deployment:** Render, Azure, or AWS
+- **Deployment:** Railway
 
 ## Project Structure
 
@@ -314,6 +337,7 @@ docs/
     marketlens-skills-dashboard.png
   project-plan.md
   database-schema.md
+  railway-deployment.md
 docker-compose.yml
 README.md
 ```
@@ -363,6 +387,7 @@ README.md
 - Add backend tests
 - Add GitHub Actions CI
 - Add Docker setup
+- Prepare Railway deployment
 - Deploy the app
 
 ## Long-Term Ideas
@@ -379,4 +404,4 @@ README.md
 
 ## Status
 
-MarketLens is currently at **Full-Stack MVP v0.4**. The backend can accept manual job postings, import postings from CSV, persist postings in a local SQLite database, extract skills, return skill-frequency comparisons, and compare resume skills against target postings. The frontend displays those insights in a React dashboard with a resume gap analysis workflow. The repo now includes backend tests, GitHub Actions CI, and Docker support for running the full stack locally.
+MarketLens is currently at **Full-Stack MVP v0.5-prep**. The backend can accept manual job postings, import postings from CSV, persist postings in a local SQLite database, extract skills, return skill-frequency comparisons, and compare resume skills against target postings. The frontend displays those insights in a React dashboard with a resume gap analysis workflow. The repo now includes backend tests, GitHub Actions CI, Docker support, and Railway deployment prep.
