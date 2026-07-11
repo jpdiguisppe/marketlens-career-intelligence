@@ -47,6 +47,12 @@ Backend environment variables:
 DATABASE_URL=<Railway Postgres DATABASE_URL>
 ```
 
+After the frontend has a public Railway domain, also set:
+
+```text
+CORS_ALLOWED_ORIGINS=https://YOUR_FRONTEND_DOMAIN
+```
+
 The backend Dockerfile already respects Railway's `PORT` variable:
 
 ```text
@@ -95,6 +101,14 @@ Example:
 https://marketlens-production.up.railway.app
 ```
 
+Then return to the backend service and set:
+
+```text
+CORS_ALLOWED_ORIGINS=https://YOUR_FRONTEND_DOMAIN
+```
+
+Redeploy the backend after changing `CORS_ALLOWED_ORIGINS`.
+
 ## Step 5: Smoke Test the Deployed App
 
 1. Open the frontend Railway domain.
@@ -110,6 +124,7 @@ https://marketlens-production.up.railway.app
 - The frontend and backend should be separate services.
 - The frontend must use the backend's public URL, not `localhost`.
 - Railway-generated domains use HTTPS automatically.
+- The backend must allow the deployed frontend URL through `CORS_ALLOWED_ORIGINS`.
 
 ## Current Production Hardening Still Needed
 
@@ -118,7 +133,6 @@ Before calling this a real public beta, add:
 - user accounts
 - per-user saved postings/resumes
 - input size limits
-- CORS restriction to the deployed frontend domain
 - rate limiting
 - better error logging
 - database migrations
