@@ -1,5 +1,6 @@
 import csv
 import io
+import os
 from collections import defaultdict
 from typing import Optional
 
@@ -14,18 +15,32 @@ from app.skill_extractor import count_skills, extract_skills
 
 Base.metadata.create_all(bind=engine)
 
+
+def _get_allowed_origins() -> list[str]:
+    configured_origins = os.getenv("CORS_ALLOWED_ORIGINS")
+
+    if configured_origins:
+        return [
+            origin.strip().rstrip("/")
+            for origin in configured_origins.split(",")
+            if origin.strip()
+        ]
+
+    return [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+
+
 app = FastAPI(
     title="MarketLens API",
     description="Backend API for analyzing job postings and career skill signals.",
-    version="0.6.0",
+    version="0.6.1",
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=_get_allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
