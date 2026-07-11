@@ -6,7 +6,28 @@ import type {
   SkillCounts,
 } from "./types";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
+declare global {
+  interface Window {
+    __MARKETLENS_CONFIG__?: {
+      apiBaseUrl?: string;
+    };
+  }
+}
+
+function normalizeApiBaseUrl(url: string | undefined): string | undefined {
+  const trimmedUrl = url?.trim();
+
+  if (!trimmedUrl) {
+    return undefined;
+  }
+
+  return trimmedUrl.replace(/\/$/, "");
+}
+
+const API_BASE_URL =
+  normalizeApiBaseUrl(window.__MARKETLENS_CONFIG__?.apiBaseUrl) ??
+  normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL) ??
+  "http://127.0.0.1:8000";
 
 async function fetchJson<T>(path: string): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`);
