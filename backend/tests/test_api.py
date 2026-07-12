@@ -191,3 +191,41 @@ def test_resume_analysis_rejects_overly_long_resume_text() -> None:
     )
 
     assert response.status_code == 422
+
+
+def test_custom_analysis_compares_resume_against_pasted_job_descriptions_without_saving() -> None:
+    response = client.post(
+        "/analysis/custom",
+        json={
+            "resume_text": "Python, SQL, Git, Agile, and backend development projects.",
+            "job_descriptions": [
+                "Backend role using Python, SQL, Docker, and REST APIs.",
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    analysis = response.json()
+    assert analysis["postings_analyzed"] == 1
+    assert analysis["target_role_category"] is None
+    assert analysis["matched_skills"] == ["Python", "SQL"]
+    assert analysis["missing_skills"] == ["Docker", "REST APIs"]
+    assert analysis["match_percentage"] == 50.0
+    assert analysis["learning_priorities"] == ["Docker", "REST APIs"]
+
+    saved_postings_response = client.get("/job-postings")
+    assert saved_postings_response.status_code == 200
+    assert saved_postings_response.json() == []
+
+
+def test_custom_analysis_returns_error_when_no_target_skills_are_found() -> None:
+    response = client.post(
+        "/analysis/custom",
+        json={
+            "resume_text": "Python and SQL",
+            "job_descriptions": ["Friendly team with strong communication and collaboration."],
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "No recognizable target skills found in the provided job descriptions."
