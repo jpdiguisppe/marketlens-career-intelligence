@@ -1,3 +1,4 @@
+import os
 from collections.abc import Generator
 
 import pytest
@@ -6,10 +7,13 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+os.environ["ADMIN_API_KEY"] = "test-admin-key"
+
 from app.database import Base, get_db
 from app.main import app
 
 TEST_DATABASE_URL = "sqlite://"
+ADMIN_HEADERS = {"X-Admin-API-Key": "test-admin-key"}
 
 engine = create_engine(
     TEST_DATABASE_URL,
@@ -39,17 +43,29 @@ def reset_database() -> Generator[None, None, None]:
     Base.metadata.drop_all(bind=engine)
 
 
+def _sample_job_posting_payload() -> dict[str, str]:
+    return {
+        "company": "Comcast",
+        "title": "Backend Software Engineer",
+        "location": "Philadelphia, PA",
+        "role_category": "Backend SWE",
+        "experience_level": "Entry-Level",
+        "description": "Build REST APIs with Python, SQL, Docker, Git, and Agile practices.",
+    }
+
+
+def test_create_job_posting_requires_admin_api_key() -> None:
+    response = client.post("/job-postings", json=_sample_job_posting_payload())
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid or missing admin API key."
+
+
 def test_create_job_posting_extracts_and_persists_skills() -> None:
     response = client.post(
         "/job-postings",
-        json={
-            "company": "Comcast",
-            "title": "Backend Software Engineer",
-            "location": "Philadelphia, PA",
-            "role_category": "Backend SWE",
-            "experience_level": "Entry-Level",
-            "description": "Build REST APIs with Python, SQL, Docker, Git, and Agile practices.",
-        },
+        json=_sample_job_posting_payload(),
+        headers=ADMIN_HEADERS,
     )
 
     assert response.status_code == 201
@@ -69,6 +85,21 @@ def test_create_job_posting_extracts_and_persists_skills() -> None:
     assert len(list_response.json()) == 1
 
 
+def test_csv_import_requires_admin_api_key() -> None:
+    csv_content = (
+        "company,title,location,role_category,experience_level,description\n"
+        "Lockheed Martin,Software Engineer Associate,King of Prussia PA,Systems/SWE,Entry-Level,Python Linux Git Agile testing\n"
+    )
+
+    response = client.post(
+        "/job-postings/import-csv",
+        files={"file": ("jobs.csv", csv_content.encode("utf-8"), "text/csv")},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid or missing admin API key."
+
+
 def test_csv_import_creates_multiple_postings() -> None:
     csv_content = (
         "company,title,location,role_category,experience_level,description\n"
@@ -79,6 +110,7 @@ def test_csv_import_creates_multiple_postings() -> None:
     response = client.post(
         "/job-postings/import-csv",
         files={"file": ("jobs.csv", csv_content.encode("utf-8"), "text/csv")},
+        headers=ADMIN_HEADERS,
     )
 
     assert response.status_code == 201
@@ -106,6 +138,7 @@ def test_resume_analysis_compares_resume_against_target_role_category() -> None:
             "experience_level": "Entry-Level",
             "description": "Backend role using Python, SQL, Docker, and REST APIs.",
         },
+        headers=ADMIN_HEADERS,
     )
     client.post(
         "/job-postings",
@@ -117,6 +150,7 @@ def test_resume_analysis_compares_resume_against_target_role_category() -> None:
             "experience_level": "Internship",
             "description": "Systems role using Azure, Windows Server, scripting, and troubleshooting.",
         },
+        headers=ADMIN_HEADERS,
     )
 
     response = client.post(
@@ -148,3 +182,12 @@ def test_resume_analysis_returns_error_when_target_role_has_no_postings() -> Non
 
     assert response.status_code == 400
     assert response.json()["detail"] == "No saved job postings found for that target role category."
+
+
+def test_resume_analysis_rejects_overly_long_resume_text() -> None:
+    response = client.post(
+        "/resume/analyze",
+        json={"resume_text": "x" * 10_001},
+    )
+
+    assert response.status_code == 422
