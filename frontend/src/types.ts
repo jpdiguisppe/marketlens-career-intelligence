@@ -18,6 +18,11 @@ export type ResumeAnalysisRequest = {
   target_role_category?: string | null;
 };
 
+export type CustomAnalysisRequest = {
+  resume_text: string;
+  job_descriptions: string[];
+};
+
 export type ResumeAnalysisResponse = {
   resume_skills: string[];
   target_skills: string[];
