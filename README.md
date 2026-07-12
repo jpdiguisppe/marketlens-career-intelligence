@@ -2,6 +2,16 @@
 
 MarketLens is a full-stack career intelligence platform that analyzes job postings to identify in-demand skills, compare role requirements, and generate personalized resume skill-gap insights for early-career software, AI, cloud, and systems roles.
 
+## Live Demo
+
+- **Frontend app:** [MarketLens live demo](https://marketlens-career-intelligence-production-8a34.up.railway.app)
+- **Backend API docs:** [FastAPI Swagger UI](https://marketlens-career-intelligence-production.up.railway.app/docs)
+- **Backend health check:** [API health endpoint](https://marketlens-career-intelligence-production.up.railway.app/health)
+
+The deployed version is a secured portfolio/demo app. Public visitors can view the saved demo dataset, explore skill dashboards, extract skills from non-sensitive text, and run resume gap analysis. Creating postings, importing CSV files, and deleting saved postings are admin-only actions protected by an `X-Admin-API-Key` header.
+
+Do not upload sensitive personal information, secrets, API keys, database URLs, or confidential employer/customer data.
+
 ## Problem
 
 Career advice is often vague, and job descriptions are noisy. Students and early-career candidates are told to “learn cloud,” “build projects,” or “get better at AI,” but it is hard to know which skills are actually showing up in the roles they want.
@@ -231,7 +241,7 @@ docker compose down -v
 
 ## Railway Deployment
 
-MarketLens is prepared for Railway deployment as an isolated monorepo with separate backend and frontend services plus a Railway Postgres database.
+MarketLens is deployed on Railway as an isolated monorepo with separate backend and frontend services plus a Railway Postgres database.
 
 Deployment guide:
 
@@ -483,4 +493,4 @@ See [`docs/auth-user-ownership-roadmap.md`](docs/auth-user-ownership-roadmap.md)
 
 ## Status
 
-MarketLens is currently at **Full-Stack MVP v0.7 secured demo**. The backend can accept admin-protected manual job postings, import postings from CSV, persist postings in SQLite locally or PostgreSQL in deployment, extract skills, return skill-frequency comparisons, and compare resume skills against target postings. The frontend displays those insights in a React dashboard with a resume gap analysis workflow. The repo includes backend tests, GitHub Actions CI, Docker support, Railway deployment prep, a security policy, Dependabot configuration, and a user-auth/ownership roadmap.
+MarketLens is currently at **Full-Stack MVP v0.7 secured demo**. The backend can accept admin-protected manual job postings, import postings from CSV, persist postings in SQLite locally or PostgreSQL in deployment, extract skills, return skill-frequency comparisons, and compare resume skills against target postings. The frontend displays those insights in a React dashboard with a resume gap analysis workflow. The repo includes backend tests, GitHub Actions CI, Docker support, Railway deployment, a security policy, Dependabot configuration, and a user-auth/ownership roadmap.
