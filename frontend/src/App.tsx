@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 
 import {
+  analyzeCustomJobs,
   analyzeResume,
   getJobPostings,
   getTopSkills,
@@ -48,6 +49,13 @@ function countUniqueSkills(jobs: JobPosting[]): number {
 function getTopSkillName(topSkills: SkillCounts): string {
   const topSkill = sortSkillCounts(topSkills)[0];
   return topSkill ? topSkill[0] : "None yet";
+}
+
+function splitPastedJobDescriptions(text: string): string[] {
+  return text
+    .split(/\n-{3,}\n/g)
+    .map((description) => description.trim())
+    .filter(Boolean);
 }
 
 function SkillPills({ skills, emptyText }: { skills: string[]; emptyText: string }) {
@@ -133,6 +141,157 @@ function GroupedSkillPanel({ title, groups }: { title: string; groups: GroupedSk
   );
 }
 
+function AnalysisResults({
+  analysis,
+  comparisonText,
+}: {
+  analysis: ResumeAnalysisResponse;
+  comparisonText: string;
+}) {
+  return (
+    <div className="analysis-results">
+      <div className="score-card">
+        <span>Match Score</span>
+        <strong>{analysis.match_percentage}%</strong>
+        <p>{comparisonText}</p>
+      </div>
+
+      <div className="analysis-grid">
+        <div className="analysis-card">
+          <h3>Matched Skills</h3>
+          <SkillPills skills={analysis.matched_skills} emptyText="No matched skills found yet." />
+        </div>
+
+        <div className="analysis-card">
+          <h3>Missing Skills</h3>
+          <SkillPills skills={analysis.missing_skills} emptyText="No missing target skills found." />
+        </div>
+
+        <div className="analysis-card">
+          <h3>Resume Skills Found</h3>
+          <SkillPills skills={analysis.resume_skills} emptyText="No known skills found in resume text." />
+        </div>
+
+        <div className="analysis-card priority-card">
+          <h3>Learning Priorities</h3>
+          <SkillPills skills={analysis.learning_priorities} emptyText="No learning priorities yet." />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CustomAnalysisPanel() {
+  const [resumeText, setResumeText] = useState("");
+  const [jobDescriptionsText, setJobDescriptionsText] = useState("");
+  const [analysis, setAnalysis] = useState<ResumeAnalysisResponse | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const jobDescriptions = splitPastedJobDescriptions(jobDescriptionsText);
+
+    if (!resumeText.trim()) {
+      setAnalysisError("Paste resume text before running the analysis.");
+      return;
+    }
+
+    if (jobDescriptions.length === 0) {
+      setAnalysisError("Paste at least one job description before running the analysis.");
+      return;
+    }
+
+    try {
+      setIsAnalyzing(true);
+      setAnalysisError(null);
+
+      const result = await analyzeCustomJobs({
+        resume_text: resumeText,
+        job_descriptions: jobDescriptions,
+      });
+
+      setAnalysis(result);
+    } catch (error) {
+      setAnalysis(null);
+      setAnalysisError(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong while analyzing the pasted job descriptions.",
+      );
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }
+
+  return (
+    <section className="panel panel-wide custom-analysis-panel">
+      <div className="panel-header align-start">
+        <div>
+          <p className="eyebrow inline-eyebrow">New</p>
+          <h2>Analyze Your Own Job Descriptions</h2>
+          <p className="panel-subtitle">
+            Paste resume-style text and one or more job descriptions to get a private skill-gap report.
+            Nothing here is saved to the shared demo database.
+          </p>
+        </div>
+      </div>
+
+      <form className="resume-form" onSubmit={handleSubmit}>
+        <div className="form-grid">
+          <label className="form-control" htmlFor="custom-resume-text">
+            <span>Resume text</span>
+            <textarea
+              id="custom-resume-text"
+              className="resume-textarea"
+              placeholder="Paste resume bullets, project descriptions, coursework, and skills here..."
+              value={resumeText}
+              onChange={(event) => setResumeText(event.target.value)}
+            />
+          </label>
+
+          <label className="form-control" htmlFor="custom-job-descriptions">
+            <span>Job description text</span>
+            <textarea
+              id="custom-job-descriptions"
+              className="resume-textarea"
+              placeholder="Paste a job description here. To compare multiple postings, separate each one with a line containing ---"
+              value={jobDescriptionsText}
+              onChange={(event) => setJobDescriptionsText(event.target.value)}
+            />
+          </label>
+        </div>
+
+        <div className="form-footer">
+          <p className="helper-text">
+            Tip: compare up to 10 postings at once. Use a line with <code>---</code> between descriptions.
+          </p>
+          <button className="refresh-button analyze-button" disabled={isAnalyzing} type="submit">
+            {isAnalyzing ? "Analyzing..." : "Analyze pasted jobs"}
+          </button>
+        </div>
+      </form>
+
+      {analysisError && (
+        <div className="error-box compact-error">
+          <strong>Could not analyze pasted jobs.</strong>
+          <p>{analysisError}</p>
+        </div>
+      )}
+
+      {analysis && (
+        <AnalysisResults
+          analysis={analysis}
+          comparisonText={`Compared against ${analysis.postings_analyzed} pasted job description${
+            analysis.postings_analyzed === 1 ? "" : "s"
+          }. Nothing was saved.`}
+        />
+      )}
+    </section>
+  );
+}
+
 function ResumeAnalyzer({
   hasJobs,
   roleCategories,
@@ -176,13 +335,19 @@ function ResumeAnalyzer({
     }
   }
 
+  const comparisonText = analysis
+    ? `Compared against ${analysis.postings_analyzed} saved posting${
+        analysis.postings_analyzed === 1 ? "" : "s"
+      }${analysis.target_role_category ? ` in ${analysis.target_role_category}` : " across all roles"}.`
+    : "";
+
   return (
     <section className="panel panel-wide resume-panel">
       <div className="panel-header align-start">
         <div>
-          <h2>Resume Gap Analysis</h2>
+          <h2>Saved Dataset Resume Gap Analysis</h2>
           <p className="panel-subtitle">
-            Paste resume text and compare it against the skills showing up in your saved job postings.
+            Paste resume text and compare it against the skills showing up in the saved demo job postings.
           </p>
         </div>
       </div>
@@ -222,14 +387,14 @@ function ResumeAnalyzer({
             disabled={isAnalyzing || !hasJobs}
             type="submit"
           >
-            {isAnalyzing ? "Analyzing..." : "Analyze resume"}
+            {isAnalyzing ? "Analyzing..." : "Analyze saved dataset"}
           </button>
         </div>
       </form>
 
       {!hasJobs && (
         <div className="notice-box">
-          Import or add job postings first so MarketLens has target skills to compare against.
+          Saved demo postings are not loaded yet. Use the custom analysis above to compare pasted postings without saving anything.
         </div>
       )}
 
@@ -240,41 +405,7 @@ function ResumeAnalyzer({
         </div>
       )}
 
-      {analysis && (
-        <div className="analysis-results">
-          <div className="score-card">
-            <span>Match Score</span>
-            <strong>{analysis.match_percentage}%</strong>
-            <p>
-              Compared against {analysis.postings_analyzed} posting
-              {analysis.postings_analyzed === 1 ? "" : "s"}
-              {analysis.target_role_category ? ` in ${analysis.target_role_category}` : " across all roles"}.
-            </p>
-          </div>
-
-          <div className="analysis-grid">
-            <div className="analysis-card">
-              <h3>Matched Skills</h3>
-              <SkillPills skills={analysis.matched_skills} emptyText="No matched skills found yet." />
-            </div>
-
-            <div className="analysis-card">
-              <h3>Missing Skills</h3>
-              <SkillPills skills={analysis.missing_skills} emptyText="No missing target skills found." />
-            </div>
-
-            <div className="analysis-card">
-              <h3>Resume Skills Found</h3>
-              <SkillPills skills={analysis.resume_skills} emptyText="No known skills found in resume text." />
-            </div>
-
-            <div className="analysis-card priority-card">
-              <h3>Learning Priorities</h3>
-              <SkillPills skills={analysis.learning_priorities} emptyText="No learning priorities yet." />
-            </div>
-          </div>
-        </div>
-      )}
+      {analysis && <AnalysisResults analysis={analysis} comparisonText={comparisonText} />}
     </section>
   );
 }
@@ -289,9 +420,9 @@ function JobTable({ jobs }: { jobs: JobPosting[] }) {
 
       {jobs.length === 0 ? (
         <div className="empty-state">
-          <h3>No job postings yet</h3>
+          <h3>No job postings loaded</h3>
           <p>
-            Import the sample CSV from the FastAPI docs, then refresh this dashboard.
+            The public demo can still run custom analysis with pasted job descriptions. Admins can load saved demo postings through the protected API.
           </p>
         </div>
       ) : (
@@ -395,10 +526,10 @@ function App() {
       <section className="hero">
         <div>
           <p className="eyebrow">MarketLens Career Intelligence</p>
-          <h1>Job Skill Dashboard</h1>
+          <h1>Career Skill Analyzer</h1>
           <p className="hero-copy">
-            Analyze saved job postings, identify repeated skills, and compare signals by
-            company and role category.
+            Compare your skills against real job descriptions, identify repeated requirements,
+            and turn noisy postings into a focused learning plan.
           </p>
         </div>
         <button className="refresh-button" onClick={loadDashboardData} disabled={isLoading}>
@@ -408,9 +539,9 @@ function App() {
 
       {errorMessage && (
         <section className="error-box">
-          <strong>Could not load backend data.</strong>
+          <strong>Could not load saved dashboard data.</strong>
           <p>{errorMessage}</p>
-          <p>Make sure FastAPI is running at http://127.0.0.1:8000.</p>
+          <p>You can still use custom analysis if the API is reachable.</p>
         </section>
       )}
 
@@ -430,6 +561,7 @@ function App() {
       </section>
 
       <section className="dashboard-grid">
+        <CustomAnalysisPanel />
         <ResumeAnalyzer hasJobs={dashboardData.jobs.length > 0} roleCategories={roleCategories} />
         <SkillList title="Top Skills Overall" skills={dashboardData.topSkills} />
         <GroupedSkillPanel title="Skills by Company" groups={dashboardData.skillsByCompany} />
