@@ -1,4 +1,5 @@
 import type {
+  CustomAnalysisRequest,
   GroupedSkillCounts,
   JobPosting,
   ResumeAnalysisRequest,
@@ -52,8 +53,10 @@ async function postJson<TResponse, TRequest>(path: string, body: TRequest): Prom
     let detail = `${response.status} ${response.statusText}`;
 
     try {
-      const errorBody = (await response.json()) as { detail?: string };
-      detail = errorBody.detail ?? detail;
+      const errorBody = (await response.json()) as { detail?: string | { msg?: string }[] };
+      if (typeof errorBody.detail === "string") {
+        detail = errorBody.detail;
+      }
     } catch {
       // Keep the default error message if the response is not JSON.
     }
@@ -82,4 +85,8 @@ export async function getTopSkillsByRole(): Promise<GroupedSkillCounts> {
 
 export async function analyzeResume(request: ResumeAnalysisRequest): Promise<ResumeAnalysisResponse> {
   return postJson<ResumeAnalysisResponse, ResumeAnalysisRequest>("/resume/analyze", request);
+}
+
+export async function analyzeCustomJobs(request: CustomAnalysisRequest): Promise<ResumeAnalysisResponse> {
+  return postJson<ResumeAnalysisResponse, CustomAnalysisRequest>("/analysis/custom", request);
 }
