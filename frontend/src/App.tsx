@@ -53,7 +53,7 @@ function getTopSkillName(topSkills: SkillCounts): string {
 
 function splitPastedJobDescriptions(text: string): string[] {
   return text
-    .split(/\n-{3,}\n/g)
+    .split(/\n\s*-{3,}\s*\n/g)
     .map((description) => description.trim())
     .filter(Boolean);
 }
@@ -232,8 +232,8 @@ function CustomAnalysisPanel() {
           <p className="eyebrow inline-eyebrow">New</p>
           <h2>Analyze Your Own Job Descriptions</h2>
           <p className="panel-subtitle">
-            Paste resume-style text and one or more job descriptions to get a private skill-gap report.
-            Nothing here is saved to the shared demo database.
+            Paste resume-style text and one or more job descriptions to get a non-saved skill-gap report.
+            Text is sent to the backend for analysis, but it is not saved to the shared database.
           </p>
         </div>
       </div>
@@ -245,7 +245,7 @@ function CustomAnalysisPanel() {
             <textarea
               id="custom-resume-text"
               className="resume-textarea"
-              placeholder="Paste resume bullets, project descriptions, coursework, and skills here..."
+              placeholder="Paste resume bullets, project descriptions, coursework, and skills here. Do not include sensitive personal information."
               value={resumeText}
               onChange={(event) => setResumeText(event.target.value)}
             />
@@ -266,6 +266,7 @@ function CustomAnalysisPanel() {
         <div className="form-footer">
           <p className="helper-text">
             Tip: compare up to 10 postings at once. Use a line with <code>---</code> between descriptions.
+            Avoid sensitive personal information.
           </p>
           <button className="refresh-button analyze-button" disabled={isAnalyzing} type="submit">
             {isAnalyzing ? "Analyzing..." : "Analyze pasted jobs"}
@@ -285,7 +286,7 @@ function CustomAnalysisPanel() {
           analysis={analysis}
           comparisonText={`Compared against ${analysis.postings_analyzed} pasted job description${
             analysis.postings_analyzed === 1 ? "" : "s"
-          }. Nothing was saved.`}
+          }. Nothing was saved to the shared database.`}
         />
       )}
     </section>
@@ -422,7 +423,7 @@ function JobTable({ jobs }: { jobs: JobPosting[] }) {
         <div className="empty-state">
           <h3>No job postings loaded</h3>
           <p>
-            The public demo can still run custom analysis with pasted job descriptions. Admins can load saved demo postings through the protected API.
+            The public app can still run custom analysis with pasted job descriptions. Admins can load saved demo postings through the protected API.
           </p>
         </div>
       ) : (
