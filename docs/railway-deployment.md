@@ -28,6 +28,7 @@ Create one Railway project with three services:
 1. In the Railway project canvas, add a new **Postgres** database service.
 2. Railway will create database connection variables for that service.
 3. The backend service will use the Postgres `DATABASE_URL`.
+4. Keep all Postgres connection strings private. Do not paste them into the frontend, README, screenshots, or browser.
 
 ## Step 3: Deploy Backend Service
 
@@ -44,8 +45,11 @@ Healthcheck Path: /health
 Backend environment variables:
 
 ```text
-DATABASE_URL=<Railway Postgres DATABASE_URL>
+DATABASE_URL=<Railway Postgres connection string>
+ADMIN_API_KEY=<long random secret value>
 ```
+
+`ADMIN_API_KEY` protects admin-only endpoints such as creating postings, importing CSV files, and deleting postings. Do not commit this key to GitHub and do not put it in the frontend.
 
 After the frontend has a public Railway domain, also set:
 
@@ -85,13 +89,13 @@ Root Directory: /frontend
 Dockerfile Path: Dockerfile
 ```
 
-Frontend environment variable / build argument:
+Frontend environment variable:
 
 ```text
 VITE_API_BASE_URL=https://YOUR_BACKEND_DOMAIN
 ```
 
-Important: this value is built into the React app at build time. If the backend domain changes, update `VITE_API_BASE_URL` and redeploy the frontend.
+This value is public because it only points the browser to the backend API. It is not a secret.
 
 After deployment, generate a public Railway domain for the frontend.
 
@@ -113,26 +117,30 @@ Redeploy the backend after changing `CORS_ALLOWED_ORIGINS`.
 
 1. Open the frontend Railway domain.
 2. Open the backend docs at `/docs`.
-3. Import `data/sample_job_postings.csv` through `POST /job-postings/import-csv`.
-4. Refresh the frontend.
-5. Run Resume Gap Analysis.
+3. Confirm public read endpoints still work, such as `GET /job-postings`.
+4. To import `data/sample_job_postings.csv`, call `POST /job-postings/import-csv` with the `X-Admin-API-Key` header set to the backend `ADMIN_API_KEY` value.
+5. Refresh the frontend.
+6. Run Resume Gap Analysis.
 
 ## Notes
 
 - Do not use SQLite for the deployed public version.
 - Use Railway Postgres through `DATABASE_URL`.
+- Keep `DATABASE_URL`, `DATABASE_PUBLIC_URL`, `ADMIN_API_KEY`, and other secrets private.
 - The frontend and backend should be separate services.
 - The frontend must use the backend's public URL, not `localhost`.
 - Railway-generated domains use HTTPS automatically.
 - The backend must allow the deployed frontend URL through `CORS_ALLOWED_ORIGINS`.
+- Admin-only endpoints require the `X-Admin-API-Key` header.
 
 ## Current Production Hardening Still Needed
 
 Before calling this a real public beta, add:
 
-- user accounts
+- real user accounts
 - per-user saved postings/resumes
-- input size limits
-- rate limiting
-- better error logging
 - database migrations
+- stronger distributed rate limiting
+- better structured error logging
+- accessibility audit fixes
+- dependency vulnerability scanning
