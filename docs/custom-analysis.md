@@ -18,11 +18,15 @@ MarketLens then extracts skills from both sides and returns:
 - match percentage
 - learning priorities
 
-## Privacy Model
+## Data Handling Model
 
 Custom Analysis does **not** save pasted job descriptions or resume-style text to the shared database.
 
-This keeps the app useful for public visitors while avoiding the current risks of anonymous users modifying shared demo data.
+The pasted text is still sent to the backend over HTTPS so the API can analyze it and return a result. This is a non-saved analysis flow, not a full privacy guarantee.
+
+Visitors should not paste sensitive personal information, secrets, API keys, database URLs, confidential employer/customer data, or private medical, financial, or legal details.
+
+This model keeps the app useful for public visitors while avoiding the current risks of anonymous users modifying or deleting shared demo data.
 
 ## Backend Endpoint
 
