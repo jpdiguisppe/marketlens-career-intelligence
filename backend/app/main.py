@@ -22,12 +22,18 @@ MAX_CSV_FILE_SIZE_BYTES = 1_000_000
 MAX_CSV_ROWS = 250
 MAX_FREE_TEXT_LENGTH = 10_000
 MAX_POSTING_DESCRIPTION_LENGTH = 5_000
+MAX_CUSTOM_JOB_DESCRIPTIONS = 10
 RATE_LIMIT_WINDOW_SECONDS = 60
 RATE_LIMIT_MAX_REQUESTS = 30
 
 REQUIRED_CSV_COLUMNS = {"company", "title", "description"}
 OPTIONAL_CSV_COLUMNS = {"location", "role_category", "experience_level"}
 SUPPORTED_CSV_COLUMNS = REQUIRED_CSV_COLUMNS | OPTIONAL_CSV_COLUMNS
+
+CustomJobDescription = Annotated[
+    str,
+    Field(min_length=1, max_length=MAX_POSTING_DESCRIPTION_LENGTH),
+]
 
 _rate_limit_buckets: dict[str, list[float]] = {}
 
@@ -98,7 +104,7 @@ def enforce_public_rate_limit(request: Request) -> None:
 app = FastAPI(
     title="MarketLens API",
     description="Backend API for analyzing job postings and career skill signals.",
-    version="0.7.0",
+    version="0.8.0",
 )
 
 app.add_middleware(
@@ -166,6 +172,27 @@ class ResumeAnalysisRequest(BaseModel):
     )
 
 
+class CustomAnalysisRequest(BaseModel):
+    resume_text: str = Field(
+        ...,
+        min_length=1,
+        max_length=MAX_FREE_TEXT_LENGTH,
+        examples=["Python, SQL, Git, Agile, REST APIs, and Docker project experience."],
+    )
+    job_descriptions: list[CustomJobDescription] = Field(
+        ...,
+        min_length=1,
+        max_length=MAX_CUSTOM_JOB_DESCRIPTIONS,
+        examples=[
+            [
+                "Backend role requiring Python, SQL, REST APIs, Docker, and Agile experience.",
+                "Cloud role requiring AWS, Linux, CI/CD, scripting, and automation.",
+            ]
+        ],
+        description="One or more pasted job descriptions to analyze without saving to the database.",
+    )
+
+
 class ResumeAnalysisResponse(BaseModel):
     resume_skills: list[str]
     target_skills: list[str]
@@ -220,6 +247,44 @@ def _sort_skills_by_target_frequency(skills: set[str], target_skill_counts: dict
     return sorted(
         skills,
         key=lambda skill: (-target_skill_counts.get(skill, 0), skill.lower()),
+    )
+
+
+def _build_resume_analysis_response(
+    resume_text: str,
+    target_descriptions: list[str],
+    postings_analyzed: int,
+    target_role_category: Optional[str] = None,
+) -> ResumeAnalysisResponse:
+    resume_skills = extract_skills(resume_text)
+    resume_skill_set = set(resume_skills)
+
+    target_skill_counts = count_skills(target_descriptions)
+    target_skills = list(target_skill_counts.keys())
+
+    if not target_skills:
+        raise HTTPException(
+            status_code=400,
+            detail="No recognizable target skills found in the provided job descriptions.",
+        )
+
+    target_skill_set = set(target_skills)
+    matched_skill_set = resume_skill_set & target_skill_set
+    missing_skill_set = target_skill_set - resume_skill_set
+
+    matched_skills = _sort_skills_by_target_frequency(matched_skill_set, target_skill_counts)
+    missing_skills = _sort_skills_by_target_frequency(missing_skill_set, target_skill_counts)
+    match_percentage = round((len(matched_skills) / len(target_skills)) * 100, 1)
+
+    return ResumeAnalysisResponse(
+        resume_skills=resume_skills,
+        target_skills=target_skills,
+        matched_skills=matched_skills,
+        missing_skills=missing_skills,
+        match_percentage=match_percentage,
+        learning_priorities=missing_skills[:5],
+        postings_analyzed=postings_analyzed,
+        target_role_category=target_role_category,
     )
 
 
@@ -433,31 +498,36 @@ def analyze_resume(request: ResumeAnalysisRequest, db: Session = Depends(get_db)
             detail="No saved job postings found for that target role category.",
         )
 
-    resume_skills = extract_skills(request.resume_text)
-    resume_skill_set = set(resume_skills)
-
     target_descriptions = [posting.description for posting in target_postings]
-    target_skill_counts = count_skills(target_descriptions)
-    target_skills = list(target_skill_counts.keys())
-    target_skill_set = set(target_skills)
-
-    matched_skill_set = resume_skill_set & target_skill_set
-    missing_skill_set = target_skill_set - resume_skill_set
-
-    matched_skills = _sort_skills_by_target_frequency(matched_skill_set, target_skill_counts)
-    missing_skills = _sort_skills_by_target_frequency(missing_skill_set, target_skill_counts)
-
-    match_percentage = 0.0
-    if target_skills:
-        match_percentage = round((len(matched_skills) / len(target_skills)) * 100, 1)
-
-    return ResumeAnalysisResponse(
-        resume_skills=resume_skills,
-        target_skills=target_skills,
-        matched_skills=matched_skills,
-        missing_skills=missing_skills,
-        match_percentage=match_percentage,
-        learning_priorities=missing_skills[:5],
+    return _build_resume_analysis_response(
+        resume_text=request.resume_text,
+        target_descriptions=target_descriptions,
         postings_analyzed=len(target_postings),
         target_role_category=request.target_role_category,
+    )
+
+
+@app.post(
+    "/analysis/custom",
+    response_model=ResumeAnalysisResponse,
+    dependencies=[Depends(enforce_public_rate_limit)],
+)
+def analyze_custom_job_descriptions(request: CustomAnalysisRequest) -> ResumeAnalysisResponse:
+    cleaned_descriptions = [
+        description.strip()
+        for description in request.job_descriptions
+        if description.strip()
+    ]
+
+    if not cleaned_descriptions:
+        raise HTTPException(
+            status_code=400,
+            detail="At least one non-empty job description is required.",
+        )
+
+    return _build_resume_analysis_response(
+        resume_text=request.resume_text,
+        target_descriptions=cleaned_descriptions,
+        postings_analyzed=len(cleaned_descriptions),
+        target_role_category=None,
     )
