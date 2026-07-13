@@ -54,6 +54,12 @@ def test_extract_skills_recognizes_real_world_aliases() -> None:
     assert "Git" in skills
 
 
+def test_extract_skills_recognizes_dockerized_services_wording() -> None:
+    skills = extract_skills("Maintain Dockerized services and support deployment pipelines.")
+
+    assert "Docker" in skills
+
+
 def test_extract_skills_recognizes_full_stack_dotnet_job_language() -> None:
     text = (
         "Perform full-stack development with Angular, ASP.NET Core, C#, JavaScript, TypeScript, "
@@ -85,6 +91,7 @@ def test_skill_ontology_exposes_categories_and_relationships() -> None:
     assert SKILL_CATEGORIES["Docker"] == "devops"
     assert "REST APIs" in RELATED_SKILLS["FastAPI"]
     assert "containerized workloads" in SKILL_PATTERNS["Docker"]
+    assert "dockerized services" in SKILL_PATTERNS["Docker"]
 
 
 def test_count_skills_counts_each_skill_once_per_text() -> None:
