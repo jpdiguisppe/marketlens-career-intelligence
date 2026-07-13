@@ -13,7 +13,7 @@ from app.analysis.schemas import (
 from app.skill_extractor import extract_skills
 
 _REQUIRED_CUES = re.compile(
-    r"\b(must|required|requires|minimum|need to|needs to|strong experience|proficiency)\b",
+    r"\b(must|required|requires|minimum|need to|needs to|strong experience|proficiency|expertise)\b",
     re.IGNORECASE,
 )
 _PREFERRED_CUES = re.compile(
@@ -21,7 +21,7 @@ _PREFERRED_CUES = re.compile(
     re.IGNORECASE,
 )
 _RESPONSIBILITY_CUES = re.compile(
-    r"\b(responsible for|you will|you'll|design|build|develop|maintain|implement|support|deploy)\b",
+    r"\b(responsible for|you will|you'll|design|build|develop|development|maintain|implement|support|deploy|contribute|collaborate)\b",
     re.IGNORECASE,
 )
 
@@ -47,7 +47,7 @@ _HARD_REQUIREMENT_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     (
         "degree",
         re.compile(
-            r"\b(?:bachelor(?:'s)?|master(?:'s)?|b\.?s\.?|b\.?a\.?|m\.?s\.?)\s+(?:degree\s+)?(?:in\s+)?[^.;\n]{0,80}",
+            r"\b(?:bachelor(?:'s)?|master(?:'s)?|b\.?s\.?|b\.?a\.?|m\.?s\.?)\s+(?:degree\s+)?(?:in\s+)?[^.;\n]{0,100}",
             re.IGNORECASE,
         ),
     ),
@@ -61,7 +61,7 @@ _HARD_REQUIREMENT_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     (
         "years_experience",
         re.compile(
-            r"\b\d+\+?\s+years?\s+(?:of\s+)?[^.;\n]{0,80}?\bexperience\b[^.;\n]*",
+            r"\b\d+\s*(?:\+|or\s+more)?\s+years?\s+(?:of\s+)?[^.;\n]{0,100}?\bexperience\b[^.;\n]*",
             re.IGNORECASE,
         ),
     ),
@@ -70,6 +70,11 @@ _HARD_REQUIREMENT_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
         re.compile(r"\b(?:up to\s+)?\d{1,3}%\s+travel\b|\btravel\s+(?:is\s+)?required\b", re.IGNORECASE),
     ),
 ]
+
+_IN_PROGRESS_DEGREE_CUES = re.compile(
+    r"\b(expected|anticipated|candidate|pursuing|in progress|currently enrolled|graduating|graduation)\b",
+    re.IGNORECASE,
+)
 
 
 def _classify_requirement(section: ParsedSection, fragment: str) -> tuple[RequirementType, float, float]:
@@ -162,13 +167,16 @@ def _evaluate_hard_requirement(category: str, source_text: str, resume_text: str
             resume_evidence = evidence_match.group(0)
     elif category == "degree":
         evidence_match = re.search(
-            r"\b(?:bachelor(?:'s)?|b\.?s\.?|b\.?a\.?|master(?:'s)?|m\.?s\.?)\b[^\n.;]{0,80}",
+            r"\b(?:bachelor(?:'s)?|b\.?s\.?|b\.?a\.?|master(?:'s)?|m\.?s\.?)\b[^\n.;]{0,100}",
             resume_text,
             re.IGNORECASE,
         )
         if evidence_match:
-            status = HardRequirementStatus.MEETS
             resume_evidence = evidence_match.group(0).strip()
+            # A degree in progress may satisfy a future role, but it should not be marked
+            # as a clear meet for a current hard requirement without timing context.
+            if not _IN_PROGRESS_DEGREE_CUES.search(resume_evidence):
+                status = HardRequirementStatus.MEETS
     elif category == "work_authorization":
         evidence_match = re.search(
             r"\b(?:authorized to work|work authorization|without sponsorship)\b[^\n.;]*",
