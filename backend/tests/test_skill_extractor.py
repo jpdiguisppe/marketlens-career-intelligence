@@ -33,6 +33,12 @@ def test_extract_skills_recognizes_automated_tests_wording() -> None:
     assert "Testing" in skills
 
 
+def test_extract_skills_recognizes_restful_services_wording() -> None:
+    skills = extract_skills("Design and maintain RESTful services in Python.")
+
+    assert "REST APIs" in skills
+
+
 def test_count_skills_counts_each_skill_once_per_text() -> None:
     texts = [
         "Python Python Python and SQL are required.",
