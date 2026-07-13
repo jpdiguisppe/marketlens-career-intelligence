@@ -144,7 +144,9 @@ SKILL_ONTOLOGY: tuple[SkillDefinition, ...] = (
             "continuous delivery",
             "github actions",
             "build pipeline",
+            "build pipelines",
             "deployment pipeline",
+            "deployment pipelines",
         ),
     ),
     SkillDefinition(
