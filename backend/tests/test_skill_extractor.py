@@ -1,3 +1,4 @@
+from app.analysis.skill_ontology import RELATED_SKILLS, SKILL_CATEGORIES, SKILL_PATTERNS
 from app.skill_extractor import count_skills, extract_skills
 
 
@@ -37,6 +38,27 @@ def test_extract_skills_recognizes_restful_services_wording() -> None:
     skills = extract_skills("Design and maintain RESTful services in Python.")
 
     assert "REST APIs" in skills
+
+
+def test_extract_skills_recognizes_real_world_aliases() -> None:
+    text = (
+        "Built backend endpoints for containerized workloads, maintained deployment pipelines, "
+        "and used source control for code review."
+    )
+
+    skills = extract_skills(text)
+
+    assert "REST APIs" in skills
+    assert "Docker" in skills
+    assert "CI/CD" in skills
+    assert "Git" in skills
+
+
+def test_skill_ontology_exposes_categories_and_relationships() -> None:
+    assert SKILL_CATEGORIES["REST APIs"] == "backend"
+    assert SKILL_CATEGORIES["Docker"] == "devops"
+    assert "REST APIs" in RELATED_SKILLS["FastAPI"]
+    assert "containerized workloads" in SKILL_PATTERNS["Docker"]
 
 
 def test_count_skills_counts_each_skill_once_per_text() -> None:
