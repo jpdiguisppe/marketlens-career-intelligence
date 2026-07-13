@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from app.analysis.normalization import normalize_document_text
 from app.analysis.requirements import extract_job_requirements
 from app.analysis.schemas import (
+    CoachingActionType,
     EvidenceStatus,
     FitBand,
     HardRequirementStatus,
@@ -105,6 +106,27 @@ def test_smart_fit_analysis_reports_category_coverage() -> None:
     assert coverage_by_category["devops"].priority_weight > coverage_by_category["cloud"].priority_weight
 
 
+def test_smart_fit_analysis_returns_coaching_actions() -> None:
+    analysis = analyze_smart_fit(
+        resume_text=_fixture_text("messy_resume.txt"),
+        job_description=_fixture_text("long_backend_job.txt"),
+    )
+    actions_by_type = {action.action_type for action in analysis.coaching_actions}
+
+    assert CoachingActionType.RESUME_REWRITE in actions_by_type
+    assert CoachingActionType.INTERVIEW_PREP in actions_by_type
+    assert CoachingActionType.LOWER_PRIORITY in actions_by_type
+    assert CoachingActionType.HARD_REQUIREMENT_CHECK in actions_by_type
+
+    rewrite_actions = [
+        action
+        for action in analysis.coaching_actions
+        if action.action_type == CoachingActionType.RESUME_REWRITE
+    ]
+    assert any(action.skill == "SQL" for action in rewrite_actions)
+    assert all(action.advice for action in analysis.coaching_actions)
+
+
 def test_hard_requirements_are_reported_without_guessing() -> None:
     analysis = analyze_smart_fit(
         resume_text=_fixture_text("messy_resume.txt"),
@@ -133,5 +155,6 @@ def test_smart_analysis_endpoint_returns_structured_report() -> None:
     assert body["fit_summary"]["band"] == "credible_alignment"
     assert body["requirement_assessments"]
     assert body["category_coverage"]
+    assert body["coaching_actions"]
     assert body["recommendations"]
     assert "match_percentage" not in body
