@@ -27,6 +27,12 @@ def test_extract_skills_does_not_confuse_java_and_javascript() -> None:
     assert "Node.js" in skills
 
 
+def test_extract_skills_recognizes_automated_tests_wording() -> None:
+    skills = extract_skills("Write automated tests and participate in code review.")
+
+    assert "Testing" in skills
+
+
 def test_count_skills_counts_each_skill_once_per_text() -> None:
     texts = [
         "Python Python Python and SQL are required.",
