@@ -11,6 +11,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy.orm import Session
 
+from app.analysis import (
+    AnalysisInputError,
+    SmartFitAnalysisRequest,
+    SmartFitAnalysisResponse,
+    analyze_smart_fit,
+)
 from app.database import Base, engine, get_db
 from app.models import JobPostingDB
 from app.skill_extractor import count_skills, extract_skills
@@ -104,7 +110,7 @@ def enforce_public_rate_limit(request: Request) -> None:
 app = FastAPI(
     title="MarketLens API",
     description="Backend API for analyzing job postings and career skill signals.",
-    version="0.8.0",
+    version="0.9.0",
 )
 
 app.add_middleware(
@@ -531,3 +537,18 @@ def analyze_custom_job_descriptions(request: CustomAnalysisRequest) -> ResumeAna
         postings_analyzed=len(cleaned_descriptions),
         target_role_category=None,
     )
+
+
+@app.post(
+    "/analysis/smart",
+    response_model=SmartFitAnalysisResponse,
+    dependencies=[Depends(enforce_public_rate_limit)],
+)
+def analyze_smart_fit_request(request: SmartFitAnalysisRequest) -> SmartFitAnalysisResponse:
+    try:
+        return analyze_smart_fit(
+            resume_text=request.resume_text,
+            job_description=request.job_description,
+        )
+    except AnalysisInputError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
