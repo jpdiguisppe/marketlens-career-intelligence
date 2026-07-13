@@ -1,0 +1,15 @@
+JORDAN SAMPLE
+jordan@example.com | Philadelphia, PA
+
+TECHNICAL   SKILLS:
+Python | SQL | Docker | Git | FastAPI | PostgreSQL
+
+PROJECTS
+MarketLens Career Intelligence
+• Built and deployed a Python FastAPI backend with PostgreSQL and Docker.
+• Implemented API endpoints and automated testing through GitHub Actions.
+• Wrote project docu-
+mentation and maintained the codebase with Git.
+
+EDUCATION
+Bachelor of Science in Computer Science, Expected May 2027
