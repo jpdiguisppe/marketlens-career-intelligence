@@ -89,6 +89,22 @@ def test_smart_fit_analysis_uses_evidence_and_priority() -> None:
     assert assessment_by_skill["AWS"].status == EvidenceStatus.MISSING
 
 
+def test_smart_fit_analysis_reports_category_coverage() -> None:
+    analysis = analyze_smart_fit(
+        resume_text=_fixture_text("messy_resume.txt"),
+        job_description=_fixture_text("long_backend_job.txt"),
+    )
+    coverage_by_category = {
+        coverage.category: coverage for coverage in analysis.category_coverage
+    }
+
+    assert coverage_by_category["backend"].score >= 80
+    assert "REST APIs" in coverage_by_category["backend"].strong_skills
+    assert coverage_by_category["cloud"].score == 0
+    assert coverage_by_category["cloud"].weak_or_missing_skills == ["AWS"]
+    assert coverage_by_category["devops"].priority_weight > coverage_by_category["cloud"].priority_weight
+
+
 def test_hard_requirements_are_reported_without_guessing() -> None:
     analysis = analyze_smart_fit(
         resume_text=_fixture_text("messy_resume.txt"),
@@ -116,5 +132,6 @@ def test_smart_analysis_endpoint_returns_structured_report() -> None:
     body = response.json()
     assert body["fit_summary"]["band"] == "credible_alignment"
     assert body["requirement_assessments"]
+    assert body["category_coverage"]
     assert body["recommendations"]
     assert "match_percentage" not in body
