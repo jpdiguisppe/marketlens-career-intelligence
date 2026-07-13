@@ -367,6 +367,18 @@ h1 {
   color: #cbd5e1;
 }
 
+.score-card small {
+  color: #93c5fd;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.smart-score-card {
+  background:
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.18), transparent 16rem),
+    #0f172a;
+}
+
 .analysis-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -407,6 +419,145 @@ h1 {
 .more-pill {
   color: #475569;
   background: #e2e8f0;
+}
+
+.smart-section {
+  display: grid;
+  gap: 12px;
+}
+
+.smart-section h3 {
+  margin-bottom: 0;
+  color: #0f172a;
+}
+
+.category-grid,
+.coaching-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.category-card,
+.coaching-card,
+.requirement-row {
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.category-card {
+  display: grid;
+  gap: 10px;
+}
+
+.category-card-header,
+.coaching-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.category-card-header strong,
+.coaching-card h4,
+.requirement-row strong {
+  color: #0f172a;
+}
+
+.category-card-header span {
+  color: #2563eb;
+  font-weight: 900;
+}
+
+.category-card p,
+.coaching-card p,
+.requirement-row p {
+  margin-bottom: 0;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.coaching-card {
+  display: grid;
+  gap: 10px;
+}
+
+.coaching-card h4 {
+  margin: 0;
+}
+
+.priority-badge,
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.priority-high {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.priority-medium {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.priority-low {
+  color: #334155;
+  background: #e2e8f0;
+}
+
+.status-demonstrated,
+.status-explicit,
+.status-meets {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.status-mentioned,
+.status-implied,
+.status-unclear {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.status-missing,
+.status-does_not_meet {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.requirement-list {
+  display: grid;
+  gap: 10px;
+}
+
+.requirement-row {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 12px;
+}
+
+blockquote {
+  margin: 0;
+  border-left: 4px solid #bfdbfe;
+  padding-left: 12px;
+  color: #334155;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.smart-warning-box ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
 }
 
 .table-wrap {
@@ -465,7 +616,9 @@ td {
   .stats-grid,
   .dashboard-grid,
   .analysis-grid,
-  .form-grid {
+  .form-grid,
+  .category-grid,
+  .coaching-grid {
     grid-template-columns: 1fr;
   }
 
@@ -477,5 +630,9 @@ td {
 
   .analyze-button {
     width: 100%;
+  }
+
+  .requirement-row {
+    grid-template-columns: 1fr;
   }
 }
