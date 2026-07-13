@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 
 import {
-  analyzeCustomJobs,
   analyzeResume,
+  analyzeSmartFit,
   getJobPostings,
   getTopSkills,
   getTopSkillsByCompany,
@@ -14,6 +14,7 @@ import type {
   JobPosting,
   ResumeAnalysisResponse,
   SkillCounts,
+  SmartFitAnalysisResponse,
 } from "./types";
 
 type DashboardData = {
@@ -56,6 +57,12 @@ function splitPastedJobDescriptions(text: string): string[] {
     .split(/\n\s*-{3,}\s*\n/g)
     .map((description) => description.trim())
     .filter(Boolean);
+}
+
+function formatLabel(value: string): string {
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 function SkillPills({ skills, emptyText }: { skills: string[]; emptyText: string }) {
@@ -181,10 +188,144 @@ function AnalysisResults({
   );
 }
 
+function SmartFitResults({
+  analysis,
+  comparisonText,
+}: {
+  analysis: SmartFitAnalysisResponse;
+  comparisonText: string;
+}) {
+  const highSignalRequirements = analysis.requirement_assessments
+    .filter((assessment) => assessment.weight >= 0.5)
+    .slice(0, 6);
+
+  return (
+    <div className="analysis-results smart-fit-results">
+      <div className="score-card smart-score-card">
+        <span>Smart Fit Score</span>
+        <strong>{analysis.fit_summary.score}%</strong>
+        <p>{analysis.fit_summary.headline}</p>
+        <small>
+          {formatLabel(analysis.fit_summary.band)} · Confidence {Math.round(analysis.fit_summary.confidence * 100)}% · {comparisonText}
+        </small>
+      </div>
+
+      {analysis.document_quality.warnings.length > 0 && (
+        <div className="notice-box smart-warning-box">
+          <strong>Document quality notes</strong>
+          <ul>
+            {analysis.document_quality.warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="analysis-grid">
+        <div className="analysis-card">
+          <h3>Strong Evidence</h3>
+          <SkillPills skills={analysis.strong_matches} emptyText="No strong matches found yet." />
+        </div>
+
+        <div className="analysis-card priority-card">
+          <h3>Under-Sold Experience</h3>
+          <SkillPills skills={analysis.under_sold_experience} emptyText="No under-sold skills found." />
+        </div>
+
+        <div className="analysis-card">
+          <h3>Important Gaps</h3>
+          <SkillPills skills={analysis.important_gaps} emptyText="No high-priority skill gaps found." />
+        </div>
+
+        <div className="analysis-card">
+          <h3>Lower-Priority Noise</h3>
+          <SkillPills skills={analysis.lower_priority_items} emptyText="No lower-priority missing skills found." />
+        </div>
+      </div>
+
+      <div className="smart-section">
+        <h3>Category Coverage</h3>
+        <div className="category-grid">
+          {analysis.category_coverage.map((coverage) => (
+            <div className="category-card" key={coverage.category}>
+              <div className="category-card-header">
+                <strong>{formatLabel(coverage.category)}</strong>
+                <span>{coverage.score}%</span>
+              </div>
+              <div className="bar-track">
+                <div className="bar-fill" style={{ width: `${Math.max(coverage.score, 6)}%` }} />
+              </div>
+              <p>{coverage.summary}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="smart-section">
+        <h3>Coaching Actions</h3>
+        <div className="coaching-grid">
+          {analysis.coaching_actions.map((action) => (
+            <article className="coaching-card" key={`${action.action_type}-${action.title}-${action.skill ?? "none"}`}>
+              <div className="coaching-card-header">
+                <span className={`priority-badge priority-${action.priority.toLowerCase()}`}>
+                  {action.priority}
+                </span>
+                <span>{formatLabel(action.action_type)}</span>
+              </div>
+              <h4>{action.title}</h4>
+              <p>{action.advice}</p>
+              {action.source_evidence.length > 0 && (
+                <blockquote>{action.source_evidence[0]}</blockquote>
+              )}
+            </article>
+          ))}
+        </div>
+      </div>
+
+      {analysis.hard_requirements.length > 0 && (
+        <div className="smart-section">
+          <h3>Hard Requirement Checks</h3>
+          <div className="requirement-list">
+            {analysis.hard_requirements.map((requirement) => (
+              <div className="requirement-row" key={`${requirement.category}-${requirement.source_text}`}>
+                <span className={`status-badge status-${requirement.status}`}>
+                  {formatLabel(requirement.status)}
+                </span>
+                <div>
+                  <strong>{formatLabel(requirement.category)}</strong>
+                  <p>{requirement.requirement}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="smart-section">
+        <h3>Evidence-Backed Requirement Readout</h3>
+        <div className="requirement-list">
+          {highSignalRequirements.map((assessment) => (
+            <div className="requirement-row" key={`${assessment.skill}-${assessment.requirement_type}`}>
+              <span className={`status-badge status-${assessment.status}`}>
+                {formatLabel(assessment.status)}
+              </span>
+              <div>
+                <strong>{assessment.skill}</strong>
+                <p>{assessment.explanation}</p>
+                {assessment.resume_evidence[0] && <blockquote>{assessment.resume_evidence[0]}</blockquote>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CustomAnalysisPanel() {
   const [resumeText, setResumeText] = useState("");
   const [jobDescriptionsText, setJobDescriptionsText] = useState("");
-  const [analysis, setAnalysis] = useState<ResumeAnalysisResponse | null>(null);
+  const [analysis, setAnalysis] = useState<SmartFitAnalysisResponse | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
@@ -207,9 +348,9 @@ function CustomAnalysisPanel() {
       setIsAnalyzing(true);
       setAnalysisError(null);
 
-      const result = await analyzeCustomJobs({
+      const result = await analyzeSmartFit({
         resume_text: resumeText,
-        job_descriptions: jobDescriptions,
+        job_description: jobDescriptions.join("\n\n---\n\n"),
       });
 
       setAnalysis(result);
@@ -232,7 +373,7 @@ function CustomAnalysisPanel() {
           <p className="eyebrow inline-eyebrow">Start here</p>
           <h2>Analyze a Resume Against Real Job Descriptions</h2>
           <p className="panel-subtitle">
-            Paste resume-style text and one or more job descriptions to get a non-saved skill-gap report.
+            Paste resume-style text and job description text to get a non-saved Smart Fit report.
             Text is sent to the backend for analysis, but it is not saved to the shared database.
           </p>
         </div>
@@ -256,7 +397,7 @@ function CustomAnalysisPanel() {
             <textarea
               id="custom-job-descriptions"
               className="resume-textarea"
-              placeholder="Paste a job description here. To compare multiple postings, separate each one with a line containing ---"
+              placeholder="Paste a job description here. To compare multiple postings as one target profile, separate each one with a line containing ---"
               value={jobDescriptionsText}
               onChange={(event) => setJobDescriptionsText(event.target.value)}
             />
@@ -265,7 +406,7 @@ function CustomAnalysisPanel() {
 
         <div className="form-footer">
           <p className="helper-text">
-            Tip: compare up to 10 postings at once. Use a line with <code>---</code> between descriptions.
+            Smart Fit checks evidence, requirement priority, category coverage, and coaching actions.
             Avoid sensitive personal information.
           </p>
           <button className="refresh-button analyze-button" disabled={isAnalyzing} type="submit">
@@ -282,11 +423,9 @@ function CustomAnalysisPanel() {
       )}
 
       {analysis && (
-        <AnalysisResults
+        <SmartFitResults
           analysis={analysis}
-          comparisonText={`Compared against ${analysis.postings_analyzed} pasted job description${
-            analysis.postings_analyzed === 1 ? "" : "s"
-          }. Nothing was saved to the shared database.`}
+          comparisonText="Nothing was saved to the shared database."
         />
       )}
     </section>
@@ -349,7 +488,7 @@ function ResumeAnalyzer({
           <h2>Compare Against the Sample Dataset</h2>
           <p className="panel-subtitle">
             This secondary tool compares resume text against the saved sample postings below.
-            Use the custom analysis above for your own job descriptions.
+            Use the custom Smart Fit analysis above for your own job descriptions.
           </p>
         </div>
       </div>
