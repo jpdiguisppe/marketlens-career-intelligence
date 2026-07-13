@@ -19,6 +19,8 @@ from app.analysis.scoring import assess_requirements, build_fit_summary
 from app.analysis.section_parser import parse_job_sections, parse_resume_sections
 from app.analysis.skill_ontology import SKILL_CATEGORIES
 
+MAX_COACHING_ACTIONS = 7
+
 
 class AnalysisInputError(ValueError):
     """Raised when an analysis request cannot produce a trustworthy report."""
@@ -84,7 +86,12 @@ def _unique_skills(
     ]
 
 
-def _coverage_summary(category: str, score: int, strong_skills: list[str], weak_or_missing_skills: list[str]) -> str:
+def _coverage_summary(
+    category: str,
+    score: int,
+    strong_skills: list[str],
+    weak_or_missing_skills: list[str],
+) -> str:
     label = category.replace("_", " ")
 
     if score >= 80:
@@ -124,7 +131,8 @@ def _build_category_coverage(assessments: list[RequirementAssessment]) -> list[C
             {
                 assessment.skill
                 for assessment in category_assessments
-                if assessment.status in {EvidenceStatus.MENTIONED, EvidenceStatus.IMPLIED, EvidenceStatus.MISSING}
+                if assessment.status
+                in {EvidenceStatus.MENTIONED, EvidenceStatus.IMPLIED, EvidenceStatus.MISSING}
             }
         )
 
@@ -153,7 +161,9 @@ def _build_recommendations(
         (
             category
             for category in category_coverage
-            if category.priority_weight >= 0.75 and category.score < 60 and category.weak_or_missing_skills
+            if category.priority_weight >= 0.75
+            and category.score < 60
+            and category.weak_or_missing_skills
         ),
         None,
     )
@@ -191,6 +201,9 @@ def _build_recommendations(
 
 
 def _add_action_once(actions: list[CoachingAction], action: CoachingAction) -> None:
+    if len(actions) >= MAX_COACHING_ACTIONS:
+        return
+
     existing_keys = {
         (existing.action_type, existing.skill, existing.category, existing.title)
         for existing in actions
@@ -198,6 +211,82 @@ def _add_action_once(actions: list[CoachingAction], action: CoachingAction) -> N
     key = (action.action_type, action.skill, action.category, action.title)
     if key not in existing_keys:
         actions.append(action)
+
+
+def _missing_high_priority_action(assessment: RequirementAssessment) -> CoachingAction:
+    return CoachingAction(
+        action_type=CoachingActionType.LEARNING_FOCUS,
+        priority="high",
+        title=f"Build or surface evidence for {assessment.skill}",
+        skill=assessment.skill,
+        category=_skill_category(assessment.skill),
+        job_evidence=assessment.job_evidence,
+        advice=(
+            f"The job treats {assessment.skill} as a required or core capability, but the resume does not show reliable evidence. "
+            "Add a project, coursework example, or concrete bullet before presenting it as a strength."
+        ),
+    )
+
+
+def _rewrite_action(assessment: RequirementAssessment) -> CoachingAction:
+    return CoachingAction(
+        action_type=CoachingActionType.RESUME_REWRITE,
+        priority="medium",
+        title=f"Make {assessment.skill} evidence more explicit",
+        skill=assessment.skill,
+        category=_skill_category(assessment.skill),
+        source_evidence=assessment.resume_evidence,
+        job_evidence=assessment.job_evidence,
+        advice=(
+            f"The resume has some signal for {assessment.skill}, but it is under-explained. "
+            "Rewrite the bullet to name the skill directly and describe what was built, improved, deployed, or tested."
+        ),
+    )
+
+
+def _lower_priority_action(assessment: RequirementAssessment) -> CoachingAction:
+    return CoachingAction(
+        action_type=CoachingActionType.LOWER_PRIORITY,
+        priority="low",
+        title=f"Do not over-prioritize {assessment.skill}",
+        skill=assessment.skill,
+        category=_skill_category(assessment.skill),
+        job_evidence=assessment.job_evidence,
+        advice=(
+            f"{assessment.skill} appears in a lower-priority part of the posting. "
+            "Track it, but do not let it distract from stronger core gaps."
+        ),
+    )
+
+
+def _interview_prep_action(assessment: RequirementAssessment) -> CoachingAction:
+    return CoachingAction(
+        action_type=CoachingActionType.INTERVIEW_PREP,
+        priority="medium",
+        title=f"Prepare a story around {assessment.skill}",
+        skill=assessment.skill,
+        category=_skill_category(assessment.skill),
+        source_evidence=assessment.resume_evidence,
+        job_evidence=assessment.job_evidence,
+        advice=(
+            f"{assessment.skill} supports a high-priority requirement. Be ready to explain the project context, "
+            "technical choices, tradeoffs, and what you personally contributed."
+        ),
+    )
+
+
+def _hard_requirement_action(requirement: str) -> CoachingAction:
+    return CoachingAction(
+        action_type=CoachingActionType.HARD_REQUIREMENT_CHECK,
+        priority="high",
+        title="Verify hard requirement before applying",
+        source_evidence=[],
+        job_evidence=requirement,
+        advice=(
+            "This is a non-skill constraint, so MarketLens will not guess from missing resume text. "
+            "Confirm it separately before treating the role as a strong fit."
+        ),
+    )
 
 
 def _build_coaching_actions(
@@ -211,7 +300,9 @@ def _build_coaching_actions(
         (
             category
             for category in category_coverage
-            if category.priority_weight >= 0.75 and category.score < 60 and category.weak_or_missing_skills
+            if category.priority_weight >= 0.75
+            and category.score < 60
+            and category.weak_or_missing_skills
         ),
         None,
     )
@@ -231,94 +322,39 @@ def _build_coaching_actions(
             ),
         )
 
-    for assessment in assessments:
-        category = _skill_category(assessment.skill)
-        if assessment.status == EvidenceStatus.MISSING and assessment.weight >= 0.75:
-            _add_action_once(
-                actions,
-                CoachingAction(
-                    action_type=CoachingActionType.LEARNING_FOCUS,
-                    priority="high",
-                    title=f"Build or surface evidence for {assessment.skill}",
-                    skill=assessment.skill,
-                    category=category,
-                    job_evidence=assessment.job_evidence,
-                    advice=(
-                        f"The job treats {assessment.skill} as a required or core capability, but the resume does not show reliable evidence. "
-                        "Add a project, coursework example, or concrete bullet before presenting it as a strength."
-                    ),
-                ),
-            )
-        elif assessment.status in {EvidenceStatus.MENTIONED, EvidenceStatus.IMPLIED} and assessment.weight >= 0.5:
-            _add_action_once(
-                actions,
-                CoachingAction(
-                    action_type=CoachingActionType.RESUME_REWRITE,
-                    priority="medium",
-                    title=f"Make {assessment.skill} evidence more explicit",
-                    skill=assessment.skill,
-                    category=category,
-                    source_evidence=assessment.resume_evidence,
-                    job_evidence=assessment.job_evidence,
-                    advice=(
-                        f"The resume has some signal for {assessment.skill}, but it is under-explained. "
-                        "Rewrite the bullet to name the skill directly and describe what was built, improved, deployed, or tested."
-                    ),
-                ),
-            )
-        elif assessment.status in {EvidenceStatus.DEMONSTRATED, EvidenceStatus.EXPLICIT} and assessment.weight >= 0.75:
-            _add_action_once(
-                actions,
-                CoachingAction(
-                    action_type=CoachingActionType.INTERVIEW_PREP,
-                    priority="medium",
-                    title=f"Prepare a story around {assessment.skill}",
-                    skill=assessment.skill,
-                    category=category,
-                    source_evidence=assessment.resume_evidence,
-                    job_evidence=assessment.job_evidence,
-                    advice=(
-                        f"{assessment.skill} supports a high-priority requirement. Be ready to explain the project context, "
-                        "technical choices, tradeoffs, and what you personally contributed."
-                    ),
-                ),
-            )
-        elif assessment.status == EvidenceStatus.MISSING and assessment.weight < 0.75:
-            _add_action_once(
-                actions,
-                CoachingAction(
-                    action_type=CoachingActionType.LOWER_PRIORITY,
-                    priority="low",
-                    title=f"Do not over-prioritize {assessment.skill}",
-                    skill=assessment.skill,
-                    category=category,
-                    job_evidence=assessment.job_evidence,
-                    advice=(
-                        f"{assessment.skill} appears in a lower-priority part of the posting. Track it, but do not let it distract from stronger core gaps."
-                    ),
-                ),
-            )
+    # Build the action list in product-priority order instead of raw requirement order.
+    # This keeps lower-priority noise and hard constraints visible instead of letting
+    # interview-prep actions crowd out everything else.
+    action_passes = [
+        (
+            lambda item: item.status == EvidenceStatus.MISSING and item.weight >= 0.75,
+            _missing_high_priority_action,
+        ),
+        (
+            lambda item: item.status in {EvidenceStatus.MENTIONED, EvidenceStatus.IMPLIED}
+            and item.weight >= 0.5,
+            _rewrite_action,
+        ),
+        (
+            lambda item: item.status == EvidenceStatus.MISSING and item.weight < 0.75,
+            _lower_priority_action,
+        ),
+    ]
 
-        if len(actions) >= 7:
-            break
+    for predicate, action_builder in action_passes:
+        for assessment in assessments:
+            if predicate(assessment):
+                _add_action_once(actions, action_builder(assessment))
 
     for requirement in hard_requirements_unclear:
-        if len(actions) >= 7:
-            break
-        _add_action_once(
-            actions,
-            CoachingAction(
-                action_type=CoachingActionType.HARD_REQUIREMENT_CHECK,
-                priority="high",
-                title="Verify hard requirement before applying",
-                source_evidence=[],
-                job_evidence=requirement,
-                advice=(
-                    "This is a non-skill constraint, so MarketLens will not guess from missing resume text. "
-                    "Confirm it separately before treating the role as a strong fit."
-                ),
-            ),
-        )
+        _add_action_once(actions, _hard_requirement_action(requirement))
+
+    for assessment in assessments:
+        if (
+            assessment.status in {EvidenceStatus.DEMONSTRATED, EvidenceStatus.EXPLICIT}
+            and assessment.weight >= 0.75
+        ):
+            _add_action_once(actions, _interview_prep_action(assessment))
 
     return actions
 
