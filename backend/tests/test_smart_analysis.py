@@ -74,10 +74,10 @@ def test_smart_fit_analysis_uses_evidence_and_priority() -> None:
 
     assert analysis.fit_summary.band == FitBand.CREDIBLE_ALIGNMENT
     assert 65 <= analysis.fit_summary.score < 80
-    assert {"Python", "Docker", "PostgreSQL", "Testing", "Git"} <= set(
+    assert {"Python", "Docker", "PostgreSQL", "Testing", "Git", "REST APIs"} <= set(
         analysis.strong_matches
     )
-    assert {"REST APIs", "SQL"} <= set(analysis.under_sold_experience)
+    assert {"SQL"} <= set(analysis.under_sold_experience)
     assert {"AWS", "Kubernetes"} <= set(analysis.lower_priority_items)
     assert analysis.important_gaps == []
 
@@ -85,7 +85,7 @@ def test_smart_fit_analysis_uses_evidence_and_priority() -> None:
         assessment.skill: assessment for assessment in analysis.requirement_assessments
     }
     assert assessment_by_skill["Python"].status == EvidenceStatus.DEMONSTRATED
-    assert assessment_by_skill["REST APIs"].status == EvidenceStatus.IMPLIED
+    assert assessment_by_skill["REST APIs"].status == EvidenceStatus.DEMONSTRATED
     assert assessment_by_skill["AWS"].status == EvidenceStatus.MISSING
 
 
