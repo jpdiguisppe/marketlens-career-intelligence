@@ -1,0 +1,22 @@
+ABOUT US
+Northstar Health uses artificial intelligence and machine learning to improve internal operations. Our company works across AWS and Azure, but this role is focused on a backend application team.
+
+ABOUT THE ROLE
+You will help build reliable services used by internal engineering teams.
+
+WHAT YOU'LL DO
+• Design and maintain RESTful services in Python.
+• Deploy containerized applications and support PostgreSQL-backed systems.
+• Write automated tests and participate in code review.
+
+WHAT WE'RE LOOKING FOR
+• Strong SQL skills and experience using Git for version control.
+• A bachelor's degree in Computer Science or a related field.
+• 2+ years of software development experience.
+• U.S. citizenship is required for access to restricted systems.
+
+PREFERRED QUALIFICATIONS
+• Exposure to AWS and Kubernetes is preferred.
+
+BENEFITS
+Medical coverage, paid time off, and professional development support.
