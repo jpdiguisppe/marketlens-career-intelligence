@@ -54,6 +54,32 @@ def test_extract_skills_recognizes_real_world_aliases() -> None:
     assert "Git" in skills
 
 
+def test_extract_skills_recognizes_full_stack_dotnet_job_language() -> None:
+    text = (
+        "Perform full-stack development with Angular, ASP.NET Core, C#, JavaScript, TypeScript, "
+        "CSS, SASS, and HTML. Build robust APIs using Service-Oriented Architecture, "
+        "event-driven architecture, Entity Framework Core, OOP concepts, and design patterns."
+    )
+
+    skills = extract_skills(text)
+
+    assert "Full-Stack Development" in skills
+    assert "Angular" in skills
+    assert "ASP.NET Core" in skills
+    assert "C#" in skills
+    assert "JavaScript" in skills
+    assert "TypeScript" in skills
+    assert "CSS" in skills
+    assert "Sass" in skills
+    assert "HTML" in skills
+    assert "REST APIs" in skills
+    assert "Service-Oriented Architecture" in skills
+    assert "Event-Driven Architecture" in skills
+    assert "Entity Framework Core" in skills
+    assert "OOP" in skills
+    assert "Design Patterns" in skills
+
+
 def test_skill_ontology_exposes_categories_and_relationships() -> None:
     assert SKILL_CATEGORIES["REST APIs"] == "backend"
     assert SKILL_CATEGORIES["Docker"] == "devops"
