@@ -1,0 +1,144 @@
+from enum import Enum
+
+from pydantic import BaseModel, Field
+
+SMART_RESUME_MAX_LENGTH = 25_000
+SMART_JOB_MAX_LENGTH = 50_000
+
+
+class DocumentKind(str, Enum):
+    RESUME = "resume"
+    JOB_POSTING = "job_posting"
+
+
+class SectionKind(str, Enum):
+    SUMMARY = "summary"
+    SKILLS = "skills"
+    EXPERIENCE = "experience"
+    PROJECTS = "projects"
+    EDUCATION = "education"
+    COURSEWORK = "coursework"
+    CERTIFICATIONS = "certifications"
+    AWARDS = "awards"
+    RESPONSIBILITIES = "responsibilities"
+    REQUIRED = "required_qualifications"
+    PREFERRED = "preferred_qualifications"
+    COMPANY = "company_description"
+    BENEFITS = "benefits"
+    OTHER = "other"
+
+
+class RequirementType(str, Enum):
+    REQUIRED_QUALIFICATION = "required_qualification"
+    CORE_RESPONSIBILITY = "core_responsibility"
+    PREFERRED_QUALIFICATION = "preferred_qualification"
+    SUPPORTING_CONTEXT = "supporting_context"
+
+
+class EvidenceStatus(str, Enum):
+    DEMONSTRATED = "demonstrated"
+    EXPLICIT = "explicit"
+    MENTIONED = "mentioned"
+    IMPLIED = "implied"
+    MISSING = "missing"
+
+
+class HardRequirementStatus(str, Enum):
+    MEETS = "meets"
+    DOES_NOT_MEET = "does_not_meet"
+    UNCLEAR = "unclear"
+
+
+class FitBand(str, Enum):
+    STRONG_ALIGNMENT = "strong_alignment"
+    CREDIBLE_ALIGNMENT = "credible_alignment"
+    PARTIAL_ALIGNMENT = "partial_alignment"
+    LIMITED_ALIGNMENT = "limited_alignment"
+
+
+class ParsedSection(BaseModel):
+    kind: SectionKind
+    heading: str | None = None
+    text: str
+    start_line: int
+    end_line: int
+
+
+class JobRequirement(BaseModel):
+    skill: str
+    requirement_type: RequirementType
+    weight: float = Field(ge=0.0, le=1.0)
+    source_text: str
+    source_section: SectionKind
+    mention_count: int = Field(default=1, ge=1)
+    confidence: float = Field(default=0.8, ge=0.0, le=1.0)
+
+
+class ResumeEvidence(BaseModel):
+    skill: str
+    status: EvidenceStatus
+    strength: float = Field(ge=0.0, le=1.0)
+    source_text: str
+    source_section: SectionKind
+    explanation: str
+
+
+class RequirementAssessment(BaseModel):
+    skill: str
+    requirement_type: RequirementType
+    weight: float = Field(ge=0.0, le=1.0)
+    status: EvidenceStatus
+    strength: float = Field(ge=0.0, le=1.0)
+    resume_evidence: list[str] = Field(default_factory=list)
+    job_evidence: str
+    explanation: str
+
+
+class HardRequirementAssessment(BaseModel):
+    category: str
+    requirement: str
+    status: HardRequirementStatus
+    source_text: str
+    resume_evidence: str | None = None
+    explanation: str
+
+
+class DocumentQuality(BaseModel):
+    resume_extraction_confidence: float = Field(ge=0.0, le=1.0)
+    job_extraction_confidence: float = Field(ge=0.0, le=1.0)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class FitSummary(BaseModel):
+    score: int = Field(ge=0, le=100)
+    band: FitBand
+    confidence: float = Field(ge=0.0, le=1.0)
+    headline: str
+
+
+class SmartFitAnalysisRequest(BaseModel):
+    resume_text: str = Field(
+        ...,
+        min_length=1,
+        max_length=SMART_RESUME_MAX_LENGTH,
+        description="Resume text to evaluate. It is analyzed for this request and is not written to the shared job-posting database.",
+    )
+    job_description: str = Field(
+        ...,
+        min_length=1,
+        max_length=SMART_JOB_MAX_LENGTH,
+        description="One complete job description to analyze, including responsibilities and qualifications.",
+    )
+
+
+class SmartFitAnalysisResponse(BaseModel):
+    fit_summary: FitSummary
+    document_quality: DocumentQuality
+    hard_requirements: list[HardRequirementAssessment]
+    requirement_assessments: list[RequirementAssessment]
+    strong_matches: list[str]
+    important_gaps: list[str]
+    under_sold_experience: list[str]
+    lower_priority_items: list[str]
+    recommendations: list[str]
+    limitations: list[str]
