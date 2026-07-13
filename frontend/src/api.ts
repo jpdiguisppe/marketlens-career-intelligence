@@ -5,6 +5,8 @@ import type {
   ResumeAnalysisRequest,
   ResumeAnalysisResponse,
   SkillCounts,
+  SmartFitAnalysisRequest,
+  SmartFitAnalysisResponse,
 } from "./types";
 
 declare global {
@@ -89,4 +91,10 @@ export async function analyzeResume(request: ResumeAnalysisRequest): Promise<Res
 
 export async function analyzeCustomJobs(request: CustomAnalysisRequest): Promise<ResumeAnalysisResponse> {
   return postJson<ResumeAnalysisResponse, CustomAnalysisRequest>("/analysis/custom", request);
+}
+
+export async function analyzeSmartFit(
+  request: SmartFitAnalysisRequest,
+): Promise<SmartFitAnalysisResponse> {
+  return postJson<SmartFitAnalysisResponse, SmartFitAnalysisRequest>("/analysis/smart", request);
 }
