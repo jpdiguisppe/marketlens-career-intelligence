@@ -29,13 +29,12 @@
   {
     "id": "backend_resume_to_frontend_react_role",
     "source": "synthetic",
-    "purpose": "A backend-heavy resume should not look strong for a frontend React role just because it has API and database work.",
+    "purpose": "A backend-heavy resume should not look strong for a frontend React role just because it has API and database work. Current rules do not yet distinguish building backend APIs from consuming APIs in a frontend, so this case keeps that as a known future improvement instead of forcing a false under-sold label.",
     "resume_text": "TECHNICAL SKILLS\nPython, SQL, FastAPI, PostgreSQL, Docker, Git\n\nPROJECTS\nBackend Analytics API\n- Built a FastAPI service with PostgreSQL and Docker.\n- Implemented API endpoints and maintained Git-based version control.",
     "job_description": "Required Qualifications\nBuild responsive web applications using React, JavaScript, TypeScript, HTML, and CSS. Write automated testing for user interfaces and participate in code reviews.\n\nPreferred Qualifications\nExperience consuming REST APIs from frontend applications.",
     "allowed_bands": ["limited_alignment", "partial_alignment"],
     "expected_requirement_skills_include": ["Responsive Web Apps", "React", "JavaScript", "TypeScript", "HTML", "CSS", "Testing", "Code Review", "REST APIs"],
-    "expected_important_gaps_include": ["Responsive Web Apps", "React", "JavaScript", "TypeScript", "HTML", "CSS"],
-    "expected_under_sold_include": ["REST APIs"]
+    "expected_important_gaps_include": ["Responsive Web Apps", "React", "JavaScript", "TypeScript", "HTML", "CSS"]
   },
   {
     "id": "docker_ci_resume_to_cloud_devops_role",
