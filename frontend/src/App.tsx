@@ -229,8 +229,8 @@ function CustomAnalysisPanel() {
     <section className="panel panel-wide custom-analysis-panel">
       <div className="panel-header align-start">
         <div>
-          <p className="eyebrow inline-eyebrow">New</p>
-          <h2>Analyze Your Own Job Descriptions</h2>
+          <p className="eyebrow inline-eyebrow">Start here</p>
+          <h2>Analyze a Resume Against Real Job Descriptions</h2>
           <p className="panel-subtitle">
             Paste resume-style text and one or more job descriptions to get a non-saved skill-gap report.
             Text is sent to the backend for analysis, but it is not saved to the shared database.
@@ -269,7 +269,7 @@ function CustomAnalysisPanel() {
             Avoid sensitive personal information.
           </p>
           <button className="refresh-button analyze-button" disabled={isAnalyzing} type="submit">
-            {isAnalyzing ? "Analyzing..." : "Analyze pasted jobs"}
+            {isAnalyzing ? "Analyzing..." : "Analyze fit"}
           </button>
         </div>
       </form>
@@ -337,7 +337,7 @@ function ResumeAnalyzer({
   }
 
   const comparisonText = analysis
-    ? `Compared against ${analysis.postings_analyzed} saved posting${
+    ? `Compared against ${analysis.postings_analyzed} sample posting${
         analysis.postings_analyzed === 1 ? "" : "s"
       }${analysis.target_role_category ? ` in ${analysis.target_role_category}` : " across all roles"}.`
     : "";
@@ -346,9 +346,10 @@ function ResumeAnalyzer({
     <section className="panel panel-wide resume-panel">
       <div className="panel-header align-start">
         <div>
-          <h2>Saved Dataset Resume Gap Analysis</h2>
+          <h2>Compare Against the Sample Dataset</h2>
           <p className="panel-subtitle">
-            Paste resume text and compare it against the skills showing up in the saved demo job postings.
+            This secondary tool compares resume text against the saved sample postings below.
+            Use the custom analysis above for your own job descriptions.
           </p>
         </div>
       </div>
@@ -367,14 +368,14 @@ function ResumeAnalyzer({
 
         <div className="form-row">
           <label className="form-control" htmlFor="target-role-category">
-            <span>Target role category</span>
+            <span>Sample role category</span>
             <select
               id="target-role-category"
               className="select-input"
               value={targetRoleCategory}
               onChange={(event) => setTargetRoleCategory(event.target.value)}
             >
-              <option value="">All saved postings</option>
+              <option value="">All sample postings</option>
               {roleCategories.map((roleCategory) => (
                 <option key={roleCategory} value={roleCategory}>
                   {roleCategory}
@@ -388,14 +389,14 @@ function ResumeAnalyzer({
             disabled={isAnalyzing || !hasJobs}
             type="submit"
           >
-            {isAnalyzing ? "Analyzing..." : "Analyze saved dataset"}
+            {isAnalyzing ? "Analyzing..." : "Analyze sample dataset"}
           </button>
         </div>
       </form>
 
       {!hasJobs && (
         <div className="notice-box">
-          Saved demo postings are not loaded yet. Use the custom analysis above to compare pasted postings without saving anything.
+          Sample postings are not loaded yet. Use the custom analysis above to compare pasted postings without saving anything.
         </div>
       )}
 
@@ -411,19 +412,66 @@ function ResumeAnalyzer({
   );
 }
 
+function SampleDatasetSummary({
+  jobs,
+  uniqueSkillCount,
+  topSkillName,
+  isLoading,
+  onRefresh,
+}: {
+  jobs: JobPosting[];
+  uniqueSkillCount: number;
+  topSkillName: string;
+  isLoading: boolean;
+  onRefresh: () => void;
+}) {
+  return (
+    <section className="panel panel-wide sample-data-panel">
+      <div className="panel-header align-start">
+        <div>
+          <p className="eyebrow inline-eyebrow">Sample data</p>
+          <h2>Sample Market Snapshot</h2>
+          <p className="panel-subtitle">
+            These numbers come from saved sample postings used to demonstrate market-trend views.
+            They are not created by public custom-analysis users.
+          </p>
+        </div>
+        <button className="refresh-button" onClick={onRefresh} disabled={isLoading}>
+          {isLoading ? "Loading..." : "Refresh sample data"}
+        </button>
+      </div>
+
+      <div className="stats-grid sample-stats-grid">
+        <div className="stat-card">
+          <span>Sample Postings</span>
+          <strong>{jobs.length}</strong>
+        </div>
+        <div className="stat-card">
+          <span>Sample Unique Skills</span>
+          <strong>{uniqueSkillCount}</strong>
+        </div>
+        <div className="stat-card">
+          <span>Sample Top Skill</span>
+          <strong>{topSkillName}</strong>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function JobTable({ jobs }: { jobs: JobPosting[] }) {
   return (
     <section className="panel panel-wide">
       <div className="panel-header">
-        <h2>Saved Job Postings</h2>
-        <span>{jobs.length} postings</span>
+        <h2>Sample Saved Job Postings</h2>
+        <span>{jobs.length} sample postings</span>
       </div>
 
       {jobs.length === 0 ? (
         <div className="empty-state">
-          <h3>No job postings loaded</h3>
+          <h3>No sample postings loaded</h3>
           <p>
-            The public app can still run custom analysis with pasted job descriptions. Admins can load saved demo postings through the protected API.
+            The public app can still run custom analysis with pasted job descriptions. Admins can load saved sample postings through the protected API.
           </p>
         </div>
       ) : (
@@ -511,7 +559,7 @@ function App() {
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Something went wrong while loading dashboard data.",
+          : "Something went wrong while loading sample market data.",
       );
     } finally {
       setIsLoading(false);
@@ -527,46 +575,35 @@ function App() {
       <section className="hero">
         <div>
           <p className="eyebrow">MarketLens Career Intelligence</p>
-          <h1>Career Skill Analyzer</h1>
+          <h1>Analyze Your Fit for Real Jobs</h1>
           <p className="hero-copy">
-            Compare your skills against real job descriptions, identify repeated requirements,
+            Compare resume evidence against real job descriptions, identify important gaps,
             and turn noisy postings into a focused learning plan.
           </p>
         </div>
-        <button className="refresh-button" onClick={loadDashboardData} disabled={isLoading}>
-          {isLoading ? "Loading..." : "Refresh dashboard"}
-        </button>
       </section>
 
       {errorMessage && (
         <section className="error-box">
-          <strong>Could not load saved dashboard data.</strong>
+          <strong>Could not load sample market data.</strong>
           <p>{errorMessage}</p>
           <p>You can still use custom analysis if the API is reachable.</p>
         </section>
       )}
 
-      <section className="stats-grid">
-        <div className="stat-card">
-          <span>Saved Postings</span>
-          <strong>{dashboardData.jobs.length}</strong>
-        </div>
-        <div className="stat-card">
-          <span>Unique Skills</span>
-          <strong>{uniqueSkillCount}</strong>
-        </div>
-        <div className="stat-card">
-          <span>Top Skill</span>
-          <strong>{getTopSkillName(dashboardData.topSkills)}</strong>
-        </div>
-      </section>
-
       <section className="dashboard-grid">
         <CustomAnalysisPanel />
+        <SampleDatasetSummary
+          jobs={dashboardData.jobs}
+          uniqueSkillCount={uniqueSkillCount}
+          topSkillName={getTopSkillName(dashboardData.topSkills)}
+          isLoading={isLoading}
+          onRefresh={loadDashboardData}
+        />
         <ResumeAnalyzer hasJobs={dashboardData.jobs.length > 0} roleCategories={roleCategories} />
-        <SkillList title="Top Skills Overall" skills={dashboardData.topSkills} />
-        <GroupedSkillPanel title="Skills by Company" groups={dashboardData.skillsByCompany} />
-        <GroupedSkillPanel title="Skills by Role Category" groups={dashboardData.skillsByRole} />
+        <SkillList title="Sample Top Skills Overall" skills={dashboardData.topSkills} />
+        <GroupedSkillPanel title="Sample Skills by Company" groups={dashboardData.skillsByCompany} />
+        <GroupedSkillPanel title="Sample Skills by Role Category" groups={dashboardData.skillsByRole} />
         <JobTable jobs={dashboardData.jobs} />
       </section>
     </main>
