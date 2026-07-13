@@ -1,9 +1,11 @@
+from collections import defaultdict
 from statistics import mean
 
 from app.analysis.evidence import extract_resume_evidence
 from app.analysis.normalization import meaningful_lines, normalize_document_text
 from app.analysis.requirements import assess_hard_requirements, extract_job_requirements
 from app.analysis.schemas import (
+    CategoryCoverage,
     DocumentQuality,
     EvidenceStatus,
     FitBand,
@@ -13,6 +15,7 @@ from app.analysis.schemas import (
 )
 from app.analysis.scoring import assess_requirements, build_fit_summary
 from app.analysis.section_parser import parse_job_sections, parse_resume_sections
+from app.analysis.skill_ontology import SKILL_CATEGORIES
 
 
 class AnalysisInputError(ValueError):
@@ -73,11 +76,84 @@ def _unique_skills(
     ]
 
 
+def _coverage_summary(category: str, score: int, strong_skills: list[str], weak_or_missing_skills: list[str]) -> str:
+    label = category.replace("_", " ")
+
+    if score >= 80:
+        return f"Strong {label} coverage, supported by {', '.join(strong_skills[:3])}."
+    if score >= 60:
+        if weak_or_missing_skills:
+            return f"Credible {label} coverage, but {weak_or_missing_skills[0]} could be clearer or stronger."
+        return f"Credible {label} coverage."
+    if weak_or_missing_skills:
+        return f"Weak {label} coverage; prioritize {weak_or_missing_skills[0]} if this category matters for the role."
+    return f"Limited {label} evidence was found."
+
+
+def _build_category_coverage(assessments: list[RequirementAssessment]) -> list[CategoryCoverage]:
+    assessments_by_category: dict[str, list[RequirementAssessment]] = defaultdict(list)
+
+    for assessment in assessments:
+        category = SKILL_CATEGORIES.get(assessment.skill, "other")
+        assessments_by_category[category].append(assessment)
+
+    category_coverage: list[CategoryCoverage] = []
+    for category, category_assessments in assessments_by_category.items():
+        total_weight = sum(assessment.weight for assessment in category_assessments)
+        weighted_strength = sum(
+            assessment.weight * assessment.strength
+            for assessment in category_assessments
+        )
+        score = round((weighted_strength / total_weight) * 100) if total_weight else 0
+        strong_skills = sorted(
+            {
+                assessment.skill
+                for assessment in category_assessments
+                if assessment.status in {EvidenceStatus.DEMONSTRATED, EvidenceStatus.EXPLICIT}
+            }
+        )
+        weak_or_missing_skills = sorted(
+            {
+                assessment.skill
+                for assessment in category_assessments
+                if assessment.status in {EvidenceStatus.MENTIONED, EvidenceStatus.IMPLIED, EvidenceStatus.MISSING}
+            }
+        )
+
+        category_coverage.append(
+            CategoryCoverage(
+                category=category,
+                score=score,
+                priority_weight=round(total_weight, 2),
+                strong_skills=strong_skills,
+                weak_or_missing_skills=weak_or_missing_skills,
+                summary=_coverage_summary(category, score, strong_skills, weak_or_missing_skills),
+            )
+        )
+
+    return sorted(category_coverage, key=lambda item: (-item.priority_weight, item.category))
+
+
 def _build_recommendations(
     assessments: list[RequirementAssessment],
     hard_requirements_unclear: list[str],
+    category_coverage: list[CategoryCoverage],
 ) -> list[str]:
     recommendations: list[str] = []
+
+    weak_high_priority_category = next(
+        (
+            category
+            for category in category_coverage
+            if category.priority_weight >= 0.75 and category.score < 60 and category.weak_or_missing_skills
+        ),
+        None,
+    )
+    if weak_high_priority_category is not None:
+        recommendations.append(
+            f"Strengthen the {weak_high_priority_category.category.replace('_', ' ')} story first; "
+            f"{weak_high_priority_category.weak_or_missing_skills[0]} is the clearest category-level gap."
+        )
 
     for assessment in assessments:
         if assessment.status == EvidenceStatus.MISSING and assessment.weight >= 0.75:
@@ -150,6 +226,7 @@ def analyze_smart_fit(resume_text: str, job_description: str) -> SmartFitAnalysi
     )
     fit_summary = build_fit_summary(requirement_assessments, analysis_confidence)
 
+    category_coverage = _build_category_coverage(requirement_assessments)
     strong_matches = _unique_skills(
         requirement_assessments,
         {EvidenceStatus.DEMONSTRATED, EvidenceStatus.EXPLICIT},
@@ -180,6 +257,7 @@ def analyze_smart_fit(resume_text: str, job_description: str) -> SmartFitAnalysi
     recommendations = _build_recommendations(
         requirement_assessments,
         unclear_hard_requirements,
+        category_coverage,
     )
 
     limitations = [
@@ -197,6 +275,7 @@ def analyze_smart_fit(resume_text: str, job_description: str) -> SmartFitAnalysi
         document_quality=document_quality,
         hard_requirements=hard_requirements,
         requirement_assessments=requirement_assessments,
+        category_coverage=category_coverage,
         strong_matches=strong_matches,
         important_gaps=important_gaps,
         under_sold_experience=under_sold_experience,
