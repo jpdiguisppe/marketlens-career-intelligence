@@ -112,14 +112,16 @@ def test_smart_fit_analysis_uses_evidence_and_priority() -> None:
         job_description=_fixture_text("long_backend_job.txt"),
     )
 
-    assert analysis.fit_summary.band == FitBand.CREDIBLE_ALIGNMENT
-    assert 65 <= analysis.fit_summary.score < 80
+    # The broader ontology now recognizes more job requirements, so the same
+    # fixture should be graded more strictly than the original narrow version.
+    assert analysis.fit_summary.band == FitBand.PARTIAL_ALIGNMENT
+    assert 45 <= analysis.fit_summary.score < 65
     assert {"Python", "Docker", "PostgreSQL", "Testing", "Git", "REST APIs"} <= set(
         analysis.strong_matches
     )
     assert {"SQL"} <= set(analysis.under_sold_experience)
     assert {"AWS", "Kubernetes"} <= set(analysis.lower_priority_items)
-    assert analysis.important_gaps == []
+    assert analysis.important_gaps
 
     assessment_by_skill = {
         assessment.skill: assessment for assessment in analysis.requirement_assessments
@@ -152,8 +154,8 @@ def test_smart_fit_analysis_returns_coaching_actions() -> None:
     )
     actions_by_type = {action.action_type for action in analysis.coaching_actions}
 
+    assert CoachingActionType.LEARNING_FOCUS in actions_by_type
     assert CoachingActionType.RESUME_REWRITE in actions_by_type
-    assert CoachingActionType.INTERVIEW_PREP in actions_by_type
     assert CoachingActionType.LOWER_PRIORITY in actions_by_type
     assert CoachingActionType.HARD_REQUIREMENT_CHECK in actions_by_type
 
@@ -234,7 +236,7 @@ def test_smart_analysis_endpoint_returns_structured_report() -> None:
 
     assert response.status_code == 200
     body = response.json()
-    assert body["fit_summary"]["band"] == "credible_alignment"
+    assert body["fit_summary"]["band"] == "partial_alignment"
     assert body["requirement_assessments"]
     assert body["category_coverage"]
     assert body["coaching_actions"]
