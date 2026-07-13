@@ -19,6 +19,45 @@ FIXTURES = Path(__file__).parent / "fixtures"
 client = TestClient(app)
 
 
+FULL_STACK_RESUME = """
+Bachelor of Science in Computer Science expected May 2027
+Major: Computer Science, Cumulative GPA: 3.915
+
+Highlighted coursework: Java, Python, C, Physics of Digital Circuits, Discrete Mathematics,
+Calculus I & II, Data Structures & Algorithms, Graphics, Database Systems covering SQL,
+Operating Systems I, Physics I, Intro to Probability.
+
+SKILLS
+Computer Languages: Java, Python, C, SQL
+Certificates: Building AI Products: Prototyping Essentials Professional Certificate.
+
+RELEVANT EXPERIENCE
+IT Department, May-August 2025.
+Receiving and responding to company-technology related problems, software and hardware.
+Repairing, upgrading, dismantling, and imaging company desktops and chromebooks.
+Installing office equipment and repairing company equipment around the office building.
+"""
+
+FULL_STACK_JOB = """
+What You'll Do:
+Perform full-stack development including front end, business logic, and data access layers.
+Responsible for the entire development lifecycle from planning to release and support.
+Actively contribute to software architecture decisions, design strategies, and code reviews to ensure high-quality, scalable, and maintainable solutions.
+Collaborate closely with development team members and stakeholders.
+
+What We're Looking For:
+3 or more years of experience developing software in an Agile, team-based environment.
+1 or more years of experience developing responsive web applications.
+Expertise with Angular, ASP.NET Core, C#, JavaScript, TypeScript, CSS, SASS, and HTML.
+BS and/or MS in a technical discipline, Computer Science or Software Engineering required.
+Strong understanding of OOP concepts and design patterns.
+Experience in building robust APIs and adhering to Service-Oriented Architecture principles.
+Familiarity with event-based software design and event-driven architecture.
+Experience with PostgreSQL or other relational databases, and Entity Framework Core or similar object-relational mapping frameworks.
+Excellent problem solving and communication skills.
+"""
+
+
 def _fixture_text(filename: str) -> str:
     return (FIXTURES / filename).read_text(encoding="utf-8")
 
@@ -127,6 +166,49 @@ def test_smart_fit_analysis_returns_coaching_actions() -> None:
     assert all(action.advice for action in analysis.coaching_actions)
 
 
+def test_full_stack_role_analysis_captures_specific_stack_and_constraints() -> None:
+    analysis = analyze_smart_fit(
+        resume_text=FULL_STACK_RESUME,
+        job_description=FULL_STACK_JOB,
+    )
+    requirement_skills = {assessment.skill for assessment in analysis.requirement_assessments}
+    hard_requirements = {
+        requirement.category: requirement for requirement in analysis.hard_requirements
+    }
+
+    assert analysis.fit_summary.band == FitBand.LIMITED_ALIGNMENT
+    assert analysis.fit_summary.score < 25
+    assert "Agile" not in analysis.fit_summary.headline
+    assert "Full-Stack Development" in analysis.fit_summary.headline
+
+    assert {
+        "Full-Stack Development",
+        "Angular",
+        "ASP.NET Core",
+        "C#",
+        "JavaScript",
+        "TypeScript",
+        "CSS",
+        "Sass",
+        "HTML",
+        "REST APIs",
+        "Service-Oriented Architecture",
+        "Event-Driven Architecture",
+        "Entity Framework Core",
+        "OOP",
+        "Design Patterns",
+    } <= requirement_skills
+
+    assert "SQL" in analysis.under_sold_experience
+    assert "SQL" not in analysis.strong_matches
+    assert "ASP.NET Core" in analysis.important_gaps
+    assert "Angular" in analysis.important_gaps
+    assert "C#" in analysis.important_gaps
+
+    assert hard_requirements["degree"].status == HardRequirementStatus.UNCLEAR
+    assert hard_requirements["years_experience"].status == HardRequirementStatus.UNCLEAR
+
+
 def test_hard_requirements_are_reported_without_guessing() -> None:
     analysis = analyze_smart_fit(
         resume_text=_fixture_text("messy_resume.txt"),
@@ -136,7 +218,7 @@ def test_hard_requirements_are_reported_without_guessing() -> None:
         requirement.category: requirement for requirement in analysis.hard_requirements
     }
 
-    assert hard_requirements["degree"].status == HardRequirementStatus.MEETS
+    assert hard_requirements["degree"].status == HardRequirementStatus.UNCLEAR
     assert hard_requirements["citizenship"].status == HardRequirementStatus.UNCLEAR
     assert hard_requirements["years_experience"].status == HardRequirementStatus.UNCLEAR
 
