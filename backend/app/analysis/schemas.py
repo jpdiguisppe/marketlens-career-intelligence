@@ -56,6 +56,14 @@ class FitBand(str, Enum):
     LIMITED_ALIGNMENT = "limited_alignment"
 
 
+class CoachingActionType(str, Enum):
+    RESUME_REWRITE = "resume_rewrite"
+    INTERVIEW_PREP = "interview_prep"
+    LEARNING_FOCUS = "learning_focus"
+    LOWER_PRIORITY = "lower_priority"
+    HARD_REQUIREMENT_CHECK = "hard_requirement_check"
+
+
 class ParsedSection(BaseModel):
     kind: SectionKind
     heading: str | None = None
@@ -125,6 +133,17 @@ class CategoryCoverage(BaseModel):
     summary: str
 
 
+class CoachingAction(BaseModel):
+    action_type: CoachingActionType
+    priority: str
+    title: str
+    skill: str | None = None
+    category: str | None = None
+    source_evidence: list[str] = Field(default_factory=list)
+    job_evidence: str | None = None
+    advice: str
+
+
 class SmartFitAnalysisRequest(BaseModel):
     resume_text: str = Field(
         ...,
@@ -146,6 +165,7 @@ class SmartFitAnalysisResponse(BaseModel):
     hard_requirements: list[HardRequirementAssessment]
     requirement_assessments: list[RequirementAssessment]
     category_coverage: list[CategoryCoverage]
+    coaching_actions: list[CoachingAction]
     strong_matches: list[str]
     important_gaps: list[str]
     under_sold_experience: list[str]
