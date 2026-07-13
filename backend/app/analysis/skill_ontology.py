@@ -232,6 +232,9 @@ SKILL_ONTOLOGY: tuple[SkillDefinition, ...] = (
         category="devops",
         aliases=(
             "docker",
+            "dockerized",
+            "dockerized service",
+            "dockerized services",
             "containerization",
             "containers",
             "containerized",
@@ -288,7 +291,7 @@ SKILL_ONTOLOGY: tuple[SkillDefinition, ...] = (
     SkillDefinition(
         canonical_name="Agile",
         category="process",
-        aliases=("agile", "scrum", "agile team-based environment", "agile team based environment"),
+        aliases=("agile", "scrum"),
     ),
     SkillDefinition(
         canonical_name="Testing",
