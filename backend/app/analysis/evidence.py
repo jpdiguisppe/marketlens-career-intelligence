@@ -71,6 +71,13 @@ def _classify_explicit_evidence(section: ParsedSection, fragment: str) -> tuple[
             "The skill is listed, but this line does not show how it was applied.",
         )
 
+    if section.kind in {SectionKind.EDUCATION, SectionKind.COURSEWORK, SectionKind.CERTIFICATIONS, SectionKind.AWARDS}:
+        return (
+            EvidenceStatus.MENTIONED,
+            0.55,
+            "The skill appears in academic, certification, or credential context, but applied project/work evidence is not shown.",
+        )
+
     if section.kind in {SectionKind.EXPERIENCE, SectionKind.PROJECTS} and _starts_with_action_verb(fragment):
         return (
             EvidenceStatus.DEMONSTRATED,
@@ -86,9 +93,9 @@ def _classify_explicit_evidence(section: ParsedSection, fragment: str) -> tuple[
         )
 
     return (
-        EvidenceStatus.EXPLICIT,
-        0.75,
-        "The skill is explicitly present, but the surrounding evidence is limited.",
+        EvidenceStatus.MENTIONED,
+        0.55,
+        "The skill is present, but the surrounding evidence does not show applied use.",
     )
 
 
