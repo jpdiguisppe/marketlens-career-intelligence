@@ -60,7 +60,10 @@ _HARD_REQUIREMENT_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ),
     (
         "years_experience",
-        re.compile(r"\b\d+\+?\s+years?\s+(?:of\s+)?experience\b[^.;\n]*", re.IGNORECASE),
+        re.compile(
+            r"\b\d+\+?\s+years?\s+(?:of\s+)?[^.;\n]{0,80}?\bexperience\b[^.;\n]*",
+            re.IGNORECASE,
+        ),
     ),
     (
         "travel",
@@ -140,7 +143,6 @@ def _find_source_fragment(text: str, match: re.Match[str]) -> str:
 
 
 def _evaluate_hard_requirement(category: str, source_text: str, resume_text: str) -> HardRequirementAssessment:
-    resume_lower = resume_text.lower()
     resume_evidence: str | None = None
     status = HardRequirementStatus.UNCLEAR
 
