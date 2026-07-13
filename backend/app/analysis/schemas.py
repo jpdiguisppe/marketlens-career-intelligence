@@ -116,6 +116,15 @@ class FitSummary(BaseModel):
     headline: str
 
 
+class CategoryCoverage(BaseModel):
+    category: str
+    score: int = Field(ge=0, le=100)
+    priority_weight: float = Field(ge=0.0)
+    strong_skills: list[str] = Field(default_factory=list)
+    weak_or_missing_skills: list[str] = Field(default_factory=list)
+    summary: str
+
+
 class SmartFitAnalysisRequest(BaseModel):
     resume_text: str = Field(
         ...,
@@ -136,6 +145,7 @@ class SmartFitAnalysisResponse(BaseModel):
     document_quality: DocumentQuality
     hard_requirements: list[HardRequirementAssessment]
     requirement_assessments: list[RequirementAssessment]
+    category_coverage: list[CategoryCoverage]
     strong_matches: list[str]
     important_gaps: list[str]
     under_sold_experience: list[str]
