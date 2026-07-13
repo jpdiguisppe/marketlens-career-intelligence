@@ -6,6 +6,22 @@ from app.analysis.schemas import (
     RequirementAssessment,
     ResumeEvidence,
 )
+from app.analysis.skill_ontology import SKILL_CATEGORIES
+
+_CATEGORY_GAP_PRIORITY: dict[str, int] = {
+    "full_stack": 12,
+    "backend": 11,
+    "frontend": 10,
+    "programming_language": 9,
+    "software_architecture": 8,
+    "database": 7,
+    "software_design": 6,
+    "software_engineering": 5,
+    "devops": 4,
+    "quality": 3,
+    "cloud": 2,
+    "process": 1,
+}
 
 
 def assess_requirements(
@@ -69,6 +85,25 @@ def calculate_fit_score(assessments: list[RequirementAssessment]) -> int:
     return round((weighted_evidence / total_weight) * 100)
 
 
+def _primary_gap(assessments: list[RequirementAssessment]) -> str | None:
+    important_gaps = [
+        assessment
+        for assessment in assessments
+        if assessment.status == EvidenceStatus.MISSING and assessment.weight >= 0.75
+    ]
+    if not important_gaps:
+        return None
+
+    return sorted(
+        important_gaps,
+        key=lambda assessment: (
+            -_CATEGORY_GAP_PRIORITY.get(SKILL_CATEGORIES.get(assessment.skill, "other"), 0),
+            -assessment.weight,
+            assessment.skill.lower(),
+        ),
+    )[0].skill
+
+
 def build_fit_summary(
     assessments: list[RequirementAssessment],
     confidence: float,
@@ -76,11 +111,7 @@ def build_fit_summary(
     score = calculate_fit_score(assessments)
     band = _fit_band(score)
 
-    important_gaps = [
-        assessment.skill
-        for assessment in assessments
-        if assessment.status == EvidenceStatus.MISSING and assessment.weight >= 0.75
-    ]
+    primary_gap = _primary_gap(assessments)
     under_sold = [
         assessment.skill
         for assessment in assessments
@@ -97,8 +128,8 @@ def build_fit_summary(
     else:
         headline = "The resume currently provides limited evidence for the role's core technical requirements."
 
-    if important_gaps:
-        headline += f" The largest documented gap is {important_gaps[0]}."
+    if primary_gap:
+        headline += f" The largest documented gap is {primary_gap}."
     elif under_sold:
         headline += f" {under_sold[0]} appears under-explained."
 
