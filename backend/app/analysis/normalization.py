@@ -2,7 +2,7 @@ import re
 import unicodedata
 
 _PAGE_NUMBER_PATTERN = re.compile(r"^(?:page\s+)?\d+(?:\s+of\s+\d+)?$", re.IGNORECASE)
-_BULLET_PATTERN = re.compile(r"^[\s\u2022\u2023\u25e6\u2043\u2219\u25aa\u25cf\uf0b7*]+")
+_BULLET_PATTERN = re.compile(r"^\s*[\u2022\u2023\u25e6\u2043\u2219\u25aa\u25cf\uf0b7*]+\s*")
 
 
 def normalize_document_text(text: str) -> str:
