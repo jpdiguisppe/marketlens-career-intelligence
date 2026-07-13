@@ -2,48 +2,7 @@ import re
 from collections import Counter
 from typing import Iterable
 
-
-SKILL_PATTERNS: dict[str, list[str]] = {
-    "Python": ["python"],
-    "Java": ["java"],
-    "JavaScript": ["javascript", "js"],
-    "TypeScript": ["typescript", "ts"],
-    "SQL": ["sql", "relational database", "relational databases"],
-    "PostgreSQL": ["postgresql", "postgres"],
-    "MySQL": ["mysql"],
-    "React": ["react", "react.js", "reactjs"],
-    "Node.js": ["node.js", "nodejs", "node"],
-    "FastAPI": ["fastapi"],
-    "REST APIs": [
-        "rest api",
-        "rest apis",
-        "restful api",
-        "restful apis",
-        "restful service",
-        "restful services",
-        "api development",
-    ],
-    "Docker": ["docker", "containerization", "containers", "containerized"],
-    "Kubernetes": ["kubernetes", "k8s"],
-    "AWS": ["aws", "amazon web services"],
-    "Azure": ["azure", "microsoft azure"],
-    "Linux": ["linux", "unix"],
-    "Windows Server": ["windows server"],
-    "Git": ["git", "github", "version control"],
-    "CI/CD": ["ci/cd", "continuous integration", "continuous deployment", "github actions"],
-    "Agile": ["agile", "scrum"],
-    "Testing": [
-        "testing",
-        "unit testing",
-        "automated test",
-        "automated tests",
-        "automated testing",
-        "test automation",
-    ],
-    "Machine Learning": ["machine learning", "ml", "artificial intelligence", "ai"],
-    "Data Pipelines": ["data pipeline", "data pipelines", "etl"],
-    "Scripting": ["scripting", "automation scripting", "script"],
-}
+from app.analysis.skill_ontology import SKILL_PATTERNS
 
 
 def _term_pattern(term: str) -> str:
