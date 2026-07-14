@@ -41,6 +41,8 @@ Rules:
 - Never commit provider keys.
 - Do not save raw resume or job-description text to the shared database.
 - Do not log raw resume or job-description text.
+- Redact obvious emails, phone numbers, URLs, GitHub/LinkedIn URLs, and address-like lines before provider calls.
+- Treat redaction as a best-effort safety layer, not a full privacy guarantee.
 - Send provider requests with `store=false`.
 - Use strict schema validation before trusting model output.
 - Fall back to deterministic analysis when the provider is disabled, missing configuration, times out, or returns invalid output.
@@ -78,13 +80,24 @@ When model-assisted extraction is enabled and succeeds, MarketLens merges model-
 }
 ```
 
+## Current security tests
+
+The backend test suite now checks that:
+
+- obvious contact details are redacted while technical skills remain available for extraction
+- provider prompts use redacted text
+- requesting model-assisted mode while it is disabled falls back to deterministic analysis
+- missing backend provider secrets prevent provider calls
+- schema validation can carry unknown skills such as `RabbitMQ`
+
 ## Next implementation steps
 
-1. Add a frontend opt-in control with clear privacy language.
-2. Add provider-status messaging so users know whether deterministic or model-assisted analysis was used.
-3. Add more evaluation cases for unknown tools and technologies.
-4. Add redaction safeguards for obvious emails, phone numbers, and addresses before provider calls.
-5. Consider Supabase later for auth, saved reports, and row-level ownership once saving user reports becomes a product need.
+1. Run a controlled local provider test with a real backend-only API key.
+2. Add a frontend opt-in control with clear privacy language.
+3. Add provider-status messaging so users know whether deterministic or model-assisted analysis was used.
+4. Add more evaluation cases for unknown tools and technologies.
+5. Add stronger redaction safeguards for additional personal identifiers if testing exposes misses.
+6. Consider Supabase later for auth, saved reports, and row-level ownership once saving user reports becomes a product need.
 
 ## Why Supabase is later
 
