@@ -2,6 +2,14 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from app.analysis.model_extractor import (
+    AI_ANALYSIS_ENABLED_ENV,
+    OPENAI_API_KEY_ENV,
+    OPENAI_MODEL_ENV,
+    ModelAssistedExtraction,
+    ModelJobRequirementSignal,
+    ModelSkillSignal,
+)
 from app.analysis.normalization import normalize_document_text
 from app.analysis.requirements import extract_job_requirements
 from app.analysis.schemas import (
@@ -9,6 +17,7 @@ from app.analysis.schemas import (
     EvidenceStatus,
     FitBand,
     HardRequirementStatus,
+    RequirementType,
     SectionKind,
 )
 from app.analysis.section_parser import parse_job_sections, parse_resume_sections
@@ -124,6 +133,8 @@ def test_smart_fit_analysis_uses_evidence_and_priority() -> None:
     assert analysis.important_gaps
     assert analysis.report_summary
     assert analysis.gap_groups
+    assert analysis.analysis_engine == "deterministic"
+    assert analysis.model_assisted_status == "not_requested"
 
     assessment_by_skill = {
         assessment.skill: assessment for assessment in analysis.requirement_assessments
@@ -217,6 +228,67 @@ def test_full_stack_role_analysis_captures_specific_stack_and_constraints() -> N
     assert hard_requirements["years_experience"].status == HardRequirementStatus.UNCLEAR
 
 
+def test_model_assisted_request_falls_back_when_not_configured(monkeypatch) -> None:
+    monkeypatch.delenv(AI_ANALYSIS_ENABLED_ENV, raising=False)
+    monkeypatch.delenv(OPENAI_API_KEY_ENV, raising=False)
+    monkeypatch.delenv(OPENAI_MODEL_ENV, raising=False)
+
+    analysis = analyze_smart_fit(
+        resume_text=_fixture_text("messy_resume.txt"),
+        job_description=_fixture_text("long_backend_job.txt"),
+        use_model_assisted=True,
+    )
+
+    assert analysis.analysis_engine == "deterministic"
+    assert analysis.model_assisted_status.startswith("fallback_unavailable")
+    assert analysis.requirement_assessments
+
+
+def test_model_assisted_extraction_can_surface_unknown_skills(monkeypatch) -> None:
+    def fake_model_extractor(resume_text: str, job_description: str) -> ModelAssistedExtraction:
+        return ModelAssistedExtraction(
+            resume_skills=[
+                ModelSkillSignal(
+                    name="RabbitMQ",
+                    category="backend",
+                    evidence_status=EvidenceStatus.DEMONSTRATED,
+                    confidence=0.92,
+                    context="backend messaging",
+                    source_text="Built a RabbitMQ worker service for async jobs.",
+                )
+            ],
+            job_requirements=[
+                ModelJobRequirementSignal(
+                    skill="RabbitMQ",
+                    category="backend",
+                    requirement_type=RequirementType.REQUIRED_QUALIFICATION,
+                    weight=1.0,
+                    confidence=0.94,
+                    context="backend messaging",
+                    source_text="Build RabbitMQ messaging workers for backend systems.",
+                )
+            ],
+            hard_constraints=[],
+            unknown_resume_skills=["RabbitMQ"],
+            unknown_job_skills=[],
+            uncertainty_notes=[],
+        )
+
+    monkeypatch.setattr("app.analysis.service.extract_model_assisted_signals", fake_model_extractor)
+
+    analysis = analyze_smart_fit(
+        resume_text="PROJECTS\n- Built a worker service with message queues for async jobs.",
+        job_description="Required Qualifications\nBuild RabbitMQ messaging workers for backend systems.",
+        use_model_assisted=True,
+    )
+
+    assert analysis.analysis_engine == "model_assisted"
+    assert analysis.model_assisted_status == "used"
+    assert "RabbitMQ" in analysis.resume_skills_found
+    assert "RabbitMQ" in analysis.job_relevant_resume_skills
+    assert "RabbitMQ" in analysis.strong_matches
+
+
 def test_hard_requirements_are_reported_without_guessing() -> None:
     analysis = analyze_smart_fit(
         resume_text=_fixture_text("messy_resume.txt"),
@@ -250,4 +322,6 @@ def test_smart_analysis_endpoint_returns_structured_report() -> None:
     assert body["gap_groups"]
     assert body["resume_skills_found"]
     assert body["recommendations"]
+    assert body["analysis_engine"] == "deterministic"
+    assert body["model_assisted_status"] == "not_requested"
     assert "match_percentage" not in body
