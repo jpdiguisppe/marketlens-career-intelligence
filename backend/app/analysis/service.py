@@ -22,6 +22,7 @@ from app.analysis.schemas import (
     HardRequirementStatus,
     JobRequirement,
     RequirementAssessment,
+    RequirementType,
     ResumeEvidence,
     SectionKind,
     SmartFitAnalysisResponse,
@@ -216,7 +217,7 @@ def _merge_model_extraction(
             continue
         requirements_by_skill[cleaned_skill] = JobRequirement(
             skill=cleaned_skill,
-            requirement_type=RequirementAssessment.model_fields["requirement_type"].annotation.SUPPORTING_CONTEXT,  # type: ignore[attr-defined]
+            requirement_type=RequirementType.SUPPORTING_CONTEXT,
             weight=0.45,
             source_text="Model-assisted extraction detected this job skill, but it was not in the curated ontology.",
             source_section=SectionKind.OTHER,
