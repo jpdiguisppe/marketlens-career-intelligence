@@ -9,19 +9,23 @@
     "expected_requirement_skills_include": ["Python", "SQL", "Git", "REST APIs", "PostgreSQL", "Docker", "Testing", "AWS", "Kubernetes"],
     "expected_strong_matches_include": ["Python", "Docker", "PostgreSQL", "Testing", "Git", "REST APIs"],
     "expected_under_sold_include": ["SQL"],
-    "expected_lower_priority_include": ["AWS", "Kubernetes"]
+    "expected_lower_priority_include": ["AWS", "Kubernetes"],
+    "expected_resume_skills_found_include": ["Python", "SQL", "Docker", "Git", "FastAPI", "PostgreSQL"]
   },
   {
     "id": "student_resume_to_midlevel_dotnet_full_stack",
     "source": "synthetic",
-    "purpose": "A CS student and IT-support resume should be graded harshly against a mid-level full-stack .NET role and should not headline Agile as the biggest gap.",
-    "resume_text": "Bachelor of Science in Computer Science expected May 2027\nMajor: Computer Science, Cumulative GPA: 3.915\n\nHighlighted coursework: Java, Python, C, Physics of Digital Circuits, Discrete Mathematics, Calculus I & II, Data Structures & Algorithms, Graphics, Database Systems covering SQL, Operating Systems I, Physics I, Intro to Probability.\n\nSKILLS\nComputer Languages: Java, Python, C, SQL\nCertificates: Building AI Products: Prototyping Essentials Professional Certificate.\n\nRELEVANT EXPERIENCE\nIT Department, May-August 2025.\nReceiving and responding to company-technology related problems, software and hardware.\nRepairing, upgrading, dismantling, and imaging company desktops and chromebooks.\nInstalling office equipment and repairing company equipment around the office building.",
+    "purpose": "A CS student and IT-support resume should be graded harshly against a mid-level full-stack .NET role, while still showing valid resume skills that are not central to this role.",
+    "resume_text": "Bachelor of Science in Computer Science expected May 2027\nMajor: Computer Science, Cumulative GPA: 3.915\n\nHighlighted coursework: Java, Python, C, Physics of Digital Circuits, Discrete Mathematics, Calculus I & II, Data Structures & Algorithms, Graphics, Database Systems covering SQL, Operating Systems I, Physics I, Intro to Probability.\n\nSKILLS\nComputer Languages: Java, Python, C, SQL\nGoogle and Microsoft Applications: Docs, Word, Sheets, Slides, Excel, Gmail, Outlook\nCertificates: Building AI Products: Prototyping Essentials Professional Certificate.\n\nRELEVANT EXPERIENCE\nIT Department, May-August 2025.\nReceiving and responding to company-technology related problems, software and hardware.\nRepairing, upgrading, dismantling, and imaging company desktops and chromebooks.\nInstalling office equipment and repairing company equipment around the office building.",
     "job_description": "What You'll Do:\nPerform full-stack development including front end, business logic, and data access layers.\nResponsible for the entire development lifecycle from planning to release and support.\nActively contribute to software architecture decisions, design strategies, and code reviews to ensure high-quality, scalable, and maintainable solutions.\nCollaborate closely with development team members and stakeholders.\n\nWhat We're Looking For:\n3 or more years of experience developing software in an Agile, team-based environment.\n1 or more years of experience developing responsive web applications.\nExpertise with Angular, ASP.NET Core, C#, JavaScript, TypeScript, CSS, SASS, and HTML.\nBS and/or MS in a technical discipline, Computer Science or Software Engineering required.\nStrong understanding of OOP concepts and design patterns.\nExperience in building robust APIs and adhering to Service-Oriented Architecture principles.\nFamiliarity with event-based software design and event-driven architecture.\nExperience with PostgreSQL or other relational databases, and Entity Framework Core or similar object-relational mapping frameworks.",
     "allowed_bands": ["limited_alignment"],
     "max_score": 25,
     "expected_requirement_skills_include": ["Full-Stack Development", "Angular", "ASP.NET Core", "C#", "JavaScript", "TypeScript", "CSS", "Sass", "HTML", "REST APIs", "Service-Oriented Architecture", "Event-Driven Architecture", "Entity Framework Core", "OOP", "Design Patterns"],
+    "expected_resume_skills_found_include": ["Java", "Python", "C", "SQL", "Google Workspace", "Microsoft Office"],
+    "expected_other_resume_skills_include": ["Java", "Python", "C", "Google Workspace", "Microsoft Office"],
     "expected_under_sold_include": ["SQL"],
     "expected_important_gaps_include": ["Full-Stack Development", "Angular", "ASP.NET Core", "C#"],
+    "expected_gap_groups_include": ["Full-stack / .NET stack", "Frontend web stack"],
     "expected_hard_requirements": {"degree": "unclear", "years_experience": "unclear"},
     "headline_includes": ["Full-Stack Development"],
     "headline_excludes": ["Agile"]
@@ -29,12 +33,14 @@
   {
     "id": "backend_resume_to_frontend_react_role",
     "source": "synthetic",
-    "purpose": "A backend-heavy resume should not look strong for a frontend React role just because it has API and database work. Current rules do not yet distinguish building backend APIs from consuming APIs in a frontend, so this case keeps that as a known future improvement instead of forcing a false under-sold label.",
+    "purpose": "A backend-heavy resume should not look strong for a frontend React role just because it has API and database work. REST API evidence should be marked related when the job asks for frontend API consumption.",
     "resume_text": "TECHNICAL SKILLS\nPython, SQL, FastAPI, PostgreSQL, Docker, Git\n\nPROJECTS\nBackend Analytics API\n- Built a FastAPI service with PostgreSQL and Docker.\n- Implemented API endpoints and maintained Git-based version control.",
     "job_description": "Required Qualifications\nBuild responsive web applications using React, JavaScript, TypeScript, HTML, and CSS. Write automated testing for user interfaces and participate in code reviews.\n\nPreferred Qualifications\nExperience consuming REST APIs from frontend applications.",
     "allowed_bands": ["limited_alignment", "partial_alignment"],
     "expected_requirement_skills_include": ["Responsive Web Apps", "React", "JavaScript", "TypeScript", "HTML", "CSS", "Testing", "Code Review", "REST APIs"],
-    "expected_important_gaps_include": ["Responsive Web Apps", "React", "JavaScript", "TypeScript", "HTML", "CSS"]
+    "expected_important_gaps_include": ["Responsive Web Apps", "React", "JavaScript", "TypeScript", "HTML", "CSS"],
+    "expected_related_matches_include": ["REST APIs"],
+    "expected_gap_groups_include": ["Frontend web stack"]
   },
   {
     "id": "docker_ci_resume_to_cloud_devops_role",
@@ -45,7 +51,8 @@
     "allowed_bands": ["limited_alignment", "partial_alignment"],
     "expected_requirement_skills_include": ["Docker", "Kubernetes", "AWS", "Linux", "CI/CD"],
     "expected_strong_matches_include": ["Docker", "CI/CD"],
-    "expected_important_gaps_include": ["AWS", "Kubernetes", "Linux"]
+    "expected_important_gaps_include": ["AWS", "Kubernetes", "Linux"],
+    "expected_gap_groups_include": ["Cloud / DevOps evidence", "Systems and automation"]
   },
   {
     "id": "technical_match_with_clearance_constraints",
@@ -79,6 +86,7 @@
     "job_description": "Required Qualifications\nSupport Windows Server and Linux systems, troubleshoot production issues, and write automation scripts for recurring support tasks.",
     "allowed_bands": ["limited_alignment"],
     "expected_requirement_skills_include": ["Windows Server", "Linux", "Scripting"],
-    "expected_important_gaps_include": ["Windows Server", "Linux", "Scripting"]
+    "expected_important_gaps_include": ["Windows Server", "Linux", "Scripting"],
+    "expected_gap_groups_include": ["Systems and automation"]
   }
 ]
