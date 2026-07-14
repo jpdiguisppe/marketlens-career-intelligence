@@ -2,6 +2,12 @@ from collections import defaultdict
 from statistics import mean
 
 from app.analysis.evidence import extract_resume_evidence
+from app.analysis.model_extractor import (
+    ModelAssistedExtraction,
+    ModelAssistedExtractionError,
+    ModelAssistedUnavailable,
+    extract_model_assisted_signals,
+)
 from app.analysis.normalization import meaningful_lines, normalize_document_text
 from app.analysis.requirements import assess_hard_requirements, extract_job_requirements
 from app.analysis.schemas import (
@@ -12,7 +18,11 @@ from app.analysis.schemas import (
     EvidenceStatus,
     FitBand,
     GapGroup,
+    HardRequirementAssessment,
+    HardRequirementStatus,
+    JobRequirement,
     RequirementAssessment,
+    ResumeEvidence,
     SectionKind,
     SmartFitAnalysisResponse,
 )
@@ -59,6 +69,15 @@ _GAP_GROUPS: tuple[tuple[str, str, set[str]], ...] = (
         {"Linux", "Windows Server", "Scripting"},
     ),
 )
+
+_EVIDENCE_STRENGTH_BY_STATUS: dict[EvidenceStatus, float] = {
+    EvidenceStatus.DEMONSTRATED: 1.0,
+    EvidenceStatus.EXPLICIT: 0.8,
+    EvidenceStatus.MENTIONED: 0.55,
+    EvidenceStatus.IMPLIED: 0.4,
+    EvidenceStatus.RELATED: 0.35,
+    EvidenceStatus.MISSING: 0.0,
+}
 
 
 class AnalysisInputError(ValueError):
@@ -127,6 +146,118 @@ def _unique_skills(
 
 def _sort_skills(skills: set[str]) -> list[str]:
     return sorted(skills, key=lambda skill: (SKILL_CATEGORIES.get(skill, "zz"), skill.lower()))
+
+
+def _model_evidence_strength(status: EvidenceStatus, confidence: float) -> float:
+    if status == EvidenceStatus.MISSING:
+        status = EvidenceStatus.MENTIONED
+    base_strength = _EVIDENCE_STRENGTH_BY_STATUS[status]
+    confidence_multiplier = 0.75 + (min(max(confidence, 0.0), 1.0) * 0.25)
+    return round(base_strength * confidence_multiplier, 2)
+
+
+def _merge_requirement(existing: JobRequirement | None, candidate: JobRequirement) -> JobRequirement:
+    if existing is None:
+        return candidate
+    if (candidate.weight, candidate.confidence) > (existing.weight, existing.confidence):
+        return candidate
+    return existing
+
+
+def _merge_evidence(existing: ResumeEvidence | None, candidate: ResumeEvidence) -> ResumeEvidence:
+    if existing is None:
+        return candidate
+    if candidate.strength > existing.strength:
+        return candidate
+    return existing
+
+
+def _model_hard_requirements(extraction: ModelAssistedExtraction) -> list[HardRequirementAssessment]:
+    return [
+        HardRequirementAssessment(
+            category=constraint.category,
+            requirement=constraint.requirement,
+            status=HardRequirementStatus.UNCLEAR,
+            source_text=constraint.source_text,
+            explanation=(
+                "Model-assisted extraction found this possible hard constraint. "
+                "MarketLens does not guess whether the candidate meets it."
+            ),
+        )
+        for constraint in extraction.hard_constraints
+    ]
+
+
+def _merge_model_extraction(
+    requirements: list[JobRequirement],
+    resume_evidence: dict[str, ResumeEvidence],
+    extraction: ModelAssistedExtraction,
+) -> tuple[list[JobRequirement], dict[str, ResumeEvidence]]:
+    requirements_by_skill = {requirement.skill: requirement for requirement in requirements}
+    evidence_by_skill = dict(resume_evidence)
+
+    for signal in extraction.job_requirements:
+        skill = signal.skill.strip()
+        if not skill:
+            continue
+        candidate = JobRequirement(
+            skill=skill,
+            requirement_type=signal.requirement_type,
+            weight=signal.weight,
+            source_text=signal.source_text,
+            source_section=SectionKind.OTHER,
+            confidence=signal.confidence,
+        )
+        requirements_by_skill[skill] = _merge_requirement(requirements_by_skill.get(skill), candidate)
+
+    for skill in extraction.unknown_job_skills:
+        cleaned_skill = skill.strip()
+        if not cleaned_skill or cleaned_skill in requirements_by_skill:
+            continue
+        requirements_by_skill[cleaned_skill] = JobRequirement(
+            skill=cleaned_skill,
+            requirement_type=RequirementAssessment.model_fields["requirement_type"].annotation.SUPPORTING_CONTEXT,  # type: ignore[attr-defined]
+            weight=0.45,
+            source_text="Model-assisted extraction detected this job skill, but it was not in the curated ontology.",
+            source_section=SectionKind.OTHER,
+            confidence=0.55,
+        )
+
+    for signal in extraction.resume_skills:
+        skill = signal.name.strip()
+        if not skill:
+            continue
+        status = signal.evidence_status
+        if status == EvidenceStatus.MISSING:
+            status = EvidenceStatus.MENTIONED
+        candidate = ResumeEvidence(
+            skill=skill,
+            status=status,
+            strength=_model_evidence_strength(status, signal.confidence),
+            source_text=signal.source_text,
+            source_section=SectionKind.OTHER,
+            explanation=(
+                "Model-assisted extraction identified this resume skill and classified its evidence context."
+            ),
+        )
+        evidence_by_skill[skill] = _merge_evidence(evidence_by_skill.get(skill), candidate)
+
+    for skill in extraction.unknown_resume_skills:
+        cleaned_skill = skill.strip()
+        if not cleaned_skill or cleaned_skill in evidence_by_skill:
+            continue
+        evidence_by_skill[cleaned_skill] = ResumeEvidence(
+            skill=cleaned_skill,
+            status=EvidenceStatus.MENTIONED,
+            strength=0.45,
+            source_text="Model-assisted extraction detected this resume skill, but it was not in the curated ontology.",
+            source_section=SectionKind.OTHER,
+            explanation=(
+                "This skill was surfaced by model-assisted extraction as an unknown or uncategorized resume signal."
+            ),
+        )
+
+    return list(requirements_by_skill.values()), evidence_by_skill
 
 
 def _coverage_summary(
@@ -420,7 +551,11 @@ def _build_report_summary(
     return summary[:5]
 
 
-def analyze_smart_fit(resume_text: str, job_description: str) -> SmartFitAnalysisResponse:
+def analyze_smart_fit(
+    resume_text: str,
+    job_description: str,
+    use_model_assisted: bool = False,
+) -> SmartFitAnalysisResponse:
     normalized_resume = normalize_document_text(resume_text)
     normalized_job = normalize_document_text(job_description)
 
@@ -440,14 +575,35 @@ def analyze_smart_fit(resume_text: str, job_description: str) -> SmartFitAnalysi
     )
 
     requirements = extract_job_requirements(job_sections)
+    resume_evidence = extract_resume_evidence(resume_sections)
+    hard_requirements = assess_hard_requirements(normalized_job, normalized_resume)
+    analysis_engine = "deterministic"
+    model_assisted_status = "not_requested"
+    model_uncertainty_notes: list[str] = []
+
+    if use_model_assisted:
+        try:
+            model_extraction = extract_model_assisted_signals(normalized_resume, normalized_job)
+            requirements, resume_evidence = _merge_model_extraction(
+                requirements,
+                resume_evidence,
+                model_extraction,
+            )
+            hard_requirements.extend(_model_hard_requirements(model_extraction))
+            model_uncertainty_notes = model_extraction.uncertainty_notes
+            analysis_engine = "model_assisted"
+            model_assisted_status = "used"
+        except ModelAssistedUnavailable as exc:
+            model_assisted_status = f"fallback_unavailable: {exc}"
+        except ModelAssistedExtractionError:
+            model_assisted_status = "fallback_failed: model-assisted extraction could not produce a valid structured result."
+
     if not requirements:
         raise AnalysisInputError(
             "No recognizable technical requirements were found in the job description."
         )
 
-    resume_evidence = extract_resume_evidence(resume_sections)
     requirement_assessments = assess_requirements(requirements, resume_evidence)
-    hard_requirements = assess_hard_requirements(normalized_job, normalized_resume)
 
     document_quality = _build_document_quality(
         normalized_resume,
@@ -537,8 +693,10 @@ def analyze_smart_fit(resume_text: str, job_description: str) -> SmartFitAnalysi
         "Requirement Coverage measures documented resume evidence against this posting; it is not a hiring probability or ATS score.",
         "Related matches mean the resume shows adjacent evidence, not a clean match for the exact job context.",
         "Implied matches are intentionally conservative and should be rewritten as direct evidence when accurate.",
-        "The current engine uses deterministic rules and a curated skill vocabulary; semantic and model-assisted extraction are planned later.",
+        "Model-assisted extraction is optional, backend-gated, schema-validated, and falls back to deterministic rules when unavailable.",
     ]
+    if model_uncertainty_notes:
+        limitations.append(f"Model uncertainty note: {model_uncertainty_notes[0]}")
     if fit_summary.band == FitBand.STRONG_ALIGNMENT and hard_requirements:
         limitations.append(
             "Strong technical alignment does not override unresolved citizenship, clearance, degree, authorization, travel, or experience constraints."
@@ -563,4 +721,6 @@ def analyze_smart_fit(resume_text: str, job_description: str) -> SmartFitAnalysi
         lower_priority_items=lower_priority_items,
         recommendations=recommendations,
         limitations=limitations,
+        analysis_engine=analysis_engine,
+        model_assisted_status=model_assisted_status,
     )
