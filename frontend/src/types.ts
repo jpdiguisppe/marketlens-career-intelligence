@@ -45,7 +45,13 @@ export type FitBand =
   | "partial_alignment"
   | "limited_alignment";
 
-export type EvidenceStatus = "demonstrated" | "explicit" | "mentioned" | "implied" | "missing";
+export type EvidenceStatus =
+  | "demonstrated"
+  | "explicit"
+  | "mentioned"
+  | "implied"
+  | "related"
+  | "missing";
 
 export type RequirementType =
   | "required_qualification"
@@ -102,6 +108,14 @@ export type CategoryCoverage = {
   summary: string;
 };
 
+export type GapGroup = {
+  title: string;
+  category: string;
+  priority: string;
+  skills: string[];
+  summary: string;
+};
+
 export type CoachingAction = {
   action_type: CoachingActionType;
   priority: string;
@@ -120,7 +134,13 @@ export type SmartFitAnalysisResponse = {
   requirement_assessments: RequirementAssessment[];
   category_coverage: CategoryCoverage[];
   coaching_actions: CoachingAction[];
+  report_summary: string[];
+  gap_groups: GapGroup[];
+  resume_skills_found: string[];
+  job_relevant_resume_skills: string[];
+  other_resume_skills: string[];
   strong_matches: string[];
+  related_matches: string[];
   important_gaps: string[];
   under_sold_experience: string[];
   lower_priority_items: string[];
