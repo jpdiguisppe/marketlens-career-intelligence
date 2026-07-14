@@ -230,6 +230,9 @@ def _build_gap_groups(assessments: list[RequirementAssessment]) -> list[GapGroup
 
     for skill in sorted(remaining_skills):
         assessment = assessment_by_skill[skill]
+        # Process terms are useful details, but should not become top-level coaching groups.
+        if SKILL_CATEGORIES.get(skill) == "process":
+            continue
         groups.append(
             GapGroup(
                 title=f"{skill} evidence",
@@ -240,7 +243,8 @@ def _build_gap_groups(assessments: list[RequirementAssessment]) -> list[GapGroup
             )
         )
 
-    return sorted(groups, key=lambda group: (0 if group.priority == "high" else 1, group.title))[:4]
+    # Preserve product-priority order from _GAP_GROUPS so stack gaps stay above generic details.
+    return groups[:4]
 
 
 def _build_recommendations(
