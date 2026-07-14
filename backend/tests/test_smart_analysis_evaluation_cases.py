@@ -42,9 +42,13 @@ def test_smart_fit_evaluation_case(case: dict[str, Any]) -> None:
 
     requirement_skills = {assessment.skill for assessment in analysis.requirement_assessments}
     strong_matches = set(analysis.strong_matches)
+    related_matches = set(analysis.related_matches)
     under_sold = set(analysis.under_sold_experience)
     important_gaps = set(analysis.important_gaps)
     lower_priority = set(analysis.lower_priority_items)
+    resume_skills_found = set(analysis.resume_skills_found)
+    other_resume_skills = set(analysis.other_resume_skills)
+    gap_group_titles = {group.title for group in analysis.gap_groups}
 
     _assert_includes(
         requirement_skills,
@@ -55,6 +59,11 @@ def test_smart_fit_evaluation_case(case: dict[str, Any]) -> None:
         strong_matches,
         case.get("expected_strong_matches_include", []),
         "strong matches",
+    )
+    _assert_includes(
+        related_matches,
+        case.get("expected_related_matches_include", []),
+        "related matches",
     )
     _assert_includes(
         under_sold,
@@ -71,6 +80,21 @@ def test_smart_fit_evaluation_case(case: dict[str, Any]) -> None:
         case.get("expected_lower_priority_include", []),
         "lower-priority items",
     )
+    _assert_includes(
+        resume_skills_found,
+        case.get("expected_resume_skills_found_include", []),
+        "resume skills found",
+    )
+    _assert_includes(
+        other_resume_skills,
+        case.get("expected_other_resume_skills_include", []),
+        "other resume skills",
+    )
+    _assert_includes(
+        gap_group_titles,
+        case.get("expected_gap_groups_include", []),
+        "gap groups",
+    )
 
     hard_requirements = {
         requirement.category: requirement.status.value
@@ -84,6 +108,8 @@ def test_smart_fit_evaluation_case(case: dict[str, Any]) -> None:
         assert phrase.lower() in headline
     for phrase in case.get("headline_excludes", []):
         assert phrase.lower() not in headline
+
+    assert analysis.report_summary
 
 
 def test_smart_fit_evaluation_cases_are_synthetic_and_sanitized() -> None:
