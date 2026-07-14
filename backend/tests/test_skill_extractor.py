@@ -29,10 +29,13 @@ def test_extract_skills_does_not_confuse_java_and_javascript() -> None:
 
 
 def test_extract_skills_does_not_confuse_c_and_csharp() -> None:
-    skills = extract_skills("Computer Languages: Java, Python, C, SQL. Expertise with C# preferred.")
+    csharp_only_skills = extract_skills("Expertise with C# preferred.")
+    combined_skills = extract_skills("Computer Languages: Java, Python, C, SQL. Expertise with C# preferred.")
 
-    assert "C" in skills
-    assert "C#" in skills
+    assert "C#" in csharp_only_skills
+    assert "C" not in csharp_only_skills
+    assert "C" in combined_skills
+    assert "C#" in combined_skills
 
 
 def test_extract_skills_recognizes_productivity_tool_resume_language() -> None:
