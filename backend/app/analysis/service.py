@@ -11,6 +11,7 @@ from app.analysis.schemas import (
     DocumentQuality,
     EvidenceStatus,
     FitBand,
+    GapGroup,
     RequirementAssessment,
     SectionKind,
     SmartFitAnalysisResponse,
@@ -19,7 +20,45 @@ from app.analysis.scoring import assess_requirements, build_fit_summary
 from app.analysis.section_parser import parse_job_sections, parse_resume_sections
 from app.analysis.skill_ontology import SKILL_CATEGORIES
 
-MAX_COACHING_ACTIONS = 7
+MAX_COACHING_ACTIONS = 5
+
+_GAP_GROUPS: tuple[tuple[str, str, set[str]], ...] = (
+    (
+        "Full-stack / .NET stack",
+        "backend",
+        {"Full-Stack Development", ".NET", "ASP.NET Core", "C#", "Entity Framework Core", "ORM"},
+    ),
+    (
+        "Frontend web stack",
+        "frontend",
+        {"Responsive Web Apps", "React", "Angular", "JavaScript", "TypeScript", "HTML", "CSS", "Sass"},
+    ),
+    (
+        "Architecture and design",
+        "software_architecture",
+        {"Software Architecture", "Service-Oriented Architecture", "Event-Driven Architecture", "OOP", "Design Patterns"},
+    ),
+    (
+        "Backend and API evidence",
+        "backend",
+        {"Python", "Java", "Node.js", "FastAPI", "REST APIs", "Software Development Lifecycle", "Code Review"},
+    ),
+    (
+        "Database evidence",
+        "database",
+        {"SQL", "PostgreSQL", "MySQL"},
+    ),
+    (
+        "Cloud / DevOps evidence",
+        "devops",
+        {"Docker", "Kubernetes", "AWS", "Azure", "CI/CD"},
+    ),
+    (
+        "Systems and automation",
+        "systems",
+        {"Linux", "Windows Server", "Scripting"},
+    ),
+)
 
 
 class AnalysisInputError(ValueError):
@@ -86,6 +125,10 @@ def _unique_skills(
     ]
 
 
+def _sort_skills(skills: set[str]) -> list[str]:
+    return sorted(skills, key=lambda skill: (SKILL_CATEGORIES.get(skill, "zz"), skill.lower()))
+
+
 def _coverage_summary(
     category: str,
     score: int,
@@ -132,7 +175,7 @@ def _build_category_coverage(assessments: list[RequirementAssessment]) -> list[C
                 assessment.skill
                 for assessment in category_assessments
                 if assessment.status
-                in {EvidenceStatus.MENTIONED, EvidenceStatus.IMPLIED, EvidenceStatus.MISSING}
+                in {EvidenceStatus.MENTIONED, EvidenceStatus.IMPLIED, EvidenceStatus.RELATED, EvidenceStatus.MISSING}
             }
         )
 
@@ -150,41 +193,80 @@ def _build_category_coverage(assessments: list[RequirementAssessment]) -> list[C
     return sorted(category_coverage, key=lambda item: (-item.priority_weight, item.category))
 
 
+def _build_gap_groups(assessments: list[RequirementAssessment]) -> list[GapGroup]:
+    missing_or_weak = [
+        assessment
+        for assessment in assessments
+        if assessment.status in {EvidenceStatus.MISSING, EvidenceStatus.RELATED}
+        and assessment.weight >= 0.5
+    ]
+    if not missing_or_weak:
+        return []
+
+    remaining_skills = {assessment.skill for assessment in missing_or_weak}
+    assessment_by_skill = {assessment.skill: assessment for assessment in missing_or_weak}
+    groups: list[GapGroup] = []
+
+    for title, category, group_skills in _GAP_GROUPS:
+        matched_skills = sorted(group_skills & remaining_skills)
+        if not matched_skills:
+            continue
+
+        high_priority = any(assessment_by_skill[skill].weight >= 0.75 for skill in matched_skills)
+        priority = "high" if high_priority else "medium"
+        groups.append(
+            GapGroup(
+                title=title,
+                category=category,
+                priority=priority,
+                skills=matched_skills[:8],
+                summary=(
+                    f"This posting asks for {', '.join(matched_skills[:4])}. "
+                    "The resume does not yet show direct, job-ready evidence for this group."
+                ),
+            )
+        )
+        remaining_skills -= set(matched_skills)
+
+    for skill in sorted(remaining_skills):
+        assessment = assessment_by_skill[skill]
+        groups.append(
+            GapGroup(
+                title=f"{skill} evidence",
+                category=_skill_category(skill) or "other",
+                priority="high" if assessment.weight >= 0.75 else "medium",
+                skills=[skill],
+                summary="This requirement appears in the posting, but the resume does not show direct evidence for it yet.",
+            )
+        )
+
+    return sorted(groups, key=lambda group: (0 if group.priority == "high" else 1, group.title))[:4]
+
+
 def _build_recommendations(
     assessments: list[RequirementAssessment],
     hard_requirements_unclear: list[str],
-    category_coverage: list[CategoryCoverage],
+    gap_groups: list[GapGroup],
 ) -> list[str]:
     recommendations: list[str] = []
 
-    weak_high_priority_category = next(
-        (
-            category
-            for category in category_coverage
-            if category.priority_weight >= 0.75
-            and category.score < 60
-            and category.weak_or_missing_skills
-        ),
-        None,
-    )
-    if weak_high_priority_category is not None:
+    for group in gap_groups[:2]:
         recommendations.append(
-            f"Strengthen the {weak_high_priority_category.category.replace('_', ' ')} story first; "
-            f"{weak_high_priority_category.weak_or_missing_skills[0]} is the clearest category-level gap."
+            f"Focus first on {group.title}: {', '.join(group.skills[:4])}."
         )
 
     for assessment in assessments:
-        if assessment.status == EvidenceStatus.MISSING and assessment.weight >= 0.75:
-            recommendations.append(
-                f"Prioritize gaining or clearly demonstrating {assessment.skill}; the posting treats it as a core or required capability."
-            )
-        elif assessment.status == EvidenceStatus.MENTIONED and assessment.weight >= 0.5:
+        if assessment.status == EvidenceStatus.MENTIONED and assessment.weight >= 0.5:
             recommendations.append(
                 f"Replace the bare {assessment.skill} mention with a project or experience bullet showing what you built, changed, or improved."
             )
         elif assessment.status == EvidenceStatus.IMPLIED and assessment.weight >= 0.5:
             recommendations.append(
                 f"State {assessment.skill} directly and connect it to the existing evidence: “{assessment.resume_evidence[0]}”."
+            )
+        elif assessment.status == EvidenceStatus.RELATED and assessment.weight >= 0.5:
+            recommendations.append(
+                f"Clarify the context for {assessment.skill}; the current evidence is related but not the same as the posting's requirement."
             )
 
         if len(recommendations) >= 5:
@@ -194,7 +276,7 @@ def _build_recommendations(
         if len(recommendations) >= 5:
             break
         recommendations.append(
-            f"Verify the hard constraint before applying because the resume does not establish it: {requirement}"
+            f"Verify this hard constraint before applying: {requirement}"
         )
 
     return recommendations
@@ -213,18 +295,13 @@ def _add_action_once(actions: list[CoachingAction], action: CoachingAction) -> N
         actions.append(action)
 
 
-def _missing_high_priority_action(assessment: RequirementAssessment) -> CoachingAction:
+def _gap_group_action(group: GapGroup) -> CoachingAction:
     return CoachingAction(
         action_type=CoachingActionType.LEARNING_FOCUS,
-        priority="high",
-        title=f"Build or surface evidence for {assessment.skill}",
-        skill=assessment.skill,
-        category=_skill_category(assessment.skill),
-        job_evidence=assessment.job_evidence,
-        advice=(
-            f"The job treats {assessment.skill} as a required or core capability, but the resume does not show reliable evidence. "
-            "Add a project, coursework example, or concrete bullet before presenting it as a strength."
-        ),
+        priority=group.priority,
+        title=group.title,
+        category=group.category,
+        advice=group.summary,
     )
 
 
@@ -244,33 +321,18 @@ def _rewrite_action(assessment: RequirementAssessment) -> CoachingAction:
     )
 
 
-def _lower_priority_action(assessment: RequirementAssessment) -> CoachingAction:
+def _related_action(assessment: RequirementAssessment) -> CoachingAction:
     return CoachingAction(
-        action_type=CoachingActionType.LOWER_PRIORITY,
-        priority="low",
-        title=f"Do not over-prioritize {assessment.skill}",
-        skill=assessment.skill,
-        category=_skill_category(assessment.skill),
-        job_evidence=assessment.job_evidence,
-        advice=(
-            f"{assessment.skill} appears in a lower-priority part of the posting. "
-            "Track it, but do not let it distract from stronger core gaps."
-        ),
-    )
-
-
-def _interview_prep_action(assessment: RequirementAssessment) -> CoachingAction:
-    return CoachingAction(
-        action_type=CoachingActionType.INTERVIEW_PREP,
+        action_type=CoachingActionType.RESUME_REWRITE,
         priority="medium",
-        title=f"Prepare a story around {assessment.skill}",
+        title=f"Clarify the context for {assessment.skill}",
         skill=assessment.skill,
         category=_skill_category(assessment.skill),
         source_evidence=assessment.resume_evidence,
         job_evidence=assessment.job_evidence,
         advice=(
-            f"{assessment.skill} supports a high-priority requirement. Be ready to explain the project context, "
-            "technical choices, tradeoffs, and what you personally contributed."
+            f"The resume has related {assessment.skill} evidence, but the job asks for a different use context. "
+            "Add wording only if you have direct experience in that context."
         ),
     )
 
@@ -292,71 +354,66 @@ def _hard_requirement_action(requirement: str) -> CoachingAction:
 def _build_coaching_actions(
     assessments: list[RequirementAssessment],
     hard_requirements_unclear: list[str],
-    category_coverage: list[CategoryCoverage],
+    gap_groups: list[GapGroup],
 ) -> list[CoachingAction]:
     actions: list[CoachingAction] = []
 
-    weak_high_priority_category = next(
-        (
-            category
-            for category in category_coverage
-            if category.priority_weight >= 0.75
-            and category.score < 60
-            and category.weak_or_missing_skills
-        ),
-        None,
-    )
-    if weak_high_priority_category is not None:
-        _add_action_once(
-            actions,
-            CoachingAction(
-                action_type=CoachingActionType.LEARNING_FOCUS,
-                priority="high",
-                title="Strengthen the weakest high-priority category",
-                skill=weak_high_priority_category.weak_or_missing_skills[0],
-                category=weak_high_priority_category.category,
-                advice=(
-                    f"The {weak_high_priority_category.category.replace('_', ' ')} category is important in this posting, "
-                    f"but the resume evidence is weak. Start with {weak_high_priority_category.weak_or_missing_skills[0]}."
-                ),
-            ),
-        )
+    for group in gap_groups[:3]:
+        _add_action_once(actions, _gap_group_action(group))
 
-    # Build the action list in product-priority order instead of raw requirement order.
-    # This keeps lower-priority noise and hard constraints visible instead of letting
-    # interview-prep actions crowd out everything else.
-    action_passes = [
-        (
-            lambda item: item.status == EvidenceStatus.MISSING and item.weight >= 0.75,
-            _missing_high_priority_action,
-        ),
-        (
-            lambda item: item.status in {EvidenceStatus.MENTIONED, EvidenceStatus.IMPLIED}
-            and item.weight >= 0.5,
-            _rewrite_action,
-        ),
-        (
-            lambda item: item.status == EvidenceStatus.MISSING and item.weight < 0.75,
-            _lower_priority_action,
-        ),
-    ]
-
-    for predicate, action_builder in action_passes:
-        for assessment in assessments:
-            if predicate(assessment):
-                _add_action_once(actions, action_builder(assessment))
+    for assessment in assessments:
+        if assessment.status in {EvidenceStatus.MENTIONED, EvidenceStatus.IMPLIED} and assessment.weight >= 0.5:
+            _add_action_once(actions, _rewrite_action(assessment))
+        elif assessment.status == EvidenceStatus.RELATED and assessment.weight >= 0.5:
+            _add_action_once(actions, _related_action(assessment))
 
     for requirement in hard_requirements_unclear:
         _add_action_once(actions, _hard_requirement_action(requirement))
 
-    for assessment in assessments:
-        if (
-            assessment.status in {EvidenceStatus.DEMONSTRATED, EvidenceStatus.EXPLICIT}
-            and assessment.weight >= 0.75
-        ):
-            _add_action_once(actions, _interview_prep_action(assessment))
-
     return actions
+
+
+def _build_report_summary(
+    fit_band: FitBand,
+    gap_groups: list[GapGroup],
+    job_relevant_resume_skills: list[str],
+    other_resume_skills: list[str],
+    hard_requirements_unclear: list[str],
+) -> list[str]:
+    summary: list[str] = []
+
+    if fit_band == FitBand.LIMITED_ALIGNMENT:
+        summary.append(
+            "Weak fit for this exact posting based on direct resume evidence. This is not a judgment of overall ability."
+        )
+    elif fit_band == FitBand.PARTIAL_ALIGNMENT:
+        summary.append(
+            "Partial fit: the resume shows some useful signal, but the posting asks for several skills that are not directly demonstrated."
+        )
+    elif fit_band == FitBand.CREDIBLE_ALIGNMENT:
+        summary.append(
+            "Credible fit: the resume covers several important requirements, with a few areas to clarify or strengthen."
+        )
+    else:
+        summary.append("Strong fit: the resume demonstrates most of the posting's high-priority requirements.")
+
+    if gap_groups:
+        top_group = gap_groups[0]
+        summary.append(
+            f"Main gap group: {top_group.title} ({', '.join(top_group.skills[:4])})."
+        )
+    if job_relevant_resume_skills:
+        summary.append(
+            f"Relevant resume signal found: {', '.join(job_relevant_resume_skills[:4])}."
+        )
+    if other_resume_skills:
+        summary.append(
+            f"Other valid resume skills detected but not central to this role: {', '.join(other_resume_skills[:5])}."
+        )
+    if hard_requirements_unclear:
+        summary.append("Hard constraints need separate review before treating this as a true fit.")
+
+    return summary[:5]
 
 
 def analyze_smart_fit(resume_text: str, job_description: str) -> SmartFitAnalysisResponse:
@@ -409,6 +466,11 @@ def analyze_smart_fit(resume_text: str, job_description: str) -> SmartFitAnalysi
         {EvidenceStatus.DEMONSTRATED, EvidenceStatus.EXPLICIT},
         minimum_weight=0.5,
     )
+    related_matches = _unique_skills(
+        requirement_assessments,
+        {EvidenceStatus.RELATED},
+        minimum_weight=0.0,
+    )
     important_gaps = _unique_skills(
         requirement_assessments,
         {EvidenceStatus.MISSING},
@@ -426,26 +488,52 @@ def analyze_smart_fit(resume_text: str, job_description: str) -> SmartFitAnalysi
         maximum_weight=0.74,
     )
 
+    matched_or_partial_statuses = {
+        EvidenceStatus.DEMONSTRATED,
+        EvidenceStatus.EXPLICIT,
+        EvidenceStatus.MENTIONED,
+        EvidenceStatus.IMPLIED,
+        EvidenceStatus.RELATED,
+    }
+    job_relevant_resume_skills = _sort_skills(
+        {
+            assessment.skill
+            for assessment in requirement_assessments
+            if assessment.status in matched_or_partial_statuses
+        }
+    )
+    resume_skills_found = _sort_skills(set(resume_evidence))
+    other_resume_skills = _sort_skills(set(resume_evidence) - set(job_relevant_resume_skills))
+
     unclear_hard_requirements = [
         requirement.requirement
         for requirement in hard_requirements
         if requirement.status.value == "unclear"
     ]
+    gap_groups = _build_gap_groups(requirement_assessments)
     recommendations = _build_recommendations(
         requirement_assessments,
         unclear_hard_requirements,
-        category_coverage,
+        gap_groups,
     )
     coaching_actions = _build_coaching_actions(
         requirement_assessments,
         unclear_hard_requirements,
-        category_coverage,
+        gap_groups,
+    )
+    report_summary = _build_report_summary(
+        fit_summary.band,
+        gap_groups,
+        job_relevant_resume_skills,
+        other_resume_skills,
+        unclear_hard_requirements,
     )
 
     limitations = [
-        "This score measures documented resume evidence against this posting; it is not a hiring probability or ATS score.",
+        "Requirement Coverage measures documented resume evidence against this posting; it is not a hiring probability or ATS score.",
+        "Related matches mean the resume shows adjacent evidence, not a clean match for the exact job context.",
         "Implied matches are intentionally conservative and should be rewritten as direct evidence when accurate.",
-        "The current engine uses deterministic rules and a curated skill vocabulary; semantic and model-assisted extraction are planned next.",
+        "The current engine uses deterministic rules and a curated skill vocabulary; semantic and model-assisted extraction are planned later.",
     ]
     if fit_summary.band == FitBand.STRONG_ALIGNMENT and hard_requirements:
         limitations.append(
@@ -459,7 +547,13 @@ def analyze_smart_fit(resume_text: str, job_description: str) -> SmartFitAnalysi
         requirement_assessments=requirement_assessments,
         category_coverage=category_coverage,
         coaching_actions=coaching_actions,
+        report_summary=report_summary,
+        gap_groups=gap_groups,
+        resume_skills_found=resume_skills_found,
+        job_relevant_resume_skills=job_relevant_resume_skills,
+        other_resume_skills=other_resume_skills,
         strong_matches=strong_matches,
+        related_matches=related_matches,
         important_gaps=important_gaps,
         under_sold_experience=under_sold_experience,
         lower_priority_items=lower_priority_items,
