@@ -23,9 +23,16 @@ SKILL_ONTOLOGY: tuple[SkillDefinition, ...] = (
         notes="Keep separate from JavaScript.",
     ),
     SkillDefinition(
+        canonical_name="C",
+        category="programming_language",
+        aliases=("c", "c language", "programming in c"),
+        notes="Keep separate from C#.",
+    ),
+    SkillDefinition(
         canonical_name="C#",
         category="programming_language",
         aliases=("c#", "c sharp", "csharp"),
+        notes="Keep separate from C.",
     ),
     SkillDefinition(
         canonical_name="JavaScript",
@@ -321,6 +328,39 @@ SKILL_ONTOLOGY: tuple[SkillDefinition, ...] = (
         canonical_name="Scripting",
         category="automation",
         aliases=("scripting", "automation scripting", "script", "automation scripts"),
+    ),
+    SkillDefinition(
+        canonical_name="Google Workspace",
+        category="productivity_tools",
+        aliases=(
+            "google workspace",
+            "google applications",
+            "google apps",
+            "google and microsoft applications",
+            "google docs",
+            "google sheets",
+            "google slides",
+            "gmail",
+            "docs",
+            "sheets",
+            "slides",
+        ),
+    ),
+    SkillDefinition(
+        canonical_name="Microsoft Office",
+        category="productivity_tools",
+        aliases=(
+            "microsoft office",
+            "microsoft applications",
+            "google and microsoft applications",
+            "microsoft word",
+            "microsoft excel",
+            "microsoft outlook",
+            "powerpoint",
+            "word",
+            "excel",
+            "outlook",
+        ),
     ),
 )
 
