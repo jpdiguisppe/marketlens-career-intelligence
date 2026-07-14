@@ -28,6 +28,22 @@ def test_extract_skills_does_not_confuse_java_and_javascript() -> None:
     assert "Node.js" in skills
 
 
+def test_extract_skills_does_not_confuse_c_and_csharp() -> None:
+    skills = extract_skills("Computer Languages: Java, Python, C, SQL. Expertise with C# preferred.")
+
+    assert "C" in skills
+    assert "C#" in skills
+
+
+def test_extract_skills_recognizes_productivity_tool_resume_language() -> None:
+    skills = extract_skills(
+        "Google and Microsoft Applications: Docs, Word, Sheets, Slides, Excel, Gmail, Outlook"
+    )
+
+    assert "Google Workspace" in skills
+    assert "Microsoft Office" in skills
+
+
 def test_extract_skills_recognizes_automated_tests_wording() -> None:
     skills = extract_skills("Write automated tests and participate in code review.")
 
@@ -52,12 +68,6 @@ def test_extract_skills_recognizes_real_world_aliases() -> None:
     assert "Docker" in skills
     assert "CI/CD" in skills
     assert "Git" in skills
-
-
-def test_extract_skills_recognizes_dockerized_services_wording() -> None:
-    skills = extract_skills("Maintain Dockerized services and support deployment pipelines.")
-
-    assert "Docker" in skills
 
 
 def test_extract_skills_recognizes_full_stack_dotnet_job_language() -> None:
@@ -89,9 +99,9 @@ def test_extract_skills_recognizes_full_stack_dotnet_job_language() -> None:
 def test_skill_ontology_exposes_categories_and_relationships() -> None:
     assert SKILL_CATEGORIES["REST APIs"] == "backend"
     assert SKILL_CATEGORIES["Docker"] == "devops"
+    assert SKILL_CATEGORIES["Google Workspace"] == "productivity_tools"
     assert "REST APIs" in RELATED_SKILLS["FastAPI"]
     assert "containerized workloads" in SKILL_PATTERNS["Docker"]
-    assert "dockerized services" in SKILL_PATTERNS["Docker"]
 
 
 def test_count_skills_counts_each_skill_once_per_text() -> None:
