@@ -40,6 +40,7 @@ class EvidenceStatus(str, Enum):
     EXPLICIT = "explicit"
     MENTIONED = "mentioned"
     IMPLIED = "implied"
+    RELATED = "related"
     MISSING = "missing"
 
 
@@ -133,6 +134,14 @@ class CategoryCoverage(BaseModel):
     summary: str
 
 
+class GapGroup(BaseModel):
+    title: str
+    category: str
+    priority: str
+    skills: list[str] = Field(default_factory=list)
+    summary: str
+
+
 class CoachingAction(BaseModel):
     action_type: CoachingActionType
     priority: str
@@ -166,7 +175,13 @@ class SmartFitAnalysisResponse(BaseModel):
     requirement_assessments: list[RequirementAssessment]
     category_coverage: list[CategoryCoverage]
     coaching_actions: list[CoachingAction]
+    report_summary: list[str]
+    gap_groups: list[GapGroup]
+    resume_skills_found: list[str]
+    job_relevant_resume_skills: list[str]
+    other_resume_skills: list[str]
     strong_matches: list[str]
+    related_matches: list[str]
     important_gaps: list[str]
     under_sold_experience: list[str]
     lower_priority_items: list[str]
