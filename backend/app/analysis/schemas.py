@@ -166,6 +166,10 @@ class SmartFitAnalysisRequest(BaseModel):
         max_length=SMART_JOB_MAX_LENGTH,
         description="One complete job description to analyze, including responsibilities and qualifications.",
     )
+    use_model_assisted: bool = Field(
+        default=False,
+        description="When true, the backend may use the configured model-assisted extractor. If disabled or unavailable, the deterministic engine is used instead.",
+    )
 
 
 class SmartFitAnalysisResponse(BaseModel):
@@ -187,3 +191,5 @@ class SmartFitAnalysisResponse(BaseModel):
     lower_priority_items: list[str]
     recommendations: list[str]
     limitations: list[str]
+    analysis_engine: str = "deterministic"
+    model_assisted_status: str = "not_requested"
