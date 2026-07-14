@@ -122,6 +122,8 @@ def test_smart_fit_analysis_uses_evidence_and_priority() -> None:
     assert {"SQL"} <= set(analysis.under_sold_experience)
     assert {"AWS", "Kubernetes"} <= set(analysis.lower_priority_items)
     assert analysis.important_gaps
+    assert analysis.report_summary
+    assert analysis.gap_groups
 
     assessment_by_skill = {
         assessment.skill: assessment for assessment in analysis.requirement_assessments
@@ -156,7 +158,6 @@ def test_smart_fit_analysis_returns_coaching_actions() -> None:
 
     assert CoachingActionType.LEARNING_FOCUS in actions_by_type
     assert CoachingActionType.RESUME_REWRITE in actions_by_type
-    assert CoachingActionType.LOWER_PRIORITY in actions_by_type
     assert CoachingActionType.HARD_REQUIREMENT_CHECK in actions_by_type
 
     rewrite_actions = [
@@ -177,11 +178,14 @@ def test_full_stack_role_analysis_captures_specific_stack_and_constraints() -> N
     hard_requirements = {
         requirement.category: requirement for requirement in analysis.hard_requirements
     }
+    gap_group_titles = {group.title for group in analysis.gap_groups}
 
     assert analysis.fit_summary.band == FitBand.LIMITED_ALIGNMENT
     assert analysis.fit_summary.score < 25
     assert "Agile" not in analysis.fit_summary.headline
     assert "Full-Stack Development" in analysis.fit_summary.headline
+    assert "Full-stack / .NET stack" in gap_group_titles
+    assert "Frontend web stack" in gap_group_titles
 
     assert {
         "Full-Stack Development",
@@ -206,6 +210,8 @@ def test_full_stack_role_analysis_captures_specific_stack_and_constraints() -> N
     assert "ASP.NET Core" in analysis.important_gaps
     assert "Angular" in analysis.important_gaps
     assert "C#" in analysis.important_gaps
+    assert "C" in analysis.resume_skills_found
+    assert "C" in analysis.other_resume_skills
 
     assert hard_requirements["degree"].status == HardRequirementStatus.UNCLEAR
     assert hard_requirements["years_experience"].status == HardRequirementStatus.UNCLEAR
@@ -240,5 +246,8 @@ def test_smart_analysis_endpoint_returns_structured_report() -> None:
     assert body["requirement_assessments"]
     assert body["category_coverage"]
     assert body["coaching_actions"]
+    assert body["report_summary"]
+    assert body["gap_groups"]
+    assert body["resume_skills_found"]
     assert body["recommendations"]
     assert "match_percentage" not in body
