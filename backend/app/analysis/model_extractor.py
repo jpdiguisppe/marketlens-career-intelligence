@@ -4,6 +4,7 @@ This module is deliberately safe-by-default:
 - disabled unless AI_ANALYSIS_ENABLED=true
 - requires backend-only OPENAI_API_KEY and OPENAI_MODEL
 - does not write resume/job text to the database
+- redacts obvious contact details before provider transmission
 - sends requests with store=false
 - raises typed errors so the service can fall back to deterministic analysis
 """
@@ -17,6 +18,7 @@ from typing import Any, Literal
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from app.analysis.redaction import redact_sensitive_text
 from app.analysis.schemas import EvidenceStatus, RequirementType
 
 AI_ANALYSIS_ENABLED_ENV = "AI_ANALYSIS_ENABLED"
@@ -141,13 +143,16 @@ Rules:
 
 
 def _build_user_prompt(resume_text: str, job_description: str) -> str:
+    redacted_resume_text = redact_sensitive_text(resume_text)
+    redacted_job_description = redact_sensitive_text(job_description)
+
     return f"""Analyze this resume and job description for MarketLens Smart Fit.
 
 Resume text:
-{resume_text}
+{redacted_resume_text}
 
 Job description:
-{job_description}
+{redacted_job_description}
 """
 
 
