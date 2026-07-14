@@ -65,18 +65,29 @@ function formatLabel(value: string): string {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
-function SkillPills({ skills, emptyText }: { skills: string[]; emptyText: string }) {
+function SkillPills({
+  skills,
+  emptyText,
+  max = 8,
+}: {
+  skills: string[];
+  emptyText: string;
+  max?: number;
+}) {
   if (skills.length === 0) {
     return <p className="empty-text">{emptyText}</p>;
   }
 
+  const visibleSkills = skills.slice(0, max);
+
   return (
     <div className="pill-row">
-      {skills.map((skill) => (
+      {visibleSkills.map((skill) => (
         <span className="skill-pill" key={skill}>
           {skill}
         </span>
       ))}
+      {skills.length > max && <span className="more-pill">+{skills.length - max} more</span>}
     </div>
   );
 }
@@ -197,18 +208,92 @@ function SmartFitResults({
 }) {
   const highSignalRequirements = analysis.requirement_assessments
     .filter((assessment) => assessment.weight >= 0.5)
-    .slice(0, 6);
+    .slice(0, 8);
+  const topGapGroups = analysis.gap_groups.slice(0, 3);
+  const topActions = analysis.coaching_actions.slice(0, 3);
 
   return (
     <div className="analysis-results smart-fit-results">
       <div className="score-card smart-score-card">
-        <span>Smart Fit Score</span>
+        <span>Requirement Coverage</span>
         <strong>{analysis.fit_summary.score}%</strong>
         <p>{analysis.fit_summary.headline}</p>
         <small>
           {formatLabel(analysis.fit_summary.band)} · Confidence {Math.round(analysis.fit_summary.confidence * 100)}% · {comparisonText}
         </small>
       </div>
+
+      <section className="report-card summary-card">
+        <p className="eyebrow inline-eyebrow">Coach summary</p>
+        <ul className="summary-list">
+          {analysis.report_summary.map((summaryItem) => (
+            <li key={summaryItem}>{summaryItem}</li>
+          ))}
+        </ul>
+      </section>
+
+      <div className="focus-grid">
+        <section className="report-card">
+          <h3>Main gaps</h3>
+          {topGapGroups.length === 0 ? (
+            <p className="empty-text">No major grouped gaps found.</p>
+          ) : (
+            <div className="gap-group-list">
+              {topGapGroups.map((group) => (
+                <article className="gap-group-card" key={`${group.title}-${group.category}`}>
+                  <div className="gap-group-header">
+                    <h4>{group.title}</h4>
+                    <span className={`priority-badge priority-${group.priority.toLowerCase()}`}>
+                      {group.priority}
+                    </span>
+                  </div>
+                  <SkillPills skills={group.skills} emptyText="No skills grouped here." max={6} />
+                  <p>{group.summary}</p>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="report-card">
+          <h3>Resume evidence found</h3>
+          <div className="evidence-stack">
+            <div>
+              <h4>Relevant to this role</h4>
+              <SkillPills skills={analysis.job_relevant_resume_skills} emptyText="No directly relevant resume skills found yet." max={6} />
+            </div>
+            <div>
+              <h4>Related but not direct</h4>
+              <SkillPills skills={analysis.related_matches} emptyText="No related-but-mismatched evidence found." max={6} />
+            </div>
+            <div>
+              <h4>Detected, but not central here</h4>
+              <SkillPills skills={analysis.other_resume_skills} emptyText="No extra resume skills detected." max={8} />
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section className="report-card">
+        <h3>Best next actions</h3>
+        {topActions.length === 0 ? (
+          <p className="empty-text">No coaching actions yet.</p>
+        ) : (
+          <div className="action-list">
+            {topActions.map((action) => (
+              <article className="action-row" key={`${action.action_type}-${action.title}-${action.skill ?? "none"}`}>
+                <span className={`priority-badge priority-${action.priority.toLowerCase()}`}>
+                  {action.priority}
+                </span>
+                <div>
+                  <h4>{action.title}</h4>
+                  <p>{action.advice}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
       {analysis.document_quality.warnings.length > 0 && (
         <div className="notice-box smart-warning-box">
@@ -221,103 +306,64 @@ function SmartFitResults({
         </div>
       )}
 
-      <div className="analysis-grid">
-        <div className="analysis-card">
-          <h3>Strong Evidence</h3>
-          <SkillPills skills={analysis.strong_matches} emptyText="No strong matches found yet." />
-        </div>
+      <details className="details-panel">
+        <summary>View detailed requirement breakdown</summary>
 
-        <div className="analysis-card priority-card">
-          <h3>Under-Sold Experience</h3>
-          <SkillPills skills={analysis.under_sold_experience} emptyText="No under-sold skills found." />
-        </div>
-
-        <div className="analysis-card">
-          <h3>Important Gaps</h3>
-          <SkillPills skills={analysis.important_gaps} emptyText="No high-priority skill gaps found." />
-        </div>
-
-        <div className="analysis-card">
-          <h3>Lower-Priority Noise</h3>
-          <SkillPills skills={analysis.lower_priority_items} emptyText="No lower-priority missing skills found." />
-        </div>
-      </div>
-
-      <div className="smart-section">
-        <h3>Category Coverage</h3>
-        <div className="category-grid">
-          {analysis.category_coverage.map((coverage) => (
-            <div className="category-card" key={coverage.category}>
-              <div className="category-card-header">
-                <strong>{formatLabel(coverage.category)}</strong>
-                <span>{coverage.score}%</span>
-              </div>
-              <div className="bar-track">
-                <div className="bar-fill" style={{ width: `${Math.max(coverage.score, 6)}%` }} />
-              </div>
-              <p>{coverage.summary}</p>
+        {analysis.hard_requirements.length > 0 && (
+          <div className="smart-section">
+            <h3>Hard Requirement Checks</h3>
+            <div className="requirement-list">
+              {analysis.hard_requirements.map((requirement) => (
+                <div className="requirement-row" key={`${requirement.category}-${requirement.source_text}`}>
+                  <span className={`status-badge status-${requirement.status}`}>
+                    {formatLabel(requirement.status)}
+                  </span>
+                  <div>
+                    <strong>{formatLabel(requirement.category)}</strong>
+                    <p>{requirement.requirement}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+        )}
 
-      <div className="smart-section">
-        <h3>Coaching Actions</h3>
-        <div className="coaching-grid">
-          {analysis.coaching_actions.map((action) => (
-            <article className="coaching-card" key={`${action.action_type}-${action.title}-${action.skill ?? "none"}`}>
-              <div className="coaching-card-header">
-                <span className={`priority-badge priority-${action.priority.toLowerCase()}`}>
-                  {action.priority}
-                </span>
-                <span>{formatLabel(action.action_type)}</span>
-              </div>
-              <h4>{action.title}</h4>
-              <p>{action.advice}</p>
-              {action.source_evidence.length > 0 && (
-                <blockquote>{action.source_evidence[0]}</blockquote>
-              )}
-            </article>
-          ))}
-        </div>
-      </div>
-
-      {analysis.hard_requirements.length > 0 && (
         <div className="smart-section">
-          <h3>Hard Requirement Checks</h3>
+          <h3>Category Coverage</h3>
+          <div className="category-grid compact-category-grid">
+            {analysis.category_coverage.map((coverage) => (
+              <div className="category-card" key={coverage.category}>
+                <div className="category-card-header">
+                  <strong>{formatLabel(coverage.category)}</strong>
+                  <span>{coverage.score}%</span>
+                </div>
+                <div className="bar-track">
+                  <div className="bar-fill" style={{ width: `${Math.max(coverage.score, 6)}%` }} />
+                </div>
+                <p>{coverage.summary}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="smart-section">
+          <h3>Evidence-Backed Requirement Readout</h3>
           <div className="requirement-list">
-            {analysis.hard_requirements.map((requirement) => (
-              <div className="requirement-row" key={`${requirement.category}-${requirement.source_text}`}>
-                <span className={`status-badge status-${requirement.status}`}>
-                  {formatLabel(requirement.status)}
+            {highSignalRequirements.map((assessment) => (
+              <div className="requirement-row" key={`${assessment.skill}-${assessment.requirement_type}`}>
+                <span className={`status-badge status-${assessment.status}`}>
+                  {formatLabel(assessment.status)}
                 </span>
                 <div>
-                  <strong>{formatLabel(requirement.category)}</strong>
-                  <p>{requirement.requirement}</p>
+                  <strong>{assessment.skill}</strong>
+                  <p>{assessment.explanation}</p>
+                  {assessment.resume_evidence[0] && <blockquote>{assessment.resume_evidence[0]}</blockquote>}
                 </div>
               </div>
             ))}
           </div>
         </div>
-      )}
-
-      <div className="smart-section">
-        <h3>Evidence-Backed Requirement Readout</h3>
-        <div className="requirement-list">
-          {highSignalRequirements.map((assessment) => (
-            <div className="requirement-row" key={`${assessment.skill}-${assessment.requirement_type}`}>
-              <span className={`status-badge status-${assessment.status}`}>
-                {formatLabel(assessment.status)}
-              </span>
-              <div>
-                <strong>{assessment.skill}</strong>
-                <p>{assessment.explanation}</p>
-                {assessment.resume_evidence[0] && <blockquote>{assessment.resume_evidence[0]}</blockquote>}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      </details>
     </div>
   );
 }
@@ -406,7 +452,7 @@ function CustomAnalysisPanel() {
 
         <div className="form-footer">
           <p className="helper-text">
-            Smart Fit checks evidence, requirement priority, category coverage, and coaching actions.
+            Smart Fit checks evidence, requirement priority, grouped gaps, and related-but-not-direct matches.
             Avoid sensitive personal information.
           </p>
           <button className="refresh-button analyze-button" disabled={isAnalyzing} type="submit">
