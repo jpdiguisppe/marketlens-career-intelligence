@@ -28,6 +28,16 @@ def _detect_git_skill(text: str) -> bool:
     )
 
 
+def _detect_c_skill(text: str) -> bool:
+    """Detect C without treating C# as C."""
+    text_without_csharp = re.sub(_term_pattern("c#"), " ", text.lower())
+
+    return any(
+        _contains_term(text_without_csharp, pattern)
+        for pattern in SKILL_PATTERNS["C"]
+    )
+
+
 def extract_skills(text: str) -> list[str]:
     """Extract normalized skills from raw job posting or resume text."""
     detected_skills: list[str] = []
@@ -35,6 +45,11 @@ def extract_skills(text: str) -> list[str]:
     for skill_name, patterns in SKILL_PATTERNS.items():
         if skill_name == "Git":
             if _detect_git_skill(text):
+                detected_skills.append(skill_name)
+            continue
+
+        if skill_name == "C":
+            if _detect_c_skill(text):
                 detected_skills.append(skill_name)
             continue
 
