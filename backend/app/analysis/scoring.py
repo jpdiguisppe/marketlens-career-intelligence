@@ -1,3 +1,5 @@
+import re
+
 from app.analysis.schemas import (
     EvidenceStatus,
     FitBand,
@@ -21,7 +23,26 @@ _CATEGORY_GAP_PRIORITY: dict[str, int] = {
     "quality": 3,
     "cloud": 2,
     "process": 1,
+    "productivity_tools": 0,
 }
+
+_FRONTEND_API_REQUIREMENT = re.compile(
+    r"\b(consum(?:e|es|ing)|call(?:s|ing)?|integrat(?:e|es|ing))\b[^.\n]{0,80}\b(api|apis|endpoint|endpoints)\b|\bapi(?:s)?\b[^.\n]{0,80}\b(frontend|front-end|react|angular|ui)\b",
+    re.IGNORECASE,
+)
+_BACKEND_API_EVIDENCE = re.compile(
+    r"\b(fastapi|backend|api endpoint|api endpoints|rest api|rest apis|built .*api|implemented .*api)\b",
+    re.IGNORECASE,
+)
+
+
+def _has_frontend_api_context_mismatch(requirement: JobRequirement, evidence: ResumeEvidence) -> bool:
+    if requirement.skill != "REST APIs":
+        return False
+    return bool(
+        _FRONTEND_API_REQUIREMENT.search(requirement.source_text)
+        and _BACKEND_API_EVIDENCE.search(evidence.source_text)
+    )
 
 
 def assess_requirements(
@@ -44,6 +65,24 @@ def assess_requirements(
                     resume_evidence=[],
                     job_evidence=requirement.source_text,
                     explanation="No reliable resume evidence was found for this requirement.",
+                )
+            )
+            continue
+
+        if _has_frontend_api_context_mismatch(requirement, evidence):
+            assessments.append(
+                RequirementAssessment(
+                    skill=requirement.skill,
+                    requirement_type=requirement.requirement_type,
+                    weight=requirement.weight,
+                    status=EvidenceStatus.RELATED,
+                    strength=min(evidence.strength, 0.35),
+                    resume_evidence=[evidence.source_text],
+                    job_evidence=requirement.source_text,
+                    explanation=(
+                        "Related API evidence was found, but the resume appears to show backend API building while "
+                        "the posting asks for frontend API consumption or integration. Treat this as partial evidence, not a clean match."
+                    ),
                 )
             )
             continue
@@ -115,7 +154,7 @@ def build_fit_summary(
     under_sold = [
         assessment.skill
         for assessment in assessments
-        if assessment.status in {EvidenceStatus.MENTIONED, EvidenceStatus.IMPLIED}
+        if assessment.status in {EvidenceStatus.MENTIONED, EvidenceStatus.IMPLIED, EvidenceStatus.RELATED}
         and assessment.weight >= 0.5
     ]
 
@@ -126,12 +165,12 @@ def build_fit_summary(
     elif band == FitBand.PARTIAL_ALIGNMENT:
         headline = "The resume demonstrates part of the role, but several important requirements are weak or absent."
     else:
-        headline = "The resume currently provides limited evidence for the role's core technical requirements."
+        headline = "The resume currently provides limited direct evidence for this specific posting."
 
     if primary_gap:
         headline += f" The largest documented gap is {primary_gap}."
     elif under_sold:
-        headline += f" {under_sold[0]} appears under-explained."
+        headline += f" {under_sold[0]} appears related or under-explained."
 
     return FitSummary(
         score=score,
