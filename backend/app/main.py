@@ -549,6 +549,7 @@ def analyze_smart_fit_request(request: SmartFitAnalysisRequest) -> SmartFitAnaly
         return analyze_smart_fit(
             resume_text=request.resume_text,
             job_description=request.job_description,
+            use_model_assisted=request.use_model_assisted,
         )
     except AnalysisInputError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
