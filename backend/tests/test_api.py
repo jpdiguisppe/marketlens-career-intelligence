@@ -258,3 +258,33 @@ def test_model_assisted_status_never_exposes_backend_secret(monkeypatch: pytest.
     assert body["enabled"] is True
     assert body["status"] == "configured"
     assert "super-secret-test-key" not in str(body)
+
+
+def test_resume_text_file_upload_extracts_text_without_saving() -> None:
+    resume_text = "SKILLS\nPython, SQL, FastAPI\nPROJECTS\nBuilt REST APIs."
+
+    response = client.post(
+        "/analysis/resume-file/extract",
+        files={"file": ("resume.txt", resume_text.encode("utf-8"), "text/plain")},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["filename"] == "resume.txt"
+    assert body["text"] == resume_text
+    assert body["character_count"] == len(resume_text)
+    assert "not saved" in " ".join(body["warnings"])
+
+    saved_postings_response = client.get("/job-postings")
+    assert saved_postings_response.status_code == 200
+    assert saved_postings_response.json() == []
+
+
+def test_resume_file_upload_rejects_unsupported_file_type() -> None:
+    response = client.post(
+        "/analysis/resume-file/extract",
+        files={"file": ("resume.pdf", b"fake pdf bytes", "application/pdf")},
+    )
+
+    assert response.status_code == 400
+    assert "currently supports .txt and .md" in response.json()["detail"]
