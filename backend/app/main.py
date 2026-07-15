@@ -17,6 +17,7 @@ from app.analysis import (
     SmartFitAnalysisResponse,
     analyze_smart_fit,
 )
+from app.analysis.model_extractor import is_model_assisted_configured
 from app.database import Base, engine, get_db
 from app.models import JobPostingDB
 from app.skill_extractor import count_skills, extract_skills
@@ -210,6 +211,32 @@ class ResumeAnalysisResponse(BaseModel):
     target_role_category: Optional[str]
 
 
+class ModelAssistedStatusResponse(BaseModel):
+    enabled: bool
+    status: str
+    required_backend_settings: list[str]
+    safety_notes: list[str]
+
+
+def _model_assisted_status_response() -> ModelAssistedStatusResponse:
+    enabled = is_model_assisted_configured()
+    return ModelAssistedStatusResponse(
+        enabled=enabled,
+        status="configured" if enabled else "not_configured",
+        required_backend_settings=[
+            "AI_ANALYSIS_ENABLED=true",
+            "OPENAI_API_KEY",
+            "OPENAI_MODEL",
+        ],
+        safety_notes=[
+            "Provider keys must stay in backend environment variables only.",
+            "MarketLens redacts obvious contact details before model-provider calls.",
+            "Raw resume and job text are not saved to the shared database.",
+            "Model-assisted extraction falls back to deterministic analysis when unavailable.",
+        ],
+    )
+
+
 def _to_api_job_posting(posting: JobPostingDB) -> JobPosting:
     return JobPosting.model_validate(posting)
 
@@ -345,6 +372,11 @@ def root() -> dict[str, str]:
 @app.get("/health")
 def health_check() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/analysis/model-status", response_model=ModelAssistedStatusResponse)
+def get_model_assisted_status() -> ModelAssistedStatusResponse:
+    return _model_assisted_status_response()
 
 
 @app.post(
