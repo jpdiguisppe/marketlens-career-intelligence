@@ -34,6 +34,13 @@ export type ResumeAnalysisResponse = {
   target_role_category: string | null;
 };
 
+export type ResumeFileExtractionResponse = {
+  filename: string;
+  text: string;
+  character_count: number;
+  warnings: string[];
+};
+
 export type SmartFitAnalysisRequest = {
   resume_text: string;
   job_description: string;
