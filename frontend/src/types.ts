@@ -37,6 +37,7 @@ export type ResumeAnalysisResponse = {
 export type SmartFitAnalysisRequest = {
   resume_text: string;
   job_description: string;
+  use_model_assisted?: boolean;
 };
 
 export type FitBand =
@@ -127,6 +128,8 @@ export type CoachingAction = {
   advice: string;
 };
 
+export type AnalysisEngine = "deterministic" | "model_assisted";
+
 export type SmartFitAnalysisResponse = {
   fit_summary: FitSummary;
   document_quality: DocumentQuality;
@@ -146,4 +149,6 @@ export type SmartFitAnalysisResponse = {
   lower_priority_items: string[];
   recommendations: string[];
   limitations: string[];
+  analysis_engine: AnalysisEngine;
+  model_assisted_status: string;
 };
