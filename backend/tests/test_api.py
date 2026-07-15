@@ -1,7 +1,9 @@
 import os
 from collections.abc import Generator
+from io import BytesIO
 
 import pytest
+from docx import Document
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -10,7 +12,7 @@ from sqlalchemy.pool import StaticPool
 os.environ["ADMIN_API_KEY"] = "test-admin-key"
 
 from app.database import Base, get_db
-from app.main import app
+from app.main import _rate_limit_buckets, app
 
 TEST_DATABASE_URL = "sqlite://"
 ADMIN_HEADERS = {"X-Admin-API-Key": "test-admin-key"}
@@ -39,8 +41,10 @@ client = TestClient(app)
 def reset_database() -> Generator[None, None, None]:
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+    _rate_limit_buckets.clear()
     yield
     Base.metadata.drop_all(bind=engine)
+    _rate_limit_buckets.clear()
 
 
 def _sample_job_posting_payload() -> dict[str, str]:
@@ -52,6 +56,17 @@ def _sample_job_posting_payload() -> dict[str, str]:
         "experience_level": "Entry-Level",
         "description": "Build REST APIs with Python, SQL, Docker, Git, and Agile practices.",
     }
+
+
+def _sample_docx_resume_bytes() -> bytes:
+    document = Document()
+    document.add_paragraph("JP Candidate")
+    document.add_paragraph("Built Python FastAPI services with Docker and SQL.")
+    document.add_paragraph("Used Git for version control.")
+
+    buffer = BytesIO()
+    document.save(buffer)
+    return buffer.getvalue()
 
 
 def test_create_job_posting_requires_admin_api_key() -> None:
@@ -125,6 +140,59 @@ def test_csv_import_creates_multiple_postings() -> None:
     assert top_skills["Python"] == 2
     assert top_skills["Docker"] == 1
     assert top_skills["AWS"] == 1
+
+
+def test_resume_file_extracts_plain_text_without_saving() -> None:
+    response = client.post(
+        "/analysis/resume-file/extract",
+        files={
+            "file": (
+                "resume.txt",
+                b"Python FastAPI Docker SQL\nBuilt backend APIs.",
+                "text/plain",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["filename"] == "resume.txt"
+    assert "Python FastAPI Docker SQL" in body["text"]
+    assert body["character_count"] == len(body["text"])
+    assert "not saved" in " ".join(body["warnings"])
+
+    saved_postings_response = client.get("/job-postings")
+    assert saved_postings_response.status_code == 200
+    assert saved_postings_response.json() == []
+
+
+def test_resume_file_extracts_docx_text() -> None:
+    response = client.post(
+        "/analysis/resume-file/extract",
+        files={
+            "file": (
+                "resume.docx",
+                _sample_docx_resume_bytes(),
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["filename"] == "resume.docx"
+    assert "Python FastAPI services" in body["text"]
+    assert "Docker" in body["text"]
+
+
+def test_resume_file_rejects_unsupported_file_type() -> None:
+    response = client.post(
+        "/analysis/resume-file/extract",
+        files={"file": ("resume.rtf", b"Python and SQL", "application/rtf")},
+    )
+
+    assert response.status_code == 400
+    assert ".txt, .md, .pdf, and .docx" in response.json()["detail"]
 
 
 def test_resume_analysis_compares_resume_against_target_role_category() -> None:
@@ -258,33 +326,3 @@ def test_model_assisted_status_never_exposes_backend_secret(monkeypatch: pytest.
     assert body["enabled"] is True
     assert body["status"] == "configured"
     assert "super-secret-test-key" not in str(body)
-
-
-def test_resume_text_file_upload_extracts_text_without_saving() -> None:
-    resume_text = "SKILLS\nPython, SQL, FastAPI\nPROJECTS\nBuilt REST APIs."
-
-    response = client.post(
-        "/analysis/resume-file/extract",
-        files={"file": ("resume.txt", resume_text.encode("utf-8"), "text/plain")},
-    )
-
-    assert response.status_code == 200
-    body = response.json()
-    assert body["filename"] == "resume.txt"
-    assert body["text"] == resume_text
-    assert body["character_count"] == len(resume_text)
-    assert "not saved" in " ".join(body["warnings"])
-
-    saved_postings_response = client.get("/job-postings")
-    assert saved_postings_response.status_code == 200
-    assert saved_postings_response.json() == []
-
-
-def test_resume_file_upload_rejects_unsupported_file_type() -> None:
-    response = client.post(
-        "/analysis/resume-file/extract",
-        files={"file": ("resume.pdf", b"fake pdf bytes", "application/pdf")},
-    )
-
-    assert response.status_code == 400
-    assert "currently supports .txt and .md" in response.json()["detail"]
