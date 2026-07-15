@@ -229,3 +229,32 @@ def test_custom_analysis_returns_error_when_no_target_skills_are_found() -> None
 
     assert response.status_code == 400
     assert response.json()["detail"] == "No recognizable target skills found in the provided job descriptions."
+
+
+def test_model_assisted_status_reports_disabled_without_secrets(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("AI_ANALYSIS_ENABLED", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_MODEL", raising=False)
+
+    response = client.get("/analysis/model-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["enabled"] is False
+    assert body["status"] == "not_configured"
+    assert "OPENAI_API_KEY" in body["required_backend_settings"]
+    assert "Provider keys must stay in backend environment variables only." in body["safety_notes"]
+
+
+def test_model_assisted_status_never_exposes_backend_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AI_ANALYSIS_ENABLED", "true")
+    monkeypatch.setenv("OPENAI_API_KEY", "super-secret-test-key")
+    monkeypatch.setenv("OPENAI_MODEL", "gpt-test")
+
+    response = client.get("/analysis/model-status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["enabled"] is True
+    assert body["status"] == "configured"
+    assert "super-secret-test-key" not in str(body)
