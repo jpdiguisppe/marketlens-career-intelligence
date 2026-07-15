@@ -30,12 +30,15 @@ MAX_CSV_ROWS = 250
 MAX_FREE_TEXT_LENGTH = 10_000
 MAX_POSTING_DESCRIPTION_LENGTH = 5_000
 MAX_CUSTOM_JOB_DESCRIPTIONS = 10
+MAX_RESUME_UPLOAD_BYTES = 500_000
+MAX_EXTRACTED_RESUME_TEXT_LENGTH = 25_000
 RATE_LIMIT_WINDOW_SECONDS = 60
 RATE_LIMIT_MAX_REQUESTS = 30
 
 REQUIRED_CSV_COLUMNS = {"company", "title", "description"}
 OPTIONAL_CSV_COLUMNS = {"location", "role_category", "experience_level"}
 SUPPORTED_CSV_COLUMNS = REQUIRED_CSV_COLUMNS | OPTIONAL_CSV_COLUMNS
+SUPPORTED_RESUME_UPLOAD_EXTENSIONS = {".txt", ".md"}
 
 CustomJobDescription = Annotated[
     str,
@@ -211,6 +214,13 @@ class ResumeAnalysisResponse(BaseModel):
     target_role_category: Optional[str]
 
 
+class ResumeFileExtractionResponse(BaseModel):
+    filename: str
+    text: str
+    character_count: int
+    warnings: list[str] = Field(default_factory=list)
+
+
 class ModelAssistedStatusResponse(BaseModel):
     enabled: bool
     status: str
@@ -321,6 +331,43 @@ def _build_resume_analysis_response(
     )
 
 
+def _extract_text_from_resume_upload(filename: str, contents: bytes) -> ResumeFileExtractionResponse:
+    extension = os.path.splitext(filename.lower())[1]
+
+    if extension not in SUPPORTED_RESUME_UPLOAD_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail="Resume upload currently supports .txt and .md files. PDF/DOCX extraction is planned next.",
+        )
+
+    try:
+        text = contents.decode("utf-8-sig").strip()
+    except UnicodeDecodeError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="Resume text file must be UTF-8 encoded.",
+        ) from exc
+
+    if not text:
+        raise HTTPException(status_code=400, detail="Uploaded resume file did not contain text.")
+
+    if len(text) > MAX_EXTRACTED_RESUME_TEXT_LENGTH:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Extracted resume text is too long. Maximum is {MAX_EXTRACTED_RESUME_TEXT_LENGTH} characters.",
+        )
+
+    return ResumeFileExtractionResponse(
+        filename=filename,
+        text=text,
+        character_count=len(text),
+        warnings=[
+            "Plain text and Markdown resume uploads are supported in this version. PDF/DOCX extraction is planned next.",
+            "Uploaded resume text is returned for this request and is not saved to the shared database.",
+        ],
+    )
+
+
 def _normalize_csv_fieldnames(fieldnames: list[str]) -> dict[str, str]:
     return {
         fieldname.strip().lower(): fieldname
@@ -377,6 +424,27 @@ def health_check() -> dict[str, str]:
 @app.get("/analysis/model-status", response_model=ModelAssistedStatusResponse)
 def get_model_assisted_status() -> ModelAssistedStatusResponse:
     return _model_assisted_status_response()
+
+
+@app.post(
+    "/analysis/resume-file/extract",
+    response_model=ResumeFileExtractionResponse,
+    dependencies=[Depends(enforce_public_rate_limit)],
+)
+async def extract_resume_file_text(file: UploadFile = File(...)) -> ResumeFileExtractionResponse:
+    filename = file.filename or "uploaded-resume.txt"
+    file_contents = await file.read()
+
+    if not file_contents:
+        raise HTTPException(status_code=400, detail="Uploaded resume file is empty.")
+
+    if len(file_contents) > MAX_RESUME_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Resume file is too large. Maximum size is {MAX_RESUME_UPLOAD_BYTES} bytes.",
+        )
+
+    return _extract_text_from_resume_upload(filename, file_contents)
 
 
 @app.post(
