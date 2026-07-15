@@ -65,6 +65,18 @@ function formatLabel(value: string): string {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
+function modelStatusText(analysis: SmartFitAnalysisResponse): string {
+  if (analysis.analysis_engine === "model_assisted") {
+    return "Model-assisted extraction was used, then validated and scored by MarketLens.";
+  }
+
+  if (analysis.model_assisted_status.startsWith("fallback")) {
+    return `Model-assisted extraction was requested, but MarketLens safely fell back to deterministic analysis: ${analysis.model_assisted_status}`;
+  }
+
+  return "Deterministic analysis was used. Model-assisted extraction was not requested.";
+}
+
 function SkillPills({
   skills,
   emptyText,
@@ -169,7 +181,7 @@ function AnalysisResults({
   return (
     <div className="analysis-results">
       <div className="score-card">
-        <span>Match Score</span>
+        <span>Sample Dataset Skill Coverage</span>
         <strong>{analysis.match_percentage}%</strong>
         <p>{comparisonText}</p>
       </div>
@@ -230,6 +242,16 @@ function SmartFitResults({
             <li key={summaryItem}>{summaryItem}</li>
           ))}
         </ul>
+      </section>
+
+      <section className="report-card">
+        <div className="gap-group-header">
+          <h3>Analysis engine</h3>
+          <span className={`status-badge ${analysis.analysis_engine === "model_assisted" ? "status-demonstrated" : "status-mentioned"}`}>
+            {analysis.analysis_engine === "model_assisted" ? "AI assisted" : "Deterministic"}
+          </span>
+        </div>
+        <p className="helper-text">{modelStatusText(analysis)}</p>
       </section>
 
       <div className="focus-grid">
@@ -371,6 +393,7 @@ function SmartFitResults({
 function CustomAnalysisPanel() {
   const [resumeText, setResumeText] = useState("");
   const [jobDescriptionsText, setJobDescriptionsText] = useState("");
+  const [useModelAssisted, setUseModelAssisted] = useState(false);
   const [analysis, setAnalysis] = useState<SmartFitAnalysisResponse | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -397,6 +420,7 @@ function CustomAnalysisPanel() {
       const result = await analyzeSmartFit({
         resume_text: resumeText,
         job_description: jobDescriptions.join("\n\n---\n\n"),
+        use_model_assisted: useModelAssisted,
       });
 
       setAnalysis(result);
@@ -450,13 +474,26 @@ function CustomAnalysisPanel() {
           </label>
         </div>
 
+        <label className="notice-box" htmlFor="model-assisted-toggle">
+          <input
+            id="model-assisted-toggle"
+            type="checkbox"
+            checked={useModelAssisted}
+            onChange={(event) => setUseModelAssisted(event.target.checked)}
+          />
+          <strong> Use model-assisted extraction</strong>
+          <p>
+            This may send redacted resume and job text to the configured model provider.
+            MarketLens still does not save raw text to the shared database. Avoid sensitive personal information.
+          </p>
+        </label>
+
         <div className="form-footer">
           <p className="helper-text">
-            Smart Fit checks evidence, requirement priority, grouped gaps, and related-but-not-direct matches.
-            Avoid sensitive personal information.
+            Smart Fit checks evidence, requirement priority, grouped gaps, related-but-not-direct matches, and optional model-assisted extraction.
           </p>
           <button className="refresh-button analyze-button" disabled={isAnalyzing} type="submit">
-            {isAnalyzing ? "Analyzing..." : "Analyze fit"}
+            {isAnalyzing ? "Analyzing..." : useModelAssisted ? "Analyze with AI assist" : "Analyze fit"}
           </button>
         </div>
       </form>
