@@ -20,6 +20,7 @@ from app.analysis import (
 from app.analysis.model_extractor import is_model_assisted_configured
 from app.database import Base, engine, get_db
 from app.models import JobPostingDB
+from app.resume_files import ResumeFileExtractionError, extract_resume_text_from_upload
 from app.skill_extractor import count_skills, extract_skills
 
 Base.metadata.create_all(bind=engine)
@@ -30,7 +31,7 @@ MAX_CSV_ROWS = 250
 MAX_FREE_TEXT_LENGTH = 10_000
 MAX_POSTING_DESCRIPTION_LENGTH = 5_000
 MAX_CUSTOM_JOB_DESCRIPTIONS = 10
-MAX_RESUME_UPLOAD_BYTES = 500_000
+MAX_RESUME_UPLOAD_BYTES = 1_500_000
 MAX_EXTRACTED_RESUME_TEXT_LENGTH = 25_000
 RATE_LIMIT_WINDOW_SECONDS = 60
 RATE_LIMIT_MAX_REQUESTS = 30
@@ -38,7 +39,6 @@ RATE_LIMIT_MAX_REQUESTS = 30
 REQUIRED_CSV_COLUMNS = {"company", "title", "description"}
 OPTIONAL_CSV_COLUMNS = {"location", "role_category", "experience_level"}
 SUPPORTED_CSV_COLUMNS = REQUIRED_CSV_COLUMNS | OPTIONAL_CSV_COLUMNS
-SUPPORTED_RESUME_UPLOAD_EXTENSIONS = {".txt", ".md"}
 
 CustomJobDescription = Annotated[
     str,
@@ -332,24 +332,10 @@ def _build_resume_analysis_response(
 
 
 def _extract_text_from_resume_upload(filename: str, contents: bytes) -> ResumeFileExtractionResponse:
-    extension = os.path.splitext(filename.lower())[1]
-
-    if extension not in SUPPORTED_RESUME_UPLOAD_EXTENSIONS:
-        raise HTTPException(
-            status_code=400,
-            detail="Resume upload currently supports .txt and .md files. PDF/DOCX extraction is planned next.",
-        )
-
     try:
-        text = contents.decode("utf-8-sig").strip()
-    except UnicodeDecodeError as exc:
-        raise HTTPException(
-            status_code=400,
-            detail="Resume text file must be UTF-8 encoded.",
-        ) from exc
-
-    if not text:
-        raise HTTPException(status_code=400, detail="Uploaded resume file did not contain text.")
+        text, warnings = extract_resume_text_from_upload(filename, contents)
+    except ResumeFileExtractionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     if len(text) > MAX_EXTRACTED_RESUME_TEXT_LENGTH:
         raise HTTPException(
@@ -361,10 +347,7 @@ def _extract_text_from_resume_upload(filename: str, contents: bytes) -> ResumeFi
         filename=filename,
         text=text,
         character_count=len(text),
-        warnings=[
-            "Plain text and Markdown resume uploads are supported in this version. PDF/DOCX extraction is planned next.",
-            "Uploaded resume text is returned for this request and is not saved to the shared database.",
-        ],
+        warnings=warnings,
     )
 
 
