@@ -488,12 +488,12 @@ function CustomAnalysisPanel() {
                 id="resume-file-upload"
                 className="select-input"
                 type="file"
-                accept=".txt,.md,text/plain,text/markdown"
+                accept=".txt,.md,.pdf,.docx,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 disabled={isUploadingResume}
                 onChange={handleResumeFileUpload}
               />
               <small className="helper-text">
-                Plain text and Markdown files work now. PDF/DOCX extraction is the next upload step.
+                TXT, Markdown, DOCX, and text-based PDF files work now. Scanned/image-only PDFs may not extract text.
               </small>
             </label>
             {resumeUploadMessage && <p className="helper-text">{resumeUploadMessage}</p>}
