@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import type { FormEvent } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 
 import {
   analyzeResume,
   analyzeSmartFit,
+  extractResumeFileText,
   getJobPostings,
   getTopSkills,
   getTopSkillsByCompany,
@@ -394,9 +395,37 @@ function CustomAnalysisPanel() {
   const [resumeText, setResumeText] = useState("");
   const [jobDescriptionsText, setJobDescriptionsText] = useState("");
   const [useModelAssisted, setUseModelAssisted] = useState(false);
+  const [resumeUploadMessage, setResumeUploadMessage] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<SmartFitAnalysisResponse | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isUploadingResume, setIsUploadingResume] = useState(false);
+
+  async function handleResumeFileUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    try {
+      setIsUploadingResume(true);
+      setResumeUploadMessage(null);
+      const extracted = await extractResumeFileText(file);
+      setResumeText(extracted.text);
+      setResumeUploadMessage(
+        `Loaded ${extracted.filename} (${extracted.character_count.toLocaleString()} characters). ${extracted.warnings[0] ?? ""}`.trim(),
+      );
+    } catch (error) {
+      setResumeUploadMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not extract text from that resume file.",
+      );
+    } finally {
+      setIsUploadingResume(false);
+      event.target.value = "";
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -404,7 +433,7 @@ function CustomAnalysisPanel() {
     const jobDescriptions = splitPastedJobDescriptions(jobDescriptionsText);
 
     if (!resumeText.trim()) {
-      setAnalysisError("Paste resume text before running the analysis.");
+      setAnalysisError("Paste or upload resume text before running the analysis.");
       return;
     }
 
@@ -443,7 +472,7 @@ function CustomAnalysisPanel() {
           <p className="eyebrow inline-eyebrow">Start here</p>
           <h2>Analyze a Resume Against Real Job Descriptions</h2>
           <p className="panel-subtitle">
-            Paste resume-style text and job description text to get a non-saved Smart Fit report.
+            Paste or upload resume-style text and job description text to get a non-saved Smart Fit report.
             Text is sent to the backend for analysis, but it is not saved to the shared database.
           </p>
         </div>
@@ -453,6 +482,21 @@ function CustomAnalysisPanel() {
         <div className="form-grid">
           <label className="form-control" htmlFor="custom-resume-text">
             <span>Resume text</span>
+            <label className="form-control" htmlFor="resume-file-upload">
+              <span>Upload resume file</span>
+              <input
+                id="resume-file-upload"
+                className="select-input"
+                type="file"
+                accept=".txt,.md,text/plain,text/markdown"
+                disabled={isUploadingResume}
+                onChange={handleResumeFileUpload}
+              />
+              <small className="helper-text">
+                Plain text and Markdown files work now. PDF/DOCX extraction is the next upload step.
+              </small>
+            </label>
+            {resumeUploadMessage && <p className="helper-text">{resumeUploadMessage}</p>}
             <textarea
               id="custom-resume-text"
               className="resume-textarea"
@@ -492,7 +536,7 @@ function CustomAnalysisPanel() {
           <p className="helper-text">
             Smart Fit checks evidence, requirement priority, grouped gaps, related-but-not-direct matches, and optional model-assisted extraction.
           </p>
-          <button className="refresh-button analyze-button" disabled={isAnalyzing} type="submit">
+          <button className="refresh-button analyze-button" disabled={isAnalyzing || isUploadingResume} type="submit">
             {isAnalyzing ? "Analyzing..." : useModelAssisted ? "Analyze with AI assist" : "Analyze fit"}
           </button>
         </div>
