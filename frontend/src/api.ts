@@ -4,6 +4,7 @@ import type {
   JobPosting,
   ResumeAnalysisRequest,
   ResumeAnalysisResponse,
+  ResumeFileExtractionResponse,
   SkillCounts,
   SmartFitAnalysisRequest,
   SmartFitAnalysisResponse,
@@ -69,6 +70,30 @@ async function postJson<TResponse, TRequest>(path: string, body: TRequest): Prom
   return response.json() as Promise<TResponse>;
 }
 
+async function postFormData<TResponse>(path: string, body: FormData): Promise<TResponse> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    body,
+  });
+
+  if (!response.ok) {
+    let detail = `${response.status} ${response.statusText}`;
+
+    try {
+      const errorBody = (await response.json()) as { detail?: string | { msg?: string }[] };
+      if (typeof errorBody.detail === "string") {
+        detail = errorBody.detail;
+      }
+    } catch {
+      // Keep the default error message if the response is not JSON.
+    }
+
+    throw new Error(`Request failed: ${detail}`);
+  }
+
+  return response.json() as Promise<TResponse>;
+}
+
 export async function getJobPostings(): Promise<JobPosting[]> {
   return fetchJson<JobPosting[]>("/job-postings");
 }
@@ -91,6 +116,13 @@ export async function analyzeResume(request: ResumeAnalysisRequest): Promise<Res
 
 export async function analyzeCustomJobs(request: CustomAnalysisRequest): Promise<ResumeAnalysisResponse> {
   return postJson<ResumeAnalysisResponse, CustomAnalysisRequest>("/analysis/custom", request);
+}
+
+export async function extractResumeFileText(file: File): Promise<ResumeFileExtractionResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return postFormData<ResumeFileExtractionResponse>("/analysis/resume-file/extract", formData);
 }
 
 export async function analyzeSmartFit(
