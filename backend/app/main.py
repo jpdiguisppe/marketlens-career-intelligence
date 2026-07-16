@@ -31,6 +31,8 @@ MAX_CSV_ROWS = 250
 MAX_FREE_TEXT_LENGTH = 10_000
 MAX_POSTING_DESCRIPTION_LENGTH = 5_000
 MAX_CUSTOM_JOB_DESCRIPTIONS = 10
+MAX_SMART_JOB_DESCRIPTION_LENGTH = 50_000
+MAX_SMART_BATCH_JOBS = 10
 MAX_RESUME_UPLOAD_BYTES = 1_500_000
 MAX_EXTRACTED_RESUME_TEXT_LENGTH = 25_000
 RATE_LIMIT_WINDOW_SECONDS = 60
@@ -43,6 +45,10 @@ SUPPORTED_CSV_COLUMNS = REQUIRED_CSV_COLUMNS | OPTIONAL_CSV_COLUMNS
 CustomJobDescription = Annotated[
     str,
     Field(min_length=1, max_length=MAX_POSTING_DESCRIPTION_LENGTH),
+]
+SmartJobDescription = Annotated[
+    str,
+    Field(min_length=1, max_length=MAX_SMART_JOB_DESCRIPTION_LENGTH),
 ]
 
 _rate_limit_buckets: dict[str, list[float]] = {}
@@ -228,6 +234,43 @@ class ModelAssistedStatusResponse(BaseModel):
     safety_notes: list[str]
 
 
+class SmartFitBatchJobDescription(BaseModel):
+    title: str | None = Field(default=None, max_length=150)
+    job_description: SmartJobDescription
+
+
+class SmartFitBatchAnalysisRequest(BaseModel):
+    resume_text: str = Field(
+        ...,
+        min_length=1,
+        max_length=MAX_EXTRACTED_RESUME_TEXT_LENGTH,
+        description="Resume text to compare against each job description. It is not saved to the shared database.",
+    )
+    job_descriptions: list[SmartFitBatchJobDescription] = Field(
+        ...,
+        min_length=1,
+        max_length=MAX_SMART_BATCH_JOBS,
+        description="One to ten job descriptions. Each job is analyzed and ranked independently.",
+    )
+    use_model_assisted: bool = Field(
+        default=False,
+        description="When true, the backend may use the configured model-assisted extractor for each job. If unavailable, deterministic analysis is used.",
+    )
+
+
+class SmartFitBatchResult(BaseModel):
+    rank: int
+    job_index: int
+    title: str
+    analysis: SmartFitAnalysisResponse
+
+
+class SmartFitBatchAnalysisResponse(BaseModel):
+    analyzed_count: int
+    results: list[SmartFitBatchResult]
+    best_job: SmartFitBatchResult
+
+
 def _model_assisted_status_response() -> ModelAssistedStatusResponse:
     enabled = is_model_assisted_configured()
     return ModelAssistedStatusResponse(
@@ -245,6 +288,49 @@ def _model_assisted_status_response() -> ModelAssistedStatusResponse:
             "Model-assisted extraction falls back to deterministic analysis when unavailable.",
         ],
     )
+
+
+def _infer_batch_job_title(job: SmartFitBatchJobDescription, index: int) -> str:
+    if job.title and job.title.strip():
+        return job.title.strip()
+
+    ignored_headings = {
+        "responsibilities",
+        "requirements",
+        "required qualifications",
+        "preferred qualifications",
+        "qualifications",
+        "about the role",
+        "what you'll do",
+        "what we're looking for",
+    }
+    for line in job.job_description.splitlines():
+        cleaned_line = line.strip()
+        if cleaned_line and cleaned_line.lower().rstrip(":") not in ignored_headings:
+            return cleaned_line[:90]
+
+    return f"Job {index + 1}"
+
+
+def _rank_smart_fit_batch_results(results: list[SmartFitBatchResult]) -> list[SmartFitBatchResult]:
+    ranked_results = sorted(
+        results,
+        key=lambda result: (
+            -result.analysis.fit_summary.score,
+            -result.analysis.fit_summary.confidence,
+            result.job_index,
+        ),
+    )
+
+    return [
+        SmartFitBatchResult(
+            rank=index + 1,
+            job_index=result.job_index,
+            title=result.title,
+            analysis=result.analysis,
+        )
+        for index, result in enumerate(ranked_results)
+    ]
 
 
 def _to_api_job_posting(posting: JobPostingDB) -> JobPosting:
@@ -636,3 +722,41 @@ def analyze_smart_fit_request(request: SmartFitAnalysisRequest) -> SmartFitAnaly
         )
     except AnalysisInputError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post(
+    "/analysis/smart/batch",
+    response_model=SmartFitBatchAnalysisResponse,
+    dependencies=[Depends(enforce_public_rate_limit)],
+)
+def analyze_smart_fit_batch_request(request: SmartFitBatchAnalysisRequest) -> SmartFitBatchAnalysisResponse:
+    results: list[SmartFitBatchResult] = []
+
+    for index, job in enumerate(request.job_descriptions):
+        try:
+            analysis = analyze_smart_fit(
+                resume_text=request.resume_text,
+                job_description=job.job_description,
+                use_model_assisted=request.use_model_assisted,
+            )
+        except AnalysisInputError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Job {index + 1}: {exc}",
+            ) from exc
+
+        results.append(
+            SmartFitBatchResult(
+                rank=0,
+                job_index=index,
+                title=_infer_batch_job_title(job, index),
+                analysis=analysis,
+            )
+        )
+
+    ranked_results = _rank_smart_fit_batch_results(results)
+    return SmartFitBatchAnalysisResponse(
+        analyzed_count=len(ranked_results),
+        results=ranked_results,
+        best_job=ranked_results[0],
+    )
