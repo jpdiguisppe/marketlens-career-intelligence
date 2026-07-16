@@ -113,6 +113,36 @@ function modelStatusText(analysis: SmartFitAnalysisResponse): string {
   return "Deterministic analysis was used. Model-assisted extraction was not requested.";
 }
 
+function summarizeRanking(rankedJobs: SmartFitBatchResult[]): string[] {
+  if (rankedJobs.length <= 1) {
+    return ["Only one job was analyzed, so there is no ranking comparison yet."];
+  }
+
+  const bestJob = rankedJobs[0];
+  const runnerUp = rankedJobs[1];
+  const scoreGap = bestJob.analysis.fit_summary.score - runnerUp.analysis.fit_summary.score;
+  const summary: string[] = [
+    `${bestJob.title} ranked first by ${scoreGap} percentage point${scoreGap === 1 ? "" : "s"} over ${runnerUp.title}.`,
+  ];
+
+  const bestMatches = bestJob.analysis.strong_matches.length > 0
+    ? bestJob.analysis.strong_matches
+    : bestJob.analysis.job_relevant_resume_skills;
+  if (bestMatches.length > 0) {
+    summary.push(`Best-fit evidence: ${bestMatches.slice(0, 4).join(", ")}.`);
+  }
+
+  const runnerUpGaps = runnerUp.analysis.important_gaps.length > 0
+    ? runnerUp.analysis.important_gaps
+    : runnerUp.analysis.gap_groups.flatMap((group) => group.skills);
+  if (runnerUpGaps.length > 0) {
+    summary.push(`${runnerUp.title} fell behind mostly because of missing proof for ${runnerUpGaps.slice(0, 4).join(", ")}.`);
+  }
+
+  summary.push("Use the Show details buttons to inspect each ranked job's full Smart Fit report.");
+  return summary;
+}
+
 function SkillPills({
   skills,
   emptyText,
@@ -441,6 +471,7 @@ function SmartFitComparisonResults({ rankedJobs }: { rankedJobs: SmartFitBatchRe
   }
 
   const selectedJob = rankedJobs.find((job) => job.job_index === selectedJobIndex) ?? bestJob;
+  const rankingSummary = summarizeRanking(rankedJobs);
   const comparisonText =
     rankedJobs.length === 1
       ? "Nothing was saved to the shared database."
@@ -454,27 +485,56 @@ function SmartFitComparisonResults({ rankedJobs }: { rankedJobs: SmartFitBatchRe
             <h3>Job fit ranking</h3>
             <span className="status-badge status-demonstrated">{rankedJobs.length} jobs analyzed</span>
           </div>
+
+          <div className="notice-box smart-warning-box">
+            <strong>Why this ranking?</strong>
+            <ul>
+              {rankingSummary.map((summaryItem) => (
+                <li key={summaryItem}>{summaryItem}</li>
+              ))}
+            </ul>
+          </div>
+
           <div className="action-list">
-            {rankedJobs.map((job) => (
-              <article className="action-row" key={`${job.job_index}-${job.title}`}>
-                <span className={`priority-badge ${job.rank === 1 ? "priority-high" : "priority-medium"}`}>
-                  #{job.rank}
-                </span>
-                <div>
-                  <h4>{job.title}</h4>
-                  <p>
-                    {job.analysis.fit_summary.score}% · {formatLabel(job.analysis.fit_summary.band)} · {job.analysis.fit_summary.headline}
-                  </p>
-                  <button
-                    className="refresh-button"
-                    type="button"
-                    onClick={() => setSelectedJobIndex(job.job_index)}
-                  >
-                    {selectedJob.job_index === job.job_index ? "Showing details" : "Show details"}
-                  </button>
-                </div>
-              </article>
-            ))}
+            {rankedJobs.map((job) => {
+              const topMatches = job.analysis.strong_matches.length > 0
+                ? job.analysis.strong_matches
+                : job.analysis.job_relevant_resume_skills;
+              const topGaps = job.analysis.important_gaps.length > 0
+                ? job.analysis.important_gaps
+                : job.analysis.gap_groups.flatMap((group) => group.skills);
+
+              return (
+                <article className="action-row" key={`${job.job_index}-${job.title}`}>
+                  <span className={`priority-badge ${job.rank === 1 ? "priority-high" : "priority-medium"}`}>
+                    #{job.rank}
+                  </span>
+                  <div>
+                    <h4>{job.title}</h4>
+                    <p>
+                      {job.analysis.fit_summary.score}% · {formatLabel(job.analysis.fit_summary.band)} · {job.analysis.fit_summary.headline}
+                    </p>
+                    <div className="analysis-grid">
+                      <div className="analysis-card">
+                        <h3>Top matches</h3>
+                        <SkillPills skills={topMatches} emptyText="No direct matches found." max={4} />
+                      </div>
+                      <div className="analysis-card">
+                        <h3>Top gaps</h3>
+                        <SkillPills skills={topGaps} emptyText="No major gaps found." max={4} />
+                      </div>
+                    </div>
+                    <button
+                      className="refresh-button"
+                      type="button"
+                      onClick={() => setSelectedJobIndex(job.job_index)}
+                    >
+                      {selectedJob.job_index === job.job_index ? "Showing details" : "Show details"}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </section>
       )}
@@ -614,8 +674,8 @@ function CustomAnalysisPanel() {
 
       <form className="resume-form" onSubmit={handleSubmit}>
         <div className="form-grid">
-          <label className="form-control" htmlFor="custom-resume-text">
-            <span>Resume text</span>
+          <div className="form-control">
+            <label className="form-label" htmlFor="custom-resume-text">Resume text</label>
             <label className="form-control" htmlFor="resume-file-upload">
               <span>Upload resume file</span>
               <input
@@ -638,7 +698,7 @@ function CustomAnalysisPanel() {
               value={resumeText}
               onChange={(event) => setResumeText(event.target.value)}
             />
-          </label>
+          </div>
 
           <label className="form-control" htmlFor="custom-job-descriptions">
             <span>Job description text</span>
