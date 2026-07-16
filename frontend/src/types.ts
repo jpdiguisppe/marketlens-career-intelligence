@@ -41,6 +41,13 @@ export type ResumeFileExtractionResponse = {
   warnings: string[];
 };
 
+export type ModelAssistedStatusResponse = {
+  enabled: boolean;
+  status: string;
+  required_backend_settings: string[];
+  safety_notes: string[];
+};
+
 export type SmartFitAnalysisRequest = {
   resume_text: string;
   job_description: string;
