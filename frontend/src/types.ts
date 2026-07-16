@@ -54,6 +54,17 @@ export type SmartFitAnalysisRequest = {
   use_model_assisted?: boolean;
 };
 
+export type SmartFitBatchJobDescription = {
+  title?: string | null;
+  job_description: string;
+};
+
+export type SmartFitBatchAnalysisRequest = {
+  resume_text: string;
+  job_descriptions: SmartFitBatchJobDescription[];
+  use_model_assisted?: boolean;
+};
+
 export type FitBand =
   | "strong_alignment"
   | "credible_alignment"
@@ -165,4 +176,17 @@ export type SmartFitAnalysisResponse = {
   limitations: string[];
   analysis_engine: AnalysisEngine;
   model_assisted_status: string;
+};
+
+export type SmartFitBatchResult = {
+  rank: number;
+  job_index: number;
+  title: string;
+  analysis: SmartFitAnalysisResponse;
+};
+
+export type SmartFitBatchAnalysisResponse = {
+  analyzed_count: number;
+  results: SmartFitBatchResult[];
+  best_job: SmartFitBatchResult;
 };
