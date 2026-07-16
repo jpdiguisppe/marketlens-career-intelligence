@@ -176,7 +176,8 @@ def test_smart_fit_analysis_returns_coaching_actions() -> None:
         for action in analysis.coaching_actions
         if action.action_type == CoachingActionType.RESUME_REWRITE
     ]
-    assert any(action.skill == "SQL" for action in rewrite_actions)
+    assert any(action.title == "Turn background into resume proof" for action in rewrite_actions)
+    assert any("SQL" in action.advice for action in rewrite_actions)
     assert all(action.advice for action in analysis.coaching_actions)
 
 
