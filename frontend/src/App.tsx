@@ -3,7 +3,7 @@ import type { ChangeEvent, FormEvent } from "react";
 
 import {
   analyzeResume,
-  analyzeSmartFit,
+  analyzeSmartFitBatch,
   extractResumeFileText,
   getJobPostings,
   getModelAssistedStatus,
@@ -18,6 +18,7 @@ import type {
   ResumeAnalysisResponse,
   SkillCounts,
   SmartFitAnalysisResponse,
+  SmartFitBatchResult,
 } from "./types";
 
 type DashboardData = {
@@ -28,13 +29,6 @@ type DashboardData = {
 };
 
 type SkillEntry = [string, number];
-
-type RankedSmartFitResult = {
-  rank: number;
-  jobIndex: number;
-  title: string;
-  analysis: SmartFitAnalysisResponse;
-};
 
 const emptyDashboardData: DashboardData = {
   jobs: [],
@@ -63,10 +57,28 @@ function getTopSkillName(topSkills: SkillCounts): string {
 }
 
 function splitPastedJobDescriptions(text: string): string[] {
-  return text
-    .split(/\n\s*-{3,}\s*\n/g)
-    .map((description) => description.trim())
-    .filter(Boolean);
+  const parts: string[] = [];
+  const currentPart: string[] = [];
+
+  text.replace(/\r\n/g, "\n").split("\n").forEach((line) => {
+    if (/^\s*-{3,}\s*$/.test(line)) {
+      const completedPart = currentPart.join("\n").trim();
+      if (completedPart) {
+        parts.push(completedPart);
+      }
+      currentPart.length = 0;
+      return;
+    }
+
+    currentPart.push(line);
+  });
+
+  const finalPart = currentPart.join("\n").trim();
+  if (finalPart) {
+    parts.push(finalPart);
+  }
+
+  return parts;
 }
 
 function inferJobTitle(description: string, index: number): string {
@@ -81,22 +93,6 @@ function inferJobTitle(description: string, index: number): string {
   }
 
   return firstUsefulLine.length > 90 ? `${firstUsefulLine.slice(0, 87)}...` : firstUsefulLine;
-}
-
-function rankSmartFitResults(results: Omit<RankedSmartFitResult, "rank">[]): RankedSmartFitResult[] {
-  return [...results]
-    .sort((a, b) => {
-      const scoreDifference = b.analysis.fit_summary.score - a.analysis.fit_summary.score;
-      if (scoreDifference !== 0) {
-        return scoreDifference;
-      }
-
-      return b.analysis.fit_summary.confidence - a.analysis.fit_summary.confidence;
-    })
-    .map((result, index) => ({
-      ...result,
-      rank: index + 1,
-    }));
 }
 
 function formatLabel(value: string): string {
@@ -430,17 +426,25 @@ function SmartFitResults({
   );
 }
 
-function SmartFitComparisonResults({ rankedJobs }: { rankedJobs: RankedSmartFitResult[] }) {
+function SmartFitComparisonResults({ rankedJobs }: { rankedJobs: SmartFitBatchResult[] }) {
   const bestJob = rankedJobs[0];
+  const [selectedJobIndex, setSelectedJobIndex] = useState(bestJob?.job_index ?? 0);
+
+  useEffect(() => {
+    if (bestJob) {
+      setSelectedJobIndex(bestJob.job_index);
+    }
+  }, [bestJob?.job_index]);
 
   if (!bestJob) {
     return null;
   }
 
+  const selectedJob = rankedJobs.find((job) => job.job_index === selectedJobIndex) ?? bestJob;
   const comparisonText =
     rankedJobs.length === 1
       ? "Nothing was saved to the shared database."
-      : `Best ranked job: ${bestJob.title}. ${rankedJobs.length} jobs were analyzed separately. Nothing was saved to the shared database.`;
+      : `Showing ranked job #${selectedJob.rank}: ${selectedJob.title}. ${rankedJobs.length} jobs were analyzed separately. Nothing was saved to the shared database.`;
 
   return (
     <>
@@ -452,7 +456,7 @@ function SmartFitComparisonResults({ rankedJobs }: { rankedJobs: RankedSmartFitR
           </div>
           <div className="action-list">
             {rankedJobs.map((job) => (
-              <article className="action-row" key={`${job.jobIndex}-${job.title}`}>
+              <article className="action-row" key={`${job.job_index}-${job.title}`}>
                 <span className={`priority-badge ${job.rank === 1 ? "priority-high" : "priority-medium"}`}>
                   #{job.rank}
                 </span>
@@ -461,6 +465,13 @@ function SmartFitComparisonResults({ rankedJobs }: { rankedJobs: RankedSmartFitR
                   <p>
                     {job.analysis.fit_summary.score}% · {formatLabel(job.analysis.fit_summary.band)} · {job.analysis.fit_summary.headline}
                   </p>
+                  <button
+                    className="refresh-button"
+                    type="button"
+                    onClick={() => setSelectedJobIndex(job.job_index)}
+                  >
+                    {selectedJob.job_index === job.job_index ? "Showing details" : "Show details"}
+                  </button>
                 </div>
               </article>
             ))}
@@ -468,7 +479,7 @@ function SmartFitComparisonResults({ rankedJobs }: { rankedJobs: RankedSmartFitR
         </section>
       )}
 
-      <SmartFitResults analysis={bestJob.analysis} comparisonText={comparisonText} />
+      <SmartFitResults analysis={selectedJob.analysis} comparisonText={comparisonText} />
     </>
   );
 }
@@ -480,12 +491,13 @@ function CustomAnalysisPanel() {
   const [modelAssistedStatus, setModelAssistedStatus] = useState<ModelAssistedStatusResponse | null>(null);
   const [modelStatusError, setModelStatusError] = useState<string | null>(null);
   const [resumeUploadMessage, setResumeUploadMessage] = useState<string | null>(null);
-  const [rankedAnalyses, setRankedAnalyses] = useState<RankedSmartFitResult[]>([]);
+  const [rankedAnalyses, setRankedAnalyses] = useState<SmartFitBatchResult[]>([]);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isUploadingResume, setIsUploadingResume] = useState(false);
 
-  const parsedJobCount = splitPastedJobDescriptions(jobDescriptionsText).length;
+  const parsedJobDescriptions = splitPastedJobDescriptions(jobDescriptionsText);
+  const parsedJobCount = parsedJobDescriptions.length;
   const isModelAssistedAvailable = modelAssistedStatus?.enabled === true;
 
   useEffect(() => {
@@ -565,19 +577,16 @@ function CustomAnalysisPanel() {
       setRankedAnalyses([]);
 
       const useConfiguredModelAssisted = useModelAssisted && isModelAssistedAvailable;
-      const analyses = await Promise.all(
-        jobDescriptions.map(async (description, index) => ({
-          jobIndex: index,
+      const result = await analyzeSmartFitBatch({
+        resume_text: resumeText,
+        job_descriptions: jobDescriptions.map((description, index) => ({
           title: inferJobTitle(description, index),
-          analysis: await analyzeSmartFit({
-            resume_text: resumeText,
-            job_description: description,
-            use_model_assisted: useConfiguredModelAssisted,
-          }),
+          job_description: description,
         })),
-      );
+        use_model_assisted: useConfiguredModelAssisted,
+      });
 
-      setRankedAnalyses(rankSmartFitResults(analyses));
+      setRankedAnalyses(result.results);
     } catch (error) {
       setRankedAnalyses([]);
       setAnalysisError(
@@ -636,10 +645,17 @@ function CustomAnalysisPanel() {
             <textarea
               id="custom-job-descriptions"
               className="resume-textarea"
-              placeholder="Paste one job description here. To compare multiple postings, separate each one with a line containing ---"
+              placeholder="Paste one job description here. To compare multiple postings, put --- on its own line between jobs."
               value={jobDescriptionsText}
               onChange={(event) => setJobDescriptionsText(event.target.value)}
             />
+            <small className="helper-text">
+              {parsedJobCount === 0
+                ? "No job descriptions detected yet."
+                : parsedJobCount === 1
+                  ? "1 job description detected."
+                  : `${parsedJobCount} job descriptions detected and ready to rank.`}
+            </small>
           </label>
         </div>
 
@@ -662,7 +678,7 @@ function CustomAnalysisPanel() {
 
         <div className="form-footer">
           <p className="helper-text">
-            Smart Fit analyzes each separated job independently, ranks the roles, and keeps the detailed report for the best match visible.
+            Smart Fit analyzes each separated job independently through the backend batch endpoint, ranks the roles, and lets you inspect each result.
           </p>
           <button className="refresh-button analyze-button" disabled={isAnalyzing || isUploadingResume} type="submit">
             {isAnalyzing
