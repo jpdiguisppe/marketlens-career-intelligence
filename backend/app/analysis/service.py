@@ -577,6 +577,9 @@ def _build_coaching_actions(
     for group in gap_groups[:2]:
         _add_action_once(actions, _gap_group_action(group))
 
+    for requirement in hard_requirements_unclear:
+        _add_action_once(actions, _hard_requirement_action(requirement))
+
     for assessment in sorted(assessments, key=lambda item: (-item.weight, item.skill.lower())):
         if assessment.status in {EvidenceStatus.MENTIONED, EvidenceStatus.IMPLIED} and assessment.weight >= 0.5:
             _add_action_once(actions, _rewrite_action(assessment))
@@ -584,9 +587,6 @@ def _build_coaching_actions(
             _add_action_once(actions, _related_action(assessment))
         elif assessment.status == EvidenceStatus.MISSING and assessment.weight >= 0.75:
             _add_action_once(actions, _missing_proof_action(assessment))
-
-    for requirement in hard_requirements_unclear:
-        _add_action_once(actions, _hard_requirement_action(requirement))
 
     return actions
 
