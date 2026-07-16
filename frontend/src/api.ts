@@ -2,6 +2,7 @@ import type {
   CustomAnalysisRequest,
   GroupedSkillCounts,
   JobPosting,
+  ModelAssistedStatusResponse,
   ResumeAnalysisRequest,
   ResumeAnalysisResponse,
   ResumeFileExtractionResponse,
@@ -108,6 +109,10 @@ export async function getTopSkillsByCompany(): Promise<GroupedSkillCounts> {
 
 export async function getTopSkillsByRole(): Promise<GroupedSkillCounts> {
   return fetchJson<GroupedSkillCounts>("/skills/top-by-role");
+}
+
+export async function getModelAssistedStatus(): Promise<ModelAssistedStatusResponse> {
+  return fetchJson<ModelAssistedStatusResponse>("/analysis/model-status");
 }
 
 export async function analyzeResume(request: ResumeAnalysisRequest): Promise<ResumeAnalysisResponse> {
