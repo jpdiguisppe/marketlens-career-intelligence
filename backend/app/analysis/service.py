@@ -354,7 +354,7 @@ def _build_gap_groups(assessments: list[RequirementAssessment]) -> list[GapGroup
                 skills=matched_skills[:8],
                 summary=(
                     f"This posting asks for {', '.join(matched_skills[:4])}. "
-                    "The resume does not yet show direct, job-ready evidence for this group."
+                    "MarketLens found this as a resume-proof gap: add direct project, coursework, or work bullets only where accurate."
                 ),
             )
         )
@@ -371,7 +371,10 @@ def _build_gap_groups(assessments: list[RequirementAssessment]) -> list[GapGroup
                 category=_skill_category(skill) or "other",
                 priority="high" if assessment.weight >= 0.75 else "medium",
                 skills=[skill],
-                summary="This requirement appears in the posting, but the resume does not show direct evidence for it yet.",
+                summary=(
+                    "This requirement appears in the posting, but the resume does not show direct proof for it yet. "
+                    "That can mean either a real learning gap or simply an under-written resume."
+                ),
             )
         )
 
@@ -388,13 +391,13 @@ def _build_recommendations(
 
     for group in gap_groups[:2]:
         recommendations.append(
-            f"Focus first on {group.title}: {', '.join(group.skills[:4])}."
+            f"Focus first on {group.title}: {', '.join(group.skills[:4])}. Add proof bullets if you already have the experience; otherwise treat it as a learning target."
         )
 
     for assessment in assessments:
         if assessment.status == EvidenceStatus.MENTIONED and assessment.weight >= 0.5:
             recommendations.append(
-                f"Replace the bare {assessment.skill} mention with a project or experience bullet showing what you built, changed, or improved."
+                f"Replace the bare {assessment.skill} mention with a project or experience bullet showing what you built, changed, tested, or improved."
             )
         elif assessment.status == EvidenceStatus.IMPLIED and assessment.weight >= 0.5:
             recommendations.append(
@@ -431,6 +434,62 @@ def _add_action_once(actions: list[CoachingAction], action: CoachingAction) -> N
         actions.append(action)
 
 
+def _top_skills_by_status(
+    assessments: list[RequirementAssessment],
+    statuses: set[EvidenceStatus],
+    minimum_weight: float = 0.5,
+    limit: int = 4,
+) -> list[str]:
+    return [
+        assessment.skill
+        for assessment in sorted(
+            assessments,
+            key=lambda item: (-item.weight, item.skill.lower()),
+        )
+        if assessment.status in statuses and assessment.weight >= minimum_weight
+    ][:limit]
+
+
+def _resume_positioning_action(assessments: list[RequirementAssessment]) -> CoachingAction | None:
+    proven = _top_skills_by_status(
+        assessments,
+        {EvidenceStatus.DEMONSTRATED, EvidenceStatus.EXPLICIT},
+        minimum_weight=0.5,
+    )
+    weak = _top_skills_by_status(
+        assessments,
+        {EvidenceStatus.MENTIONED, EvidenceStatus.IMPLIED, EvidenceStatus.RELATED},
+        minimum_weight=0.5,
+    )
+    missing = _top_skills_by_status(
+        assessments,
+        {EvidenceStatus.MISSING},
+        minimum_weight=0.75,
+    )
+
+    if not (proven or weak or missing):
+        return None
+
+    advice_parts: list[str] = []
+    if proven:
+        advice_parts.append(f"Already proven: {', '.join(proven)}.")
+    if weak:
+        advice_parts.append(f"Under-written or weakly proven: {', '.join(weak)}.")
+    if missing:
+        advice_parts.append(f"Missing proof for this posting: {', '.join(missing)}.")
+    advice_parts.append(
+        "Treat the percentage as documented resume evidence, not your actual ability. The fastest improvement is adding concrete project bullets with tools, actions, and outcomes."
+    )
+
+    return CoachingAction(
+        action_type=CoachingActionType.RESUME_REWRITE,
+        priority="high" if missing or weak else "medium",
+        title="Turn background into resume proof",
+        category="resume_positioning",
+        advice=" ".join(advice_parts),
+    )
+
+
 def _gap_group_action(group: GapGroup) -> CoachingAction:
     return CoachingAction(
         action_type=CoachingActionType.LEARNING_FOCUS,
@@ -452,7 +511,8 @@ def _rewrite_action(assessment: RequirementAssessment) -> CoachingAction:
         job_evidence=assessment.job_evidence,
         advice=(
             f"The resume has some signal for {assessment.skill}, but it is under-explained. "
-            "Rewrite the bullet to name the skill directly and describe what was built, improved, deployed, or tested."
+            "Rewrite the bullet to name the skill directly and describe what was built, improved, deployed, or tested. "
+            "A strong bullet should look like: used [skill/tool] to build [thing] that achieved [result]."
         ),
     )
 
@@ -468,7 +528,23 @@ def _related_action(assessment: RequirementAssessment) -> CoachingAction:
         job_evidence=assessment.job_evidence,
         advice=(
             f"The resume has related {assessment.skill} evidence, but the job asks for a different use context. "
-            "Add wording only if you have direct experience in that context."
+            "Add wording only if you have direct experience in that context; otherwise leave it as a learning gap instead of stretching the truth."
+        ),
+    )
+
+
+def _missing_proof_action(assessment: RequirementAssessment) -> CoachingAction:
+    return CoachingAction(
+        action_type=CoachingActionType.RESUME_REWRITE,
+        priority="high",
+        title=f"Add proof for {assessment.skill} if accurate",
+        skill=assessment.skill,
+        category=_skill_category(assessment.skill),
+        job_evidence=assessment.job_evidence,
+        advice=(
+            f"The posting asks for {assessment.skill}, but the current resume does not document it. "
+            "If you already used it in a class, project, internship, or personal build, add a concrete bullet. "
+            "If not, treat it as a real skill gap before applying."
         ),
     )
 
@@ -494,14 +570,20 @@ def _build_coaching_actions(
 ) -> list[CoachingAction]:
     actions: list[CoachingAction] = []
 
-    for group in gap_groups[:3]:
+    positioning_action = _resume_positioning_action(assessments)
+    if positioning_action:
+        _add_action_once(actions, positioning_action)
+
+    for group in gap_groups[:2]:
         _add_action_once(actions, _gap_group_action(group))
 
-    for assessment in assessments:
+    for assessment in sorted(assessments, key=lambda item: (-item.weight, item.skill.lower())):
         if assessment.status in {EvidenceStatus.MENTIONED, EvidenceStatus.IMPLIED} and assessment.weight >= 0.5:
             _add_action_once(actions, _rewrite_action(assessment))
         elif assessment.status == EvidenceStatus.RELATED and assessment.weight >= 0.5:
             _add_action_once(actions, _related_action(assessment))
+        elif assessment.status == EvidenceStatus.MISSING and assessment.weight >= 0.75:
+            _add_action_once(actions, _missing_proof_action(assessment))
 
     for requirement in hard_requirements_unclear:
         _add_action_once(actions, _hard_requirement_action(requirement))
@@ -511,34 +593,52 @@ def _build_coaching_actions(
 
 def _build_report_summary(
     fit_band: FitBand,
+    fit_score: int,
     gap_groups: list[GapGroup],
     job_relevant_resume_skills: list[str],
     other_resume_skills: list[str],
+    strong_matches: list[str],
+    under_sold_experience: list[str],
+    important_gaps: list[str],
     hard_requirements_unclear: list[str],
 ) -> list[str]:
     summary: list[str] = []
 
     if fit_band == FitBand.LIMITED_ALIGNMENT:
         summary.append(
-            "Weak fit for this exact posting based on direct resume evidence. This is not a judgment of overall ability."
+            f"Resume-proof score: {fit_score}%. MarketLens found limited documented evidence for this exact posting, not limited overall ability."
         )
     elif fit_band == FitBand.PARTIAL_ALIGNMENT:
         summary.append(
-            "Partial fit: the resume shows some useful signal, but the posting asks for several skills that are not directly demonstrated."
+            f"Resume-proof score: {fit_score}%. The resume shows useful signal, but several important requirements are weakly proven or absent."
         )
     elif fit_band == FitBand.CREDIBLE_ALIGNMENT:
         summary.append(
-            "Credible fit: the resume covers several important requirements, with a few areas to clarify or strengthen."
+            f"Resume-proof score: {fit_score}%. The resume covers several important requirements, with a few areas to clarify or strengthen."
         )
     else:
-        summary.append("Strong fit: the resume demonstrates most of the posting's high-priority requirements.")
+        summary.append(
+            f"Resume-proof score: {fit_score}%. The resume demonstrates most of the posting's high-priority requirements."
+        )
 
-    if gap_groups:
+    if strong_matches:
+        summary.append(
+            f"Already proven for this role: {', '.join(strong_matches[:4])}."
+        )
+    if under_sold_experience:
+        summary.append(
+            f"Under-sold experience: {', '.join(under_sold_experience[:4])}. These should become stronger bullets if accurate."
+        )
+    if important_gaps:
+        summary.append(
+            f"Missing proof for high-priority requirements: {', '.join(important_gaps[:4])}."
+        )
+    elif gap_groups:
         top_group = gap_groups[0]
         summary.append(
-            f"Main gap group: {top_group.title} ({', '.join(top_group.skills[:4])})."
+            f"Main proof gap group: {top_group.title} ({', '.join(top_group.skills[:4])})."
         )
-    if job_relevant_resume_skills:
+    if job_relevant_resume_skills and not strong_matches:
         summary.append(
             f"Relevant resume signal found: {', '.join(job_relevant_resume_skills[:4])}."
         )
@@ -684,14 +784,19 @@ def analyze_smart_fit(
     )
     report_summary = _build_report_summary(
         fit_summary.band,
+        fit_summary.score,
         gap_groups,
         job_relevant_resume_skills,
         other_resume_skills,
+        strong_matches,
+        under_sold_experience,
+        important_gaps,
         unclear_hard_requirements,
     )
 
     limitations = [
-        "Requirement Coverage measures documented resume evidence against this posting; it is not a hiring probability or ATS score.",
+        "Requirement Coverage measures documented resume evidence against this posting; it is not a hiring probability, ATS score, or measure of actual ability.",
+        "A low score can mean the resume undersells relevant work, not that the candidate lacks the ability to learn or perform the role.",
         "Related matches mean the resume shows adjacent evidence, not a clean match for the exact job context.",
         "Implied matches are intentionally conservative and should be rewritten as direct evidence when accurate.",
         "Model-assisted extraction is optional, backend-gated, schema-validated, and falls back to deterministic rules when unavailable.",
