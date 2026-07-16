@@ -299,6 +299,51 @@ def test_custom_analysis_returns_error_when_no_target_skills_are_found() -> None
     assert response.json()["detail"] == "No recognizable target skills found in the provided job descriptions."
 
 
+def test_smart_fit_batch_endpoint_ranks_jobs_independently_without_saving() -> None:
+    response = client.post(
+        "/analysis/smart/batch",
+        json={
+            "resume_text": "PROJECTS\nBuilt Python FastAPI services with Docker, SQL, Git, and REST APIs.",
+            "job_descriptions": [
+                {
+                    "title": "Cloud Stretch Role",
+                    "job_description": "Required Qualifications\nBuild AWS Kubernetes systems with CI/CD and Terraform.",
+                },
+                {
+                    "title": "Backend Match Role",
+                    "job_description": "Required Qualifications\nBuild Python REST APIs with SQL, Docker, Git, and FastAPI.",
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["analyzed_count"] == 2
+    assert [result["rank"] for result in body["results"]] == [1, 2]
+    assert body["best_job"]["title"] == "Backend Match Role"
+    assert body["results"][0]["analysis"]["fit_summary"]["score"] >= body["results"][1]["analysis"]["fit_summary"]["score"]
+
+    saved_postings_response = client.get("/job-postings")
+    assert saved_postings_response.status_code == 200
+    assert saved_postings_response.json() == []
+
+
+def test_smart_fit_batch_endpoint_identifies_bad_job_input() -> None:
+    response = client.post(
+        "/analysis/smart/batch",
+        json={
+            "resume_text": "Python and SQL project work.",
+            "job_descriptions": [
+                {"title": "Bad Input", "job_description": "Friendly team culture only."},
+            ],
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"].startswith("Job 1:")
+
+
 def test_model_assisted_status_reports_disabled_without_secrets(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("AI_ANALYSIS_ENABLED", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
