@@ -6,6 +6,7 @@ import {
   analyzeSmartFit,
   extractResumeFileText,
   getJobPostings,
+  getModelAssistedStatus,
   getTopSkills,
   getTopSkillsByCompany,
   getTopSkillsByRole,
@@ -13,6 +14,7 @@ import {
 import type {
   GroupedSkillCounts,
   JobPosting,
+  ModelAssistedStatusResponse,
   ResumeAnalysisResponse,
   SkillCounts,
   SmartFitAnalysisResponse,
@@ -26,6 +28,13 @@ type DashboardData = {
 };
 
 type SkillEntry = [string, number];
+
+type RankedSmartFitResult = {
+  rank: number;
+  jobIndex: number;
+  title: string;
+  analysis: SmartFitAnalysisResponse;
+};
 
 const emptyDashboardData: DashboardData = {
   jobs: [],
@@ -58,6 +67,36 @@ function splitPastedJobDescriptions(text: string): string[] {
     .split(/\n\s*-{3,}\s*\n/g)
     .map((description) => description.trim())
     .filter(Boolean);
+}
+
+function inferJobTitle(description: string, index: number): string {
+  const ignoredHeadings = /^(responsibilities|requirements|required qualifications|preferred qualifications|qualifications|about the role|what you'll do|what we're looking for)$/i;
+  const firstUsefulLine = description
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => line.length > 0 && !ignoredHeadings.test(line));
+
+  if (!firstUsefulLine) {
+    return `Job ${index + 1}`;
+  }
+
+  return firstUsefulLine.length > 90 ? `${firstUsefulLine.slice(0, 87)}...` : firstUsefulLine;
+}
+
+function rankSmartFitResults(results: Omit<RankedSmartFitResult, "rank">[]): RankedSmartFitResult[] {
+  return [...results]
+    .sort((a, b) => {
+      const scoreDifference = b.analysis.fit_summary.score - a.analysis.fit_summary.score;
+      if (scoreDifference !== 0) {
+        return scoreDifference;
+      }
+
+      return b.analysis.fit_summary.confidence - a.analysis.fit_summary.confidence;
+    })
+    .map((result, index) => ({
+      ...result,
+      rank: index + 1,
+    }));
 }
 
 function formatLabel(value: string): string {
@@ -391,15 +430,93 @@ function SmartFitResults({
   );
 }
 
+function SmartFitComparisonResults({ rankedJobs }: { rankedJobs: RankedSmartFitResult[] }) {
+  const bestJob = rankedJobs[0];
+
+  if (!bestJob) {
+    return null;
+  }
+
+  const comparisonText =
+    rankedJobs.length === 1
+      ? "Nothing was saved to the shared database."
+      : `Best ranked job: ${bestJob.title}. ${rankedJobs.length} jobs were analyzed separately. Nothing was saved to the shared database.`;
+
+  return (
+    <>
+      {rankedJobs.length > 1 && (
+        <section className="report-card">
+          <div className="gap-group-header">
+            <h3>Job fit ranking</h3>
+            <span className="status-badge status-demonstrated">{rankedJobs.length} jobs analyzed</span>
+          </div>
+          <div className="action-list">
+            {rankedJobs.map((job) => (
+              <article className="action-row" key={`${job.jobIndex}-${job.title}`}>
+                <span className={`priority-badge ${job.rank === 1 ? "priority-high" : "priority-medium"}`}>
+                  #{job.rank}
+                </span>
+                <div>
+                  <h4>{job.title}</h4>
+                  <p>
+                    {job.analysis.fit_summary.score}% · {formatLabel(job.analysis.fit_summary.band)} · {job.analysis.fit_summary.headline}
+                  </p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <SmartFitResults analysis={bestJob.analysis} comparisonText={comparisonText} />
+    </>
+  );
+}
+
 function CustomAnalysisPanel() {
   const [resumeText, setResumeText] = useState("");
   const [jobDescriptionsText, setJobDescriptionsText] = useState("");
   const [useModelAssisted, setUseModelAssisted] = useState(false);
+  const [modelAssistedStatus, setModelAssistedStatus] = useState<ModelAssistedStatusResponse | null>(null);
+  const [modelStatusError, setModelStatusError] = useState<string | null>(null);
   const [resumeUploadMessage, setResumeUploadMessage] = useState<string | null>(null);
-  const [analysis, setAnalysis] = useState<SmartFitAnalysisResponse | null>(null);
+  const [rankedAnalyses, setRankedAnalyses] = useState<RankedSmartFitResult[]>([]);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isUploadingResume, setIsUploadingResume] = useState(false);
+
+  const parsedJobCount = splitPastedJobDescriptions(jobDescriptionsText).length;
+  const isModelAssistedAvailable = modelAssistedStatus?.enabled === true;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getModelAssistedStatus()
+      .then((status) => {
+        if (!isMounted) {
+          return;
+        }
+        setModelAssistedStatus(status);
+        setModelStatusError(null);
+        if (!status.enabled) {
+          setUseModelAssisted(false);
+        }
+      })
+      .catch((error) => {
+        if (!isMounted) {
+          return;
+        }
+        setModelAssistedStatus(null);
+        setUseModelAssisted(false);
+        setModelStatusError(
+          error instanceof Error ? error.message : "Could not check model-assisted status.",
+        );
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   async function handleResumeFileUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -445,16 +562,24 @@ function CustomAnalysisPanel() {
     try {
       setIsAnalyzing(true);
       setAnalysisError(null);
+      setRankedAnalyses([]);
 
-      const result = await analyzeSmartFit({
-        resume_text: resumeText,
-        job_description: jobDescriptions.join("\n\n---\n\n"),
-        use_model_assisted: useModelAssisted,
-      });
+      const useConfiguredModelAssisted = useModelAssisted && isModelAssistedAvailable;
+      const analyses = await Promise.all(
+        jobDescriptions.map(async (description, index) => ({
+          jobIndex: index,
+          title: inferJobTitle(description, index),
+          analysis: await analyzeSmartFit({
+            resume_text: resumeText,
+            job_description: description,
+            use_model_assisted: useConfiguredModelAssisted,
+          }),
+        })),
+      );
 
-      setAnalysis(result);
+      setRankedAnalyses(rankSmartFitResults(analyses));
     } catch (error) {
-      setAnalysis(null);
+      setRankedAnalyses([]);
       setAnalysisError(
         error instanceof Error
           ? error.message
@@ -472,7 +597,7 @@ function CustomAnalysisPanel() {
           <p className="eyebrow inline-eyebrow">Start here</p>
           <h2>Analyze a Resume Against Real Job Descriptions</h2>
           <p className="panel-subtitle">
-            Paste or upload resume-style text and job description text to get a non-saved Smart Fit report.
+            Paste or upload resume-style text and one or more job descriptions to get non-saved Smart Fit reports.
             Text is sent to the backend for analysis, but it is not saved to the shared database.
           </p>
         </div>
@@ -511,7 +636,7 @@ function CustomAnalysisPanel() {
             <textarea
               id="custom-job-descriptions"
               className="resume-textarea"
-              placeholder="Paste a job description here. To compare multiple postings as one target profile, separate each one with a line containing ---"
+              placeholder="Paste one job description here. To compare multiple postings, separate each one with a line containing ---"
               value={jobDescriptionsText}
               onChange={(event) => setJobDescriptionsText(event.target.value)}
             />
@@ -522,22 +647,31 @@ function CustomAnalysisPanel() {
           <input
             id="model-assisted-toggle"
             type="checkbox"
-            checked={useModelAssisted}
-            onChange={(event) => setUseModelAssisted(event.target.checked)}
+            checked={useModelAssisted && isModelAssistedAvailable}
+            disabled={!isModelAssistedAvailable}
+            onChange={(event) => setUseModelAssisted(event.target.checked && isModelAssistedAvailable)}
           />
           <strong> Use model-assisted extraction</strong>
           <p>
-            This may send redacted resume and job text to the configured model provider.
-            MarketLens still does not save raw text to the shared database. Avoid sensitive personal information.
+            {isModelAssistedAvailable
+              ? "Model-assisted extraction is configured for this deployment. Redacted resume and job text may be sent to the configured model provider."
+              : "Model-assisted extraction is not configured for this deployment yet. Deterministic Smart Fit is still available."}
           </p>
+          {modelStatusError && <p className="helper-text">Model status check failed: {modelStatusError}</p>}
         </label>
 
         <div className="form-footer">
           <p className="helper-text">
-            Smart Fit checks evidence, requirement priority, grouped gaps, related-but-not-direct matches, and optional model-assisted extraction.
+            Smart Fit analyzes each separated job independently, ranks the roles, and keeps the detailed report for the best match visible.
           </p>
           <button className="refresh-button analyze-button" disabled={isAnalyzing || isUploadingResume} type="submit">
-            {isAnalyzing ? "Analyzing..." : useModelAssisted ? "Analyze with AI assist" : "Analyze fit"}
+            {isAnalyzing
+              ? "Analyzing..."
+              : parsedJobCount > 1
+                ? `Rank ${parsedJobCount} jobs`
+                : useModelAssisted && isModelAssistedAvailable
+                  ? "Analyze with AI assist"
+                  : "Analyze fit"}
           </button>
         </div>
       </form>
@@ -549,12 +683,7 @@ function CustomAnalysisPanel() {
         </div>
       )}
 
-      {analysis && (
-        <SmartFitResults
-          analysis={analysis}
-          comparisonText="Nothing was saved to the shared database."
-        />
-      )}
+      {rankedAnalyses.length > 0 && <SmartFitComparisonResults rankedJobs={rankedAnalyses} />}
     </section>
   );
 }
