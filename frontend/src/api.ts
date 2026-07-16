@@ -9,6 +9,8 @@ import type {
   SkillCounts,
   SmartFitAnalysisRequest,
   SmartFitAnalysisResponse,
+  SmartFitBatchAnalysisRequest,
+  SmartFitBatchAnalysisResponse,
 } from "./types";
 
 declare global {
@@ -134,4 +136,10 @@ export async function analyzeSmartFit(
   request: SmartFitAnalysisRequest,
 ): Promise<SmartFitAnalysisResponse> {
   return postJson<SmartFitAnalysisResponse, SmartFitAnalysisRequest>("/analysis/smart", request);
+}
+
+export async function analyzeSmartFitBatch(
+  request: SmartFitBatchAnalysisRequest,
+): Promise<SmartFitBatchAnalysisResponse> {
+  return postJson<SmartFitBatchAnalysisResponse, SmartFitBatchAnalysisRequest>("/analysis/smart/batch", request);
 }
