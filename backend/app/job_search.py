@@ -66,6 +66,7 @@ REMOTIVE_CACHE_SECONDS = 6 * 60 * 60
 JobLevel = Literal["any", "intern", "entry", "mid", "senior"]
 VALID_JOB_LEVELS: set[str] = {"any", "intern", "entry", "mid", "senior"}
 RoleFamily = Literal[
+    "technology",
     "software",
     "finance",
     "data",
@@ -249,6 +250,7 @@ FINANCE_TITLE_TERMS = {
     "rotational finance",
 }
 DATA_TITLE_TERMS = {
+    "analytics engineer",
     "data analyst",
     "data scientist",
     "data engineer",
@@ -315,7 +317,9 @@ DESIGN_TITLE_TERMS = {
     "visual designer",
     "graphic designer",
 }
+TECHNOLOGY_TITLE_TERMS = SOFTWARE_TITLE_TERMS | DATA_TITLE_TERMS | CYBERSECURITY_TITLE_TERMS
 ROLE_FAMILY_TITLE_TERMS: dict[RoleFamily, set[str]] = {
+    "technology": TECHNOLOGY_TITLE_TERMS,
     "software": SOFTWARE_TITLE_TERMS,
     "finance": FINANCE_TITLE_TERMS,
     "data": DATA_TITLE_TERMS,
@@ -327,9 +331,10 @@ ROLE_FAMILY_TITLE_TERMS: dict[RoleFamily, set[str]] = {
     "design": DESIGN_TITLE_TERMS,
 }
 ROLE_FAMILY_QUERY_TERMS: dict[RoleFamily, set[str]] = {
-    "software": {"swe", "software", "backend", "frontend", "front end", "back end", "full stack", "developer", "engineer", "programmer"},
+    "technology": {"computer science", "cs jobs", "tech jobs", "technology", "technical roles"},
+    "software": {"swe", "software", "software engineer", "software developer", "backend", "frontend", "front end", "back end", "full stack", "programmer"},
     "finance": {"finance", "financial", "accounting", "accountant", "audit", "tax", "fp&a", "fpa", "investment", "banking", "equity", "valuation", "treasury", "wealth", "portfolio", "credit"},
-    "data": {"data", "analytics", "business intelligence", "bi", "data analyst", "data scientist", "machine learning", "ml", "reporting"},
+    "data": {"data", "analytics", "analytics engineer", "business intelligence", "bi", "data analyst", "data scientist", "data engineer", "machine learning", "ml", "reporting"},
     "cybersecurity": {"cybersecurity", "cyber security", "security analyst", "soc", "infosec", "information security"},
     "product": {"product manager", "product management", "product analyst", "project manager", "program manager", "scrum"},
     "marketing": {"marketing", "growth", "seo", "social media", "brand", "communications"},
@@ -357,6 +362,7 @@ LEVEL_QUERY_TERMS = {
     "lead",
     "mid",
 }
+GENERIC_SOFTWARE_QUERY_TERMS = {"engineer", "engineering", "developer", "development"}
 INTERN_TERMS = {"intern", "internship", "co-op", "coop", "co op"}
 ENTRY_TITLE_TERMS = {
     "entry level",
@@ -528,6 +534,7 @@ def _query_terms(query: str) -> list[str]:
     normalized = query.lower().strip()
     expansions = {
         "swe": ["software", "engineer", "developer"],
+        "computer science": ["software", "data", "cybersecurity", "analytics"],
         "software engineering": ["software", "engineer"],
         "backend": ["backend"],
         "back end": ["backend"],
@@ -630,6 +637,11 @@ def _is_software_role_query(query: str) -> bool:
     return _query_role_family(query) == "software"
 
 
+def _is_strict_software_query(query: str) -> bool:
+    normalized = query.lower().strip()
+    return _contains_phrase(normalized, "swe") or _contains_phrase(normalized, "software engineer") or _contains_phrase(normalized, "software engineering")
+
+
 def _title_matches_role_family(title: str, family: RoleFamily) -> bool:
     normalized_title = title.lower()
     if family == "software" and any(term in normalized_title for term in NON_SOFTWARE_TITLE_TERMS):
@@ -648,6 +660,8 @@ def _looks_like_software_role(title: str) -> bool:
 def _title_contains_core_query_term(title: str, query: str) -> bool:
     title_lower = title.lower()
     core_terms = _core_query_terms(query)
+    if _is_strict_software_query(query):
+        core_terms = core_terms - GENERIC_SOFTWARE_QUERY_TERMS
     return any(_contains_phrase(title_lower, term) for term in core_terms if len(term) > 2)
 
 
@@ -656,7 +670,16 @@ def _matches_requested_role(title: str, description: str, query: str, level: Job
     if family is None:
         return True
 
-    if _title_matches_role_family(title, family) or _title_contains_core_query_term(title, query):
+    if _title_matches_role_family(title, family):
+        return True
+
+    # SWE/software-engineer searches should feel narrow. Do not let generic
+    # terms like "engineer" or "developer" admit Analytics Engineer, Sales
+    # Engineer, Solutions Engineer, etc. Broader queries such as "computer
+    # science jobs" intentionally use the technology family instead.
+    if family != "software" and _title_contains_core_query_term(title, query):
+        return True
+    if family == "software" and not _is_strict_software_query(query) and _title_contains_core_query_term(title, query):
         return True
 
     title_lower = title.lower()
@@ -791,16 +814,12 @@ def _requested_location_terms(requested_location: str) -> set[str]:
     terms.update(LOCATION_ALIASES.get(requested, set()))
     terms.update(LOCATION_ALIASES.get(normalized_no_punctuation, set()))
 
-    # For comma-separated city/state input, keep the full phrase and apply aliases
-    # to the city portion only. Do not add every word from multi-word locations;
-    # otherwise "New York" accidentally matches any location containing "new".
     city_part = requested.split(",", maxsplit=1)[0].strip()
     normalized_city_part = _normalize_location_text(city_part)
     if normalized_city_part != normalized_no_punctuation:
         terms.add(normalized_city_part)
         terms.update(LOCATION_ALIASES.get(normalized_city_part, set()))
 
-    # Single-token requests like PA, NYC, Remote, or Boston are safe as-is.
     if " " not in normalized_no_punctuation:
         terms.add(normalized_no_punctuation)
 
@@ -915,7 +934,6 @@ def _provider_company_name(provider_token: str) -> str:
         "mongodb": "MongoDB",
         "notion": "Notion",
         "okta": "Okta",
-        "openai": "OpenAI",
         "pinterest": "Pinterest",
         "plaid": "Plaid",
         "postman": "Postman",
@@ -1161,7 +1179,7 @@ def _remoteok_jobs(client: httpx.Client, query: str) -> list[dict[str, Any]]:
         return cached_jobs
 
     params: dict[str, str] = {}
-    if family == "software":
+    if family in {"software", "technology"}:
         params["tag"] = "dev"
 
     response = client.get(
@@ -1220,7 +1238,9 @@ def _remotive_search_terms(query: str, level: JobLevel) -> list[str | None]:
     if normalized:
         terms.append(normalized)
 
-    if family == "software":
+    if family == "technology":
+        terms.extend(["software", "data", "analytics", "cybersecurity", "developer"])
+    elif family == "software":
         if "backend" in normalized:
             terms.extend(["backend", "backend developer"])
         elif "frontend" in normalized or "front end" in normalized:
@@ -1252,7 +1272,7 @@ def _remotive_search_terms(query: str, level: JobLevel) -> list[str | None]:
     elif level == "entry":
         terms.extend(["junior", "entry level"])
 
-    if family in {"software", "finance"}:
+    if family in {"software", "finance", "technology"}:
         terms.append(None)
 
     seen: set[str | None] = set()
@@ -1407,6 +1427,10 @@ def _external_search_links(query: str, location: str | None, level: JobLevel) ->
 
 def _search_suggestions(query: str, location: str | None, level: JobLevel, role_family: RoleFamily | None) -> list[str]:
     suggestions: list[str] = []
+    if role_family == "software" and _is_strict_software_query(query):
+        suggestions.append("SWE/software engineer searches stay narrow; use 'computer science jobs' for broader technical roles like analytics engineer, data engineer, or security analyst.")
+    if role_family == "technology":
+        suggestions.append("Computer science searches are intentionally broader than SWE and may include software, data, analytics, and cybersecurity roles.")
     if role_family == "finance" and level == "intern":
         suggestions.extend([
             "Finance and accounting internships are often posted on Handshake, Workday-backed company career sites, LinkedIn, and Indeed rather than free remote-job APIs.",
@@ -1416,7 +1440,7 @@ def _search_suggestions(query: str, location: str | None, level: JobLevel, role_
     elif role_family and level == "intern":
         suggestions.append("Internship coverage depends heavily on current postings in the configured public sources; use the fallback links when results are thin.")
     elif role_family is None:
-        suggestions.append("Use a role-family phrase like finance internship, data analyst internship, marketing intern, or software engineer to improve filtering.")
+        suggestions.append("Use a role-family phrase like finance internship, data analyst internship, marketing intern, computer science jobs, or software engineer to improve filtering.")
 
     if location and location.lower().strip() not in {"remote", "pa", "pennsylvania"}:
         suggestions.append("City searches stay city-specific but include U.S.-remote roles; use a state/region for broader local coverage.")
@@ -1498,8 +1522,7 @@ def search_external_jobs(
     if not ranked_results:
         warnings.extend(_warnings_for_no_results(cleaned_query, cleaned_location, resolved_level, role_family))
 
-    remote_outcomes = [outcome for outcome in outcomes if outcome.provider in {"remoteok", "remotive"}]
-    if remote_outcomes and all(outcome.status == "failed" for outcome in remote_outcomes) and not ranked_results:
+    if all(outcome.status == "failed" for outcome in outcomes if outcome.provider in {"remoteok", "remotive"}) and not ranked_results:
         warnings.append("Remote public job feeds failed to respond. Try again later or use manual pasted-job comparison.")
 
     return JobSearchResults(
