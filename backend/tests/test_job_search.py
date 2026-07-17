@@ -1,6 +1,7 @@
 from app.job_search import (
     _matches_location,
     _normalize_greenhouse_job,
+    _normalize_lever_job,
     _score_job,
     clean_job_description,
 )
@@ -59,6 +60,32 @@ def test_greenhouse_normalization_returns_plain_text_from_escaped_html() -> None
 
     assert job is not None
     assert job.description == "Build Python services."
+    assert "<" not in job.description
+
+
+def test_lever_normalization_returns_plain_text_description() -> None:
+    job = _normalize_lever_job(
+        "exampleco",
+        {
+            "id": "abc-123",
+            "text": "Software Engineer Intern",
+            "hostedUrl": "https://jobs.lever.co/exampleco/abc-123",
+            "categories": {"location": "Remote, USA", "commitment": "Intern"},
+            "description": "<p>Build <strong>Python</strong> services.</p>",
+            "lists": [
+                {"text": "Qualifications", "content": "<ul><li>0-1 years of experience.</li></ul>"},
+            ],
+            "additional": "<p>Apply with your resume.</p>",
+            "createdAt": 1780000000000,
+        },
+    )
+
+    assert job is not None
+    assert job.source == "lever"
+    assert job.title == "Software Engineer Intern"
+    assert job.location == "Remote, USA"
+    assert "Build Python services." in job.description
+    assert "Qualifications" in job.description
     assert "<" not in job.description
 
 
