@@ -58,7 +58,7 @@ Public visitors can:
 - view top skills, company breakdowns, and role-category breakdowns
 - upload `.txt`, `.md`, `.pdf`, or `.docx` resumes for text extraction
 - paste resume text manually
-- search configured public Greenhouse and Lever job sources
+- search configured public Greenhouse, Lever, and Remote OK job sources
 - filter searched jobs by experience level
 - optionally filter searched jobs by location
 - select searched jobs and compare them through Smart Fit
@@ -84,7 +84,7 @@ The FastAPI backend currently supports:
 - `GET /health` — health check
 - `GET /job-postings` — list saved demo postings
 - `GET /job-postings/{posting_id}` — retrieve one saved posting
-- `GET /jobs/search` — search configured public Greenhouse and Lever job sources, normalize results, and support level/location filters
+- `GET /jobs/search` — search configured public Greenhouse, Lever, and Remote OK job sources, normalize results, and support level/location filters
 - `POST /skills/extract` — extract skills from pasted text
 - `GET /skills/top` — view overall skill frequency
 - `GET /skills/top-by-company` — compare skill frequency by company
@@ -101,12 +101,13 @@ The FastAPI backend currently supports:
 
 ## Online Job Search Sources
 
-MarketLens currently uses public, company-hosted ATS APIs instead of scraping closed job boards.
+MarketLens uses public job APIs instead of scraping closed job boards.
 
 Configured source types:
 
 - **Greenhouse Job Board API**
 - **Lever Postings API**
+- **Remote OK public JSON feed**
 
 Default Greenhouse board tokens currently include:
 
@@ -123,13 +124,16 @@ zapier, affirm, robinhood, rippling, webflow, notion, loom, intercom, mixpanel,
 fivetran, algolia, addepar
 ```
 
+Remote OK is enabled by default as a broader remote-job source. MarketLens keeps the provider source on each job card and links users back to the original posting URL.
+
 Search behavior:
 
 - `level=any` keeps the search general-purpose and can return senior, mid-level, entry-level, or internship roles.
 - `level=intern` only returns internship/co-op-looking roles.
 - `level=entry`, `level=mid`, and `level=senior` filter by experience signal.
 - Query text can infer level intent, such as `SWE Intern`, `entry level SWE`, or `senior SWE`.
-- U.S. city searches also allow U.S.-remote jobs as a fallback, because many companies label software jobs as `Remote-US` instead of listing every eligible city.
+- `Philadelphia` means Philadelphia/Philly plus remote fallback; it does not include Pittsburgh.
+- `PA` or `Pennsylvania` can include Philadelphia, Pittsburgh, PA-wide, and remote roles.
 - Manual pasted-job analysis remains available for postings outside the configured sources.
 
 Source coverage is configurable through backend environment variables:
@@ -137,6 +141,7 @@ Source coverage is configurable through backend environment variables:
 ```text
 JOB_SEARCH_GREENHOUSE_BOARDS=datadog,airbnb,figma
 JOB_SEARCH_LEVER_SITES=github,postman,benchling
+JOB_SEARCH_REMOTEOK_ENABLED=true
 ```
 
 ## Frontend Features
@@ -394,6 +399,7 @@ Optional backend job-search variables:
 ```text
 JOB_SEARCH_GREENHOUSE_BOARDS=<comma-separated Greenhouse board tokens>
 JOB_SEARCH_LEVER_SITES=<comma-separated Lever site tokens>
+JOB_SEARCH_REMOTEOK_ENABLED=true
 ```
 
 Important frontend variable:
@@ -467,6 +473,7 @@ Status: active / finishing.
 - backend provider interface for public job sources
 - Greenhouse provider
 - Lever provider
+- Remote OK remote-job provider
 - frontend search fields for role, location, and level
 - normalized job results
 - searched-job selection
