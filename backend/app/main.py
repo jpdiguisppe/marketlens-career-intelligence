@@ -4,7 +4,7 @@ import os
 import secrets
 import time
 from collections import defaultdict
-from typing import Annotated, Optional
+from typing import Annotated, Literal, Optional
 
 from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -42,6 +42,8 @@ RATE_LIMIT_MAX_REQUESTS = 30
 REQUIRED_CSV_COLUMNS = {"company", "title", "description"}
 OPTIONAL_CSV_COLUMNS = {"location", "role_category", "experience_level"}
 SUPPORTED_CSV_COLUMNS = REQUIRED_CSV_COLUMNS | OPTIONAL_CSV_COLUMNS
+
+JobSearchLevel = Literal["any", "intern", "entry", "mid", "senior"]
 
 CustomJobDescription = Annotated[
     str,
@@ -248,6 +250,7 @@ class ExternalJobPostingResponse(BaseModel):
 class ExternalJobSearchResponse(BaseModel):
     query: str
     location: str | None
+    level: JobSearchLevel
     providers_searched: list[str]
     result_count: int
     results: list[ExternalJobPostingResponse]
@@ -537,13 +540,15 @@ def get_model_assisted_status() -> ModelAssistedStatusResponse:
 def search_external_job_postings(
     query: Annotated[str, Query(min_length=1, max_length=100)],
     location: Annotated[str | None, Query(max_length=120)] = None,
+    level: Annotated[JobSearchLevel | None, Query(description="Optional experience level filter: any, intern, entry, mid, or senior.")] = None,
     limit: Annotated[int, Query(ge=1, le=50)] = 15,
 ) -> ExternalJobSearchResponse:
-    search_results = search_external_jobs(query=query, location=location, limit=limit)
+    search_results = search_external_jobs(query=query, location=location, level=level, limit=limit)
     results = [_to_external_job_response(job) for job in search_results.results]
     return ExternalJobSearchResponse(
         query=search_results.query,
         location=search_results.location,
+        level=search_results.level,
         providers_searched=search_results.providers_searched,
         result_count=len(results),
         results=results,
