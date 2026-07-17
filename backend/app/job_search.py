@@ -120,6 +120,7 @@ US_LOCATION_TERMS = {
     "united states",
     "u.s.",
     "usa",
+    "us",
     "us remote",
     "remote us",
     "remote - us",
@@ -154,16 +155,18 @@ LOCATION_ALIASES: dict[str, set[str]] = {
     "new york": {"new york", "nyc", "new york city", "ny"},
     "new york city": {"new york", "nyc", "new york city", "ny"},
     "nyc": {"new york", "nyc", "new york city", "ny"},
+    "ny": {"new york", "nyc", "new york city", "ny"},
     "washington dc": {"washington", "washington dc", "washington, dc", "dc", "d.c."},
     "washington, dc": {"washington", "washington dc", "washington, dc", "dc", "d.c."},
     "dc": {"washington", "washington dc", "washington, dc", "dc", "d.c."},
-    "san francisco": {"san francisco", "sf", "bay area", "california", "ca"},
-    "bay area": {"san francisco", "sf", "bay area", "california", "ca"},
-    "seattle": {"seattle", "washington", "wa"},
-    "boston": {"boston", "massachusetts", "ma"},
-    "chicago": {"chicago", "illinois", "il"},
-    "austin": {"austin", "texas", "tx"},
-    "denver": {"denver", "colorado", "co"},
+    "san francisco": {"san francisco", "sf"},
+    "sf": {"san francisco", "sf"},
+    "bay area": {"san francisco", "sf", "bay area", "palo alto", "san jose", "santa clara"},
+    "seattle": {"seattle"},
+    "boston": {"boston"},
+    "chicago": {"chicago"},
+    "austin": {"austin"},
+    "denver": {"denver"},
 }
 
 NON_SOFTWARE_TITLE_TERMS = {
@@ -237,6 +240,7 @@ FINANCE_TITLE_TERMS = {
     "credit analyst",
     "financial analyst",
     "finance analyst",
+    "business analyst",
     "quantitative analyst",
     "portfolio analyst",
     "corporate finance",
@@ -467,11 +471,6 @@ class _ProviderOutcome:
         return len(self.scored_jobs)
 
 
-# -----------------------------------------------------------------------------
-# Configuration
-# -----------------------------------------------------------------------------
-
-
 def _configured_greenhouse_boards() -> list[str]:
     raw_boards = os.getenv("JOB_SEARCH_GREENHOUSE_BOARDS")
     if raw_boards:
@@ -494,11 +493,6 @@ def _remoteok_enabled() -> bool:
 
 def _remotive_enabled() -> bool:
     return os.getenv("JOB_SEARCH_REMOTIVE_ENABLED", "true").strip().lower() not in {"0", "false", "no", "off"}
-
-
-# -----------------------------------------------------------------------------
-# Text/query helpers
-# -----------------------------------------------------------------------------
 
 
 def clean_job_description(value: str | None) -> str:
@@ -568,17 +562,23 @@ def _contains_phrase(value: str, phrase: str) -> bool:
     if not cleaned_phrase:
         return False
 
-    escaped_words = [re.escape(part) for part in re.split(r"[\s,.-]+", cleaned_phrase) if part]
+    escaped_words = [re.escape(part) for part in re.split(r"[\s,./()\-]+", cleaned_phrase) if part]
     if not escaped_words:
         return False
 
-    separator = r"[\s,.-]+"
+    separator = r"[\s,./()\-]+"
     pattern = r"(?<![a-z0-9])" + separator.join(escaped_words) + r"(?![a-z0-9])"
     return bool(re.search(pattern, value.lower()))
 
 
 def _contains_any(value: str, terms: set[str]) -> bool:
     return any(_contains_phrase(value, term) for term in terms)
+
+
+def _normalize_location_text(value: str) -> str:
+    value = value.lower().strip()
+    value = re.sub(r"\s+", " ", value)
+    return value.replace(",", "")
 
 
 def _normalize_level(level: str | None) -> JobLevel | None:
@@ -659,9 +659,6 @@ def _matches_requested_role(title: str, description: str, query: str, level: Job
     if _title_matches_role_family(title, family) or _title_contains_core_query_term(title, query):
         return True
 
-    # Some early-career postings use generic titles like "Summer Analyst" or
-    # "2026 Internship Program" and put the track in the body. Let those through
-    # only when the body strongly matches the requested family.
     title_lower = title.lower()
     description_lower = description.lower()
     is_generic_early_career_title = _contains_any(
@@ -749,7 +746,6 @@ def _matches_level(title: str, description: str, level: JobLevel) -> bool:
 def _level_score_bonus(title: str, description: str, level: JobLevel) -> int:
     if level == "any" or not _matches_level(title, description, level):
         return 0
-
     title_lower = title.lower()
     if level == "intern" and _contains_any(title_lower, INTERN_TERMS):
         return 10
@@ -759,21 +755,14 @@ def _level_score_bonus(title: str, description: str, level: JobLevel) -> int:
         return 8
     if level == "senior" and _title_has_senior_signal(title):
         return 8
-
     return 4
-
-
-# -----------------------------------------------------------------------------
-# Location helpers
-# -----------------------------------------------------------------------------
 
 
 def _has_non_us_location(job_location: str | None) -> bool:
     if not job_location:
         return False
-
     normalized_location = job_location.lower()
-    return any(term in normalized_location for term in NON_US_LOCATION_TERMS)
+    return _contains_any(normalized_location, NON_US_LOCATION_TERMS)
 
 
 def _is_default_us_market_location(job_location: str | None) -> bool:
@@ -784,21 +773,37 @@ def _is_default_us_market_location(job_location: str | None) -> bool:
     if _has_non_us_location(job_location):
         return False
 
-    if "remote" in normalized_location or "worldwide" in normalized_location:
+    if "worldwide" in normalized_location:
         return True
 
-    return any(term in normalized_location for term in US_LOCATION_TERMS)
+    if "remote" in normalized_location:
+        return _contains_any(normalized_location, US_LOCATION_TERMS)
+
+    return _contains_any(normalized_location, US_LOCATION_TERMS)
 
 
 def _requested_location_terms(requested_location: str) -> set[str]:
     requested = requested_location.lower().strip()
     requested = re.sub(r"\s+", " ", requested)
-    normalized_no_punctuation = requested.replace(",", "")
-    words = [part for part in re.split(r"[\s,]+", requested) if len(part) > 2]
+    normalized_no_punctuation = _normalize_location_text(requested)
 
-    terms = {requested, normalized_no_punctuation, *words}
+    terms = {requested, normalized_no_punctuation}
     terms.update(LOCATION_ALIASES.get(requested, set()))
     terms.update(LOCATION_ALIASES.get(normalized_no_punctuation, set()))
+
+    # For comma-separated city/state input, keep the full phrase and apply aliases
+    # to the city portion only. Do not add every word from multi-word locations;
+    # otherwise "New York" accidentally matches any location containing "new".
+    city_part = requested.split(",", maxsplit=1)[0].strip()
+    normalized_city_part = _normalize_location_text(city_part)
+    if normalized_city_part != normalized_no_punctuation:
+        terms.add(normalized_city_part)
+        terms.update(LOCATION_ALIASES.get(normalized_city_part, set()))
+
+    # Single-token requests like PA, NYC, Remote, or Boston are safe as-is.
+    if " " not in normalized_no_punctuation:
+        terms.add(normalized_no_punctuation)
+
     return {term for term in terms if term}
 
 
@@ -853,11 +858,6 @@ def _location_score_bonus(job_location: str | None, requested_location: str | No
     return 0
 
 
-# -----------------------------------------------------------------------------
-# Scoring
-# -----------------------------------------------------------------------------
-
-
 def _score_job(title: str, description: str, query: str, level: str | None = None) -> int:
     resolved_level = resolve_job_level(query, level)
     if not _matches_requested_role(title, description, query, resolved_level):
@@ -887,11 +887,6 @@ def _score_job(title: str, description: str, query: str, level: str | None = Non
         score += 4
 
     return score
-
-
-# -----------------------------------------------------------------------------
-# Provider normalization
-# -----------------------------------------------------------------------------
 
 
 def _provider_company_name(provider_token: str) -> str:
@@ -1072,40 +1067,31 @@ def _normalize_remotive_job(raw_job: dict[str, Any]) -> ExternalJobResult | None
     )
 
 
-# -----------------------------------------------------------------------------
-# Provider search
-# -----------------------------------------------------------------------------
-
-
 def _search_greenhouse_boards(
     client: httpx.Client,
-    boards: list[str],
+    board_tokens: list[str],
     query: str,
     location: str | None,
     level: JobLevel,
 ) -> _ProviderOutcome:
-    fetched_count = 0
-    failed_count = 0
     scored_jobs: list[tuple[int, ExternalJobResult]] = []
+    fetched_count = 0
+    errors = 0
 
-    for board_token in boards:
+    for board_token in board_tokens:
         try:
-            response = client.get(
-                f"{GREENHOUSE_BASE_URL}/{board_token}/jobs",
-                params={"content": "true"},
-            )
+            response = client.get(f"{GREENHOUSE_BASE_URL}/{board_token}/jobs", params={"content": "true"})
             response.raise_for_status()
             payload = response.json()
         except (httpx.HTTPError, ValueError):
-            failed_count += 1
+            errors += 1
             continue
 
         raw_jobs = payload.get("jobs", []) if isinstance(payload, dict) else []
         if not isinstance(raw_jobs, list):
-            failed_count += 1
             continue
-
         fetched_count += len(raw_jobs)
+
         for raw_job in raw_jobs[:MAX_PROVIDER_RESULTS_PER_BOARD]:
             if not isinstance(raw_job, dict):
                 continue
@@ -1116,25 +1102,24 @@ def _search_greenhouse_boards(
             if score > 0:
                 scored_jobs.append((score + _location_score_bonus(job.location, location), job))
 
-    notes = [f"{len(boards)} company ATS boards configured."]
-    if failed_count:
-        notes.append(f"{failed_count} board{'s' if failed_count != 1 else ''} did not respond or had no public board.")
-    notes.append("Company ATS boards are useful but not exhaustive across all industries.")
+    notes = ["Configured company ATS boards; coverage depends on the selected company tokens."]
+    if errors:
+        notes.append(f"{errors} Greenhouse board request{'s' if errors != 1 else ''} failed or returned invalid data.")
     return _ProviderOutcome("greenhouse", "Greenhouse company boards", fetched_count, scored_jobs, notes=notes)
 
 
 def _search_lever_sites(
     client: httpx.Client,
-    sites: list[str],
+    site_names: list[str],
     query: str,
     location: str | None,
     level: JobLevel,
 ) -> _ProviderOutcome:
-    fetched_count = 0
-    failed_count = 0
     scored_jobs: list[tuple[int, ExternalJobResult]] = []
+    fetched_count = 0
+    errors = 0
 
-    for site_name in sites:
+    for site_name in site_names:
         try:
             response = client.get(
                 f"{LEVER_BASE_URL}/{site_name}",
@@ -1144,14 +1129,13 @@ def _search_lever_sites(
             response.raise_for_status()
             raw_jobs = response.json()
         except (httpx.HTTPError, ValueError):
-            failed_count += 1
+            errors += 1
             continue
 
         if not isinstance(raw_jobs, list):
-            failed_count += 1
             continue
-
         fetched_count += len(raw_jobs)
+
         for raw_job in raw_jobs[:MAX_PROVIDER_RESULTS_PER_BOARD]:
             if not isinstance(raw_job, dict):
                 continue
@@ -1162,10 +1146,9 @@ def _search_lever_sites(
             if score > 0:
                 scored_jobs.append((score + _location_score_bonus(job.location, location), job))
 
-    notes = [f"{len(sites)} company ATS sites configured."]
-    if failed_count:
-        notes.append(f"{failed_count} site{'s' if failed_count != 1 else ''} did not respond or had no public board.")
-    notes.append("Lever boards are company-specific, not a broad job aggregator.")
+    notes = ["Configured company ATS boards; coverage depends on the selected company tokens."]
+    if errors:
+        notes.append(f"{errors} Lever site request{'s' if errors != 1 else ''} failed or returned invalid data.")
     return _ProviderOutcome("lever", "Lever company boards", fetched_count, scored_jobs, notes=notes)
 
 
@@ -1269,7 +1252,6 @@ def _remotive_search_terms(query: str, level: JobLevel) -> list[str | None]:
     elif level == "entry":
         terms.extend(["junior", "entry level"])
 
-    # Also include a category-only pass for Remotive's category endpoints.
     if family in {"software", "finance"}:
         terms.append(None)
 
@@ -1290,7 +1272,6 @@ def _remotive_category_for_family(family: RoleFamily | None) -> str | None:
     if family == "software":
         return "software-dev"
     if family == "finance":
-        # Remotive currently exposes finance pages/categories separately from software-dev.
         return "finance"
     return None
 
@@ -1361,11 +1342,6 @@ def _search_remotive(client: httpx.Client, query: str, location: str | None, lev
             scored_jobs.append((score + _location_score_bonus(job.location, location), job))
 
     return _ProviderOutcome("remotive", "Remotive remote feed", len(raw_jobs), scored_jobs, notes=notes)
-
-
-# -----------------------------------------------------------------------------
-# Result metadata / user-facing transparency
-# -----------------------------------------------------------------------------
 
 
 def _coverage_from_outcome(outcome: _ProviderOutcome) -> SourceCoverageSummary:
@@ -1466,11 +1442,6 @@ def _warnings_for_no_results(query: str, location: str | None, level: JobLevel, 
     return [warning]
 
 
-# -----------------------------------------------------------------------------
-# Public search entry point
-# -----------------------------------------------------------------------------
-
-
 def search_external_jobs(
     query: str,
     location: str | None = None,
@@ -1527,7 +1498,8 @@ def search_external_jobs(
     if not ranked_results:
         warnings.extend(_warnings_for_no_results(cleaned_query, cleaned_location, resolved_level, role_family))
 
-    if all(outcome.status == "failed" for outcome in outcomes if outcome.provider in {"remoteok", "remotive"}) and not ranked_results:
+    remote_outcomes = [outcome for outcome in outcomes if outcome.provider in {"remoteok", "remotive"}]
+    if remote_outcomes and all(outcome.status == "failed" for outcome in remote_outcomes) and not ranked_results:
         warnings.append("Remote public job feeds failed to respond. Try again later or use manual pasted-job comparison.")
 
     return JobSearchResults(
