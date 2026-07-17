@@ -6,7 +6,7 @@ import time
 from collections import defaultdict
 from typing import Annotated, Optional
 
-from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy.orm import Session
@@ -19,6 +19,7 @@ from app.analysis import (
 )
 from app.analysis.model_extractor import is_model_assisted_configured
 from app.database import Base, engine, get_db
+from app.job_search import ExternalJobResult, search_external_jobs
 from app.models import JobPostingDB
 from app.resume_files import ResumeFileExtractionError, extract_resume_text_from_upload
 from app.skill_extractor import count_skills, extract_skills
@@ -199,12 +200,10 @@ class CustomAnalysisRequest(BaseModel):
         ...,
         min_length=1,
         max_length=MAX_CUSTOM_JOB_DESCRIPTIONS,
-        examples=[
-            [
-                "Backend role requiring Python, SQL, REST APIs, Docker, and Agile experience.",
-                "Cloud role requiring AWS, Linux, CI/CD, scripting, and automation.",
-            ]
-        ],
+        examples=[[
+            "Backend role requiring Python, SQL, REST APIs, Docker, and Agile experience.",
+            "Cloud role requiring AWS, Linux, CI/CD, scripting, and automation.",
+        ]],
         description="One or more pasted job descriptions to analyze without saving to the database.",
     )
 
@@ -232,6 +231,27 @@ class ModelAssistedStatusResponse(BaseModel):
     status: str
     required_backend_settings: list[str]
     safety_notes: list[str]
+
+
+class ExternalJobPostingResponse(BaseModel):
+    id: str
+    source: str
+    company: str
+    title: str
+    location: str | None
+    description: str
+    apply_url: str
+    updated_at: str | None
+    extracted_skills: list[str]
+
+
+class ExternalJobSearchResponse(BaseModel):
+    query: str
+    location: str | None
+    providers_searched: list[str]
+    result_count: int
+    results: list[ExternalJobPostingResponse]
+    warnings: list[str]
 
 
 class SmartFitBatchJobDescription(BaseModel):
@@ -335,6 +355,20 @@ def _rank_smart_fit_batch_results(results: list[SmartFitBatchResult]) -> list[Sm
 
 def _to_api_job_posting(posting: JobPostingDB) -> JobPosting:
     return JobPosting.model_validate(posting)
+
+
+def _to_external_job_response(job: ExternalJobResult) -> ExternalJobPostingResponse:
+    return ExternalJobPostingResponse(
+        id=job.id,
+        source=job.source,
+        company=job.company,
+        title=job.title,
+        location=job.location,
+        description=job.description,
+        apply_url=job.apply_url,
+        updated_at=job.updated_at,
+        extracted_skills=extract_skills(job.description),
+    )
 
 
 def _create_job_posting(db: Session, posting: JobPostingCreate) -> JobPosting:
@@ -493,6 +527,28 @@ def health_check() -> dict[str, str]:
 @app.get("/analysis/model-status", response_model=ModelAssistedStatusResponse)
 def get_model_assisted_status() -> ModelAssistedStatusResponse:
     return _model_assisted_status_response()
+
+
+@app.get(
+    "/jobs/search",
+    response_model=ExternalJobSearchResponse,
+    dependencies=[Depends(enforce_public_rate_limit)],
+)
+def search_external_job_postings(
+    query: Annotated[str, Query(min_length=1, max_length=100)],
+    location: Annotated[str | None, Query(max_length=120)] = None,
+    limit: Annotated[int, Query(ge=1, le=50)] = 15,
+) -> ExternalJobSearchResponse:
+    search_results = search_external_jobs(query=query, location=location, limit=limit)
+    results = [_to_external_job_response(job) for job in search_results.results]
+    return ExternalJobSearchResponse(
+        query=search_results.query,
+        location=search_results.location,
+        providers_searched=search_results.providers_searched,
+        result_count=len(results),
+        results=results,
+        warnings=search_results.warnings,
+    )
 
 
 @app.post(
