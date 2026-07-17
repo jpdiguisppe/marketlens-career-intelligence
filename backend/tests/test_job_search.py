@@ -3,6 +3,7 @@ from app.job_search import (
     _normalize_greenhouse_job,
     _normalize_lever_job,
     _normalize_remoteok_job,
+    _normalize_remotive_job,
     _score_job,
     clean_job_description,
     resolve_job_level,
@@ -120,6 +121,33 @@ def test_remoteok_normalization_returns_remote_plain_text_description() -> None:
     assert job.apply_url == "https://remoteok.com/remote-jobs/456"
 
 
+def test_remotive_normalization_returns_remote_plain_text_description() -> None:
+    job = _normalize_remotive_job(
+        {
+            "id": 789,
+            "title": "Junior Backend Developer",
+            "company_name": "Example Remotive Co",
+            "url": "https://remotive.com/remote-jobs/software-dev/junior-backend-developer-789",
+            "candidate_required_location": "USA Only",
+            "job_type": "full_time",
+            "category": "Software Development",
+            "salary": "$70k-$90k",
+            "description": "<p>Build <strong>Python</strong> APIs.</p>",
+            "publication_date": "2026-07-17T00:00:00Z",
+        }
+    )
+
+    assert job is not None
+    assert job.id == "remotive:789"
+    assert job.source == "remotive"
+    assert job.company == "Example Remotive Co"
+    assert job.title == "Junior Backend Developer"
+    assert job.location == "Remote (USA Only)"
+    assert "Build Python APIs." in job.description
+    assert "Software Development" in job.description
+    assert job.apply_url.startswith("https://remotive.com/")
+
+
 def test_swe_query_rejects_non_software_titles_even_when_description_mentions_software() -> None:
     assert _score_job(
         title="Business Development Representative",
@@ -131,6 +159,27 @@ def test_swe_query_rejects_non_software_titles_even_when_description_mentions_so
         title="Software Engineer I",
         description="Build product features with Python and Java.",
         query="SWE",
+    ) > 0
+
+
+def test_swe_query_accepts_developer_titles_from_non_greenhouse_sources() -> None:
+    assert _score_job(
+        title="Backend Developer",
+        description="Build APIs with Python and PostgreSQL.",
+        query="SWE",
+    ) > 0
+
+    assert _score_job(
+        title="Full Stack Developer",
+        description="Build React and Node applications.",
+        query="SWE",
+    ) > 0
+
+    assert _score_job(
+        title="Junior Backend Developer",
+        description="Build APIs with Python and SQL.",
+        query="SWE",
+        level="entry",
     ) > 0
 
 
@@ -312,6 +361,7 @@ def test_remote_filter_excludes_country_specific_non_us_remote_roles() -> None:
     assert _matches_location("Remote, Brazil", "Remote") is False
     assert _matches_location("Remote, United States", "Remote") is True
     assert _matches_location("Remote (Worldwide)", "Remote") is True
+    assert _matches_location("Remote (USA Only)", "Remote") is True
 
 
 def test_us_city_search_includes_exact_aliases_and_us_remote_roles() -> None:
@@ -319,6 +369,7 @@ def test_us_city_search_includes_exact_aliases_and_us_remote_roles() -> None:
     assert _matches_location("Remote, United States", "Philadelphia") is True
     assert _matches_location("Remote-US", "Philadelphia") is True
     assert _matches_location("Remote (Worldwide)", "Philadelphia") is True
+    assert _matches_location("Remote (USA Only)", "Philadelphia") is True
     assert _matches_location("Remote, Brazil", "Philadelphia") is False
     assert _matches_location("New York, NY", "Philadelphia") is False
     assert _matches_location("Pittsburgh, PA", "Philadelphia") is False
