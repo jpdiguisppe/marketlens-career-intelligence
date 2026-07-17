@@ -7,6 +7,8 @@ from typing import Any, Literal
 import httpx
 
 GREENHOUSE_BASE_URL = "https://boards-api.greenhouse.io/v1/boards"
+LEVER_BASE_URL = "https://api.lever.co/v0/postings"
+
 DEFAULT_GREENHOUSE_BOARDS = (
     "datadog",
     "airbnb",
@@ -17,8 +19,41 @@ DEFAULT_GREENHOUSE_BOARDS = (
     "hubspot",
     "cloudflare",
     "verkada",
+    "doordash",
+    "okta",
+    "mongodb",
+    "asana",
+    "plaid",
+    "brex",
+    "coinbase",
+    "ramp",
+    "gusto",
 )
-MAX_PROVIDER_RESULTS_PER_BOARD = 75
+DEFAULT_LEVER_SITES = (
+    "github",
+    "postman",
+    "benchling",
+    "box",
+    "coursera",
+    "lyft",
+    "pinterest",
+    "reddit",
+    "snap",
+    "twitch",
+    "zapier",
+    "affirm",
+    "robinhood",
+    "rippling",
+    "webflow",
+    "notion",
+    "loom",
+    "intercom",
+    "mixpanel",
+    "fivetran",
+    "algolia",
+    "addepar",
+)
+MAX_PROVIDER_RESULTS_PER_BOARD = 100
 
 JobLevel = Literal["any", "intern", "entry", "mid", "senior"]
 VALID_JOB_LEVELS: set[str] = {"any", "intern", "entry", "mid", "senior"}
@@ -90,6 +125,24 @@ US_LOCATION_TERMS = {
     "washington, dc",
     "washington, d.c.",
 }
+LOCATION_ALIASES: dict[str, set[str]] = {
+    "philadelphia": {"philadelphia", "philly", "pennsylvania", "pa"},
+    "philly": {"philadelphia", "philly", "pennsylvania", "pa"},
+    "pittsburgh": {"pittsburgh", "pennsylvania", "pa"},
+    "new york": {"new york", "nyc", "new york city", "ny"},
+    "new york city": {"new york", "nyc", "new york city", "ny"},
+    "nyc": {"new york", "nyc", "new york city", "ny"},
+    "washington dc": {"washington", "washington dc", "washington, dc", "dc", "d.c."},
+    "washington, dc": {"washington", "washington dc", "washington, dc", "dc", "d.c."},
+    "dc": {"washington", "washington dc", "washington, dc", "dc", "d.c."},
+    "san francisco": {"san francisco", "sf", "bay area", "california", "ca"},
+    "bay area": {"san francisco", "sf", "bay area", "california", "ca"},
+    "seattle": {"seattle", "washington", "wa"},
+    "boston": {"boston", "massachusetts", "ma"},
+    "chicago": {"chicago", "illinois", "il"},
+    "austin": {"austin", "texas", "tx"},
+    "denver": {"denver", "colorado", "co"},
+}
 NON_SOFTWARE_TITLE_TERMS = {
     "account executive",
     "business development",
@@ -113,6 +166,7 @@ SOFTWARE_TITLE_TERMS = {
     "ios engineer",
     "android engineer",
     "platform engineer",
+    "infrastructure engineer",
     "forward deployed software engineer",
 }
 INTERN_TERMS = {"intern", "internship", "co-op", "coop", "co op"}
@@ -179,12 +233,21 @@ def _configured_greenhouse_boards() -> list[str]:
     return list(DEFAULT_GREENHOUSE_BOARDS)
 
 
+def _configured_lever_sites() -> list[str]:
+    raw_sites = os.getenv("JOB_SEARCH_LEVER_SITES")
+    if raw_sites:
+        sites = [site.strip() for site in raw_sites.split(",") if site.strip()]
+        return sites or list(DEFAULT_LEVER_SITES)
+
+    return list(DEFAULT_LEVER_SITES)
+
+
 def clean_job_description(value: str | None) -> str:
     """Turn provider HTML into plain text that is safe to display and analyze."""
     if not value:
         return ""
 
-    # Some Greenhouse boards return actual HTML while others return escaped HTML.
+    # Some providers return actual HTML while others return escaped HTML.
     # Decode first, strip tags, then decode again for entities inside text nodes.
     decoded = unescape(value)
     no_scripts = re.sub(
@@ -246,7 +309,7 @@ def _contains_phrase(value: str, phrase: str) -> bool:
     if not escaped_words:
         return False
 
-    separator = r"[\s-]+"
+    separator = r"[\s,.-]+"
     pattern = r"(?<![a-z0-9])" + separator.join(escaped_words) + r"(?![a-z0-9])"
     return bool(re.search(pattern, value.lower()))
 
@@ -417,6 +480,32 @@ def _is_default_us_market_location(job_location: str | None) -> bool:
     return any(term in normalized_location for term in US_LOCATION_TERMS)
 
 
+def _requested_location_terms(requested_location: str) -> set[str]:
+    requested = requested_location.lower().strip()
+    requested = re.sub(r"\s+", " ", requested)
+    normalized_no_punctuation = requested.replace(",", "")
+
+    terms = {requested, normalized_no_punctuation}
+    terms.update(LOCATION_ALIASES.get(requested, set()))
+    terms.update(LOCATION_ALIASES.get(normalized_no_punctuation, set()))
+    return {term for term in terms if term}
+
+
+def _is_us_remote_location(job_location: str | None) -> bool:
+    if not job_location or _has_non_us_location(job_location):
+        return False
+
+    return "remote" in job_location.lower() and _is_default_us_market_location(job_location)
+
+
+def _is_us_city_or_state_request(requested_location: str) -> bool:
+    terms = _requested_location_terms(requested_location)
+    known_terms = set(US_LOCATION_TERMS)
+    known_terms.update(*LOCATION_ALIASES.values())
+    known_terms.update(LOCATION_ALIASES.keys())
+    return bool(terms & known_terms)
+
+
 def _matches_location(job_location: str | None, requested_location: str | None) -> bool:
     if not requested_location:
         return _is_default_us_market_location(job_location)
@@ -429,7 +518,28 @@ def _matches_location(job_location: str | None, requested_location: str | None) 
     if requested == "remote":
         return "remote" in location and not _has_non_us_location(job_location)
 
-    return requested in location
+    requested_terms = _requested_location_terms(requested_location)
+    if _contains_any(location, requested_terms):
+        return True
+
+    # When someone searches a U.S. city, U.S.-remote roles are still useful and
+    # avoid making city searches look empty when companies only label roles as Remote-US.
+    return _is_us_city_or_state_request(requested_location) and _is_us_remote_location(job_location)
+
+
+def _location_score_bonus(job_location: str | None, requested_location: str | None) -> int:
+    if not requested_location or not job_location:
+        return 0
+
+    requested = requested_location.lower().strip()
+    location = job_location.lower()
+    if requested == "remote" and "remote" in location:
+        return 6
+    if _contains_any(location, _requested_location_terms(requested_location)):
+        return 8
+    if _is_us_remote_location(job_location):
+        return 2
+    return 0
 
 
 def _score_job(title: str, description: str, query: str, level: str | None = None) -> int:
@@ -461,11 +571,43 @@ def _score_job(title: str, description: str, query: str, level: str | None = Non
     return score
 
 
-def _greenhouse_company_name(board_token: str) -> str:
+def _provider_company_name(provider_token: str) -> str:
     special_names = {
+        "addepar": "Addepar",
+        "algolia": "Algolia",
+        "asana": "Asana",
+        "box": "Box",
+        "brex": "Brex",
+        "cloudflare": "Cloudflare",
+        "coinbase": "Coinbase",
+        "coursera": "Coursera",
+        "datadog": "Datadog",
+        "doordash": "DoorDash",
+        "duolingo": "Duolingo",
+        "figma": "Figma",
+        "fivetran": "Fivetran",
+        "github": "GitHub",
+        "gusto": "Gusto",
+        "hubspot": "HubSpot",
+        "intercom": "Intercom",
+        "lyft": "Lyft",
+        "mongodb": "MongoDB",
+        "notion": "Notion",
+        "okta": "Okta",
+        "openai": "OpenAI",
+        "pinterest": "Pinterest",
+        "plaid": "Plaid",
+        "reddit": "Reddit",
+        "rippling": "Rippling",
+        "roblox": "Roblox",
         "scaleai": "Scale AI",
+        "snap": "Snap",
+        "twitch": "Twitch",
+        "verkada": "Verkada",
+        "webflow": "Webflow",
+        "zapier": "Zapier",
     }
-    return special_names.get(board_token, board_token.replace("-", " ").replace("_", " ").title())
+    return special_names.get(provider_token, provider_token.replace("-", " ").replace("_", " ").title())
 
 
 def _normalize_greenhouse_job(board_token: str, raw_job: dict[str, Any]) -> ExternalJobResult | None:
@@ -488,12 +630,69 @@ def _normalize_greenhouse_job(board_token: str, raw_job: dict[str, Any]) -> Exte
     return ExternalJobResult(
         id=f"greenhouse:{board_token}:{job_id}",
         source="greenhouse",
-        company=_greenhouse_company_name(board_token),
+        company=_provider_company_name(board_token),
         title=title,
         location=location,
         description=description[:50_000],
         apply_url=apply_url,
         updated_at=str(raw_job.get("updated_at") or "").strip() or None,
+    )
+
+
+def _lever_location(raw_job: dict[str, Any]) -> str | None:
+    categories = raw_job.get("categories")
+    if not isinstance(categories, dict):
+        return None
+
+    all_locations = categories.get("allLocations")
+    if isinstance(all_locations, list) and all_locations:
+        values = [str(location).strip() for location in all_locations if str(location).strip()]
+        if values:
+            return "; ".join(values)
+
+    raw_location = categories.get("location")
+    return str(raw_location).strip() if raw_location else None
+
+
+def _lever_description(raw_job: dict[str, Any], title: str) -> str:
+    parts: list[str] = []
+    for key in ("descriptionPlain", "description", "additionalPlain", "additional"):
+        value = raw_job.get(key)
+        if isinstance(value, str) and value.strip():
+            parts.append(value)
+
+    lists = raw_job.get("lists")
+    if isinstance(lists, list):
+        for item in lists:
+            if not isinstance(item, dict):
+                continue
+            text = item.get("text")
+            content = item.get("content")
+            if isinstance(text, str) and text.strip():
+                parts.append(text)
+            if isinstance(content, str) and content.strip():
+                parts.append(content)
+
+    description = clean_job_description(" ".join(parts))
+    return description or title
+
+
+def _normalize_lever_job(site_name: str, raw_job: dict[str, Any]) -> ExternalJobResult | None:
+    job_id = str(raw_job.get("id") or "").strip()
+    title = str(raw_job.get("text") or "").strip()
+    apply_url = str(raw_job.get("hostedUrl") or raw_job.get("applyUrl") or "").strip()
+    if not job_id or not title or not apply_url:
+        return None
+
+    return ExternalJobResult(
+        id=f"lever:{site_name}:{job_id}",
+        source="lever",
+        company=_provider_company_name(site_name),
+        title=title,
+        location=_lever_location(raw_job),
+        description=_lever_description(raw_job, title)[:50_000],
+        apply_url=apply_url,
+        updated_at=str(raw_job.get("createdAt") or "").strip() or None,
     )
 
 
@@ -525,7 +724,40 @@ def _search_greenhouse_board(
 
         score = _score_job(job.title, job.description, query, level)
         if score > 0:
-            scored_jobs.append((score, job))
+            scored_jobs.append((score + _location_score_bonus(job.location, location), job))
+
+    return scored_jobs
+
+
+def _search_lever_site(
+    client: httpx.Client,
+    site_name: str,
+    query: str,
+    location: str | None,
+    level: JobLevel,
+) -> list[tuple[int, ExternalJobResult]]:
+    response = client.get(
+        f"{LEVER_BASE_URL}/{site_name}",
+        params={"mode": "json", "limit": str(MAX_PROVIDER_RESULTS_PER_BOARD)},
+        headers={"Accept": "application/json"},
+    )
+    response.raise_for_status()
+    raw_jobs = response.json()
+    if not isinstance(raw_jobs, list):
+        return []
+
+    scored_jobs: list[tuple[int, ExternalJobResult]] = []
+    for raw_job in raw_jobs[:MAX_PROVIDER_RESULTS_PER_BOARD]:
+        if not isinstance(raw_job, dict):
+            continue
+
+        job = _normalize_lever_job(site_name, raw_job)
+        if job is None or not _matches_location(job.location, location):
+            continue
+
+        score = _score_job(job.title, job.description, query, level)
+        if score > 0:
+            scored_jobs.append((score + _location_score_bonus(job.location, location), job))
 
     return scored_jobs
 
@@ -539,17 +771,29 @@ def search_external_jobs(
     cleaned_query = query.strip()
     cleaned_location = location.strip() if location and location.strip() else None
     resolved_level = resolve_job_level(cleaned_query, level)
-    boards = _configured_greenhouse_boards()
-    providers_searched = [f"greenhouse:{board}" for board in boards]
+    greenhouse_boards = _configured_greenhouse_boards()
+    lever_sites = _configured_lever_sites()
+    providers_searched = [f"greenhouse:{board}" for board in greenhouse_boards]
+    providers_searched.extend(f"lever:{site}" for site in lever_sites)
     warnings: list[str] = []
+    provider_errors: list[str] = []
+    successful_provider_count = 0
     scored_results: list[tuple[int, ExternalJobResult]] = []
 
-    with httpx.Client(timeout=10.0, follow_redirects=True) as client:
-        for board in boards:
+    with httpx.Client(timeout=6.0, follow_redirects=True) as client:
+        for board in greenhouse_boards:
             try:
                 scored_results.extend(_search_greenhouse_board(client, board, cleaned_query, cleaned_location, resolved_level))
+                successful_provider_count += 1
             except (httpx.HTTPError, ValueError) as exc:
-                warnings.append(f"Greenhouse board '{board}' could not be searched: {exc.__class__.__name__}.")
+                provider_errors.append(f"greenhouse:{board}:{exc.__class__.__name__}")
+
+        for site in lever_sites:
+            try:
+                scored_results.extend(_search_lever_site(client, site, cleaned_query, cleaned_location, resolved_level))
+                successful_provider_count += 1
+            except (httpx.HTTPError, ValueError) as exc:
+                provider_errors.append(f"lever:{site}:{exc.__class__.__name__}")
 
     seen_ids: set[str] = set()
     ranked_results: list[ExternalJobResult] = []
@@ -563,9 +807,16 @@ def search_external_jobs(
 
     if not ranked_results:
         level_hint = "" if resolved_level == "any" else f" for level '{resolved_level}'"
+        location_hint = ""
+        if cleaned_location and cleaned_location.lower() != "remote" and _is_us_city_or_state_request(cleaned_location):
+            location_hint = " U.S.-remote roles are included for city searches, but no matching results were found."
         warnings.append(
-            f"No matching external jobs were found{level_hint} in the configured public job boards. Try a broader query, a different location, or configure more boards."
+            f"No matching external jobs were found{level_hint} in the configured public Greenhouse/Lever job boards."
+            f" Try a broader query, a different location, or configure more sources.{location_hint}"
         )
+
+    if successful_provider_count == 0 and provider_errors:
+        warnings.append("All configured external job providers failed to respond. Check provider configuration or try again later.")
 
     return JobSearchResults(
         query=cleaned_query,
