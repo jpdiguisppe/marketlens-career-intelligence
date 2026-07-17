@@ -18,13 +18,14 @@ Show ranked fit results
 
 ## Source coverage
 
-Milestone 2 searches public company-hosted ATS APIs instead of scraping closed job boards.
+Milestone 2 searches public job APIs instead of scraping closed job boards.
 
 Current source types:
 
 ```text
 Greenhouse Job Board API
 Lever Postings API
+Remote OK public JSON feed
 ```
 
 Default configured sources are intentionally editable through backend environment variables:
@@ -32,7 +33,10 @@ Default configured sources are intentionally editable through backend environmen
 ```text
 JOB_SEARCH_GREENHOUSE_BOARDS=<comma-separated board tokens>
 JOB_SEARCH_LEVER_SITES=<comma-separated site tokens>
+JOB_SEARCH_REMOTEOK_ENABLED=true
 ```
+
+Remote OK is used as a broad remote-job source. MarketLens keeps the provider source on each job card and links users back to the original posting URL.
 
 A no-results response means no matching jobs were found in the currently configured sources, not that no such jobs exist anywhere.
 
@@ -60,7 +64,7 @@ Expected:
 
 - `level` is `any`
 - response includes `providers_searched`
-- `providers_searched` can include both `greenhouse:*` and `lever:*` providers
+- `providers_searched` can include `greenhouse:*`, `lever:*`, and `remoteok`
 - `results` contains general software engineering roles when matching configured sources have openings
 - descriptions are readable plain text, not raw HTML
 
@@ -72,8 +76,9 @@ curl "https://marketlens-career-intelligence-production.up.railway.app/jobs/sear
 
 Expected:
 
-- returned roles, if any, should be remote-looking U.S. roles
-- obvious non-U.S. remote locations such as `Remote, Brazil` should not appear
+- returned roles, if any, should be remote-looking roles
+- obvious country-specific non-U.S. remote locations such as `Remote, Brazil` should not appear
+- Remote OK results may appear when they match the query and level filters
 
 U.S. city search:
 
@@ -83,9 +88,22 @@ curl "https://marketlens-career-intelligence-production.up.railway.app/jobs/sear
 
 Expected:
 
-- exact Philadelphia/Pennsylvania matches may appear when available
-- U.S.-remote roles may also appear as a fallback because many software jobs are labeled `Remote-US` instead of listing every eligible city
-- non-U.S. remote roles should not appear
+- exact Philadelphia/Philly matches may appear when available
+- U.S.-remote or broad remote roles may also appear as a fallback because many software jobs are labeled remote instead of listing every eligible city
+- Pittsburgh should not appear for `Philadelphia`; use `PA` or `Pennsylvania` for state-wide results
+- obvious non-U.S. remote roles should not appear
+
+Pennsylvania mid-level search:
+
+```bash
+curl "https://marketlens-career-intelligence-production.up.railway.app/jobs/search?query=SWE&level=mid&location=PA&limit=3"
+```
+
+Expected:
+
+- mid-level roles such as Software Engineer II/III may appear
+- Pittsburgh, Philadelphia, PA-wide, and remote roles are acceptable
+- senior/staff/principal roles should not appear for `level=mid`
 
 Internship search:
 
@@ -132,7 +150,7 @@ https://marketlens-career-intelligence-production-8a34.up.railway.app
 
 1. Upload or paste resume text in the main Smart Fit panel.
 2. In **Online job search**, search `SWE` with **Any level**.
-3. Try `Remote` or `Philadelphia` as location.
+3. Try `Remote`, `Philadelphia`, and `PA` as locations.
 4. Confirm job cards appear when the configured sources have matching jobs.
 5. Select one or more jobs.
 6. Click **Compare selected**.
@@ -151,6 +169,7 @@ SWE + Any level
 SWE + Internship
 SWE Intern + Any level
 entry level SWE + Any level
+SWE + Mid level + PA
 senior SWE + Any level
 ```
 
@@ -159,6 +178,7 @@ Expected behavior:
 - `Any level` stays general-purpose.
 - `Internship` only returns internship/co-op-looking roles or a clear no-results note.
 - `SWE Intern` should infer internship intent even if the dropdown is `Any level`.
+- `Mid level` may include Engineer II/III roles, but should not include entry-level or senior/staff/principal roles.
 - `senior SWE` should infer senior intent.
 
 ## Local development check
@@ -193,4 +213,4 @@ Expected:
 
 ## Known limitation
 
-Search coverage is broader than the first Milestone 2 pass, but it is still limited to configured public Greenhouse and Lever sources. Manual pasted-job comparison remains available for jobs outside those sources.
+Search coverage is broader than the first Milestone 2 pass, but it is still limited to configured public Greenhouse, Lever, and Remote OK sources. Manual pasted-job comparison remains available for jobs outside those sources.
