@@ -51,6 +51,7 @@ US_LOCATION_TERMS = {
     "us remote",
     "remote us",
     "remote - us",
+    "remote-us",
     "atlanta",
     "austin",
     "boston",
@@ -93,6 +94,26 @@ SOFTWARE_TITLE_TERMS = {
     "android engineer",
     "platform engineer",
 }
+SENIOR_TITLE_TERMS = {
+    "principal",
+    "staff",
+    "senior",
+    "sr.",
+    "lead",
+    "manager",
+    "director",
+    "architect",
+}
+SENIOR_QUERY_TERMS = {
+    "principal",
+    "staff",
+    "senior",
+    "sr",
+    "lead",
+    "manager",
+    "director",
+    "architect",
+}
 
 
 @dataclass(frozen=True)
@@ -130,10 +151,13 @@ def clean_job_description(value: str | None) -> str:
     if not value:
         return ""
 
+    # Some Greenhouse boards return actual HTML while others return escaped HTML.
+    # Decode first, strip tags, then decode again for entities inside text nodes.
+    decoded = unescape(value)
     no_scripts = re.sub(
         r"<script\b[^<]*(?:(?!</script>)<[^<]*)*</script>",
         " ",
-        value,
+        decoded,
         flags=re.IGNORECASE,
     )
     no_styles = re.sub(
@@ -142,7 +166,13 @@ def clean_job_description(value: str | None) -> str:
         no_scripts,
         flags=re.IGNORECASE,
     )
-    no_tags = re.sub(r"<[^>]+>", " ", no_styles)
+    with_section_spacing = re.sub(
+        r"</?(p|div|li|ul|ol|br|h[1-6])\b[^>]*>",
+        " ",
+        no_styles,
+        flags=re.IGNORECASE,
+    )
+    no_tags = re.sub(r"<[^>]+>", " ", with_section_spacing)
     cleaned = unescape(no_tags)
     return re.sub(r"\s+", " ", cleaned).strip()
 
@@ -186,6 +216,16 @@ def _is_software_role_query(query: str) -> bool:
             "engineer",
         )
     )
+
+
+def _allows_senior_level(query: str) -> bool:
+    query_terms = set(_query_terms(query))
+    return bool(query_terms & SENIOR_QUERY_TERMS)
+
+
+def _looks_like_senior_role(title: str) -> bool:
+    normalized_title = title.lower()
+    return any(term in normalized_title for term in SENIOR_TITLE_TERMS)
 
 
 def _looks_like_software_role(title: str) -> bool:
@@ -234,8 +274,11 @@ def _matches_location(job_location: str | None, requested_location: str | None) 
 
 
 def _score_job(title: str, description: str, query: str) -> int:
-    if _is_software_role_query(query) and not _looks_like_software_role(title):
-        return 0
+    if _is_software_role_query(query):
+        if not _looks_like_software_role(title):
+            return 0
+        if _looks_like_senior_role(title) and not _allows_senior_level(query):
+            return 0
 
     terms = _query_terms(query)
     searchable_title = title.lower()
