@@ -10,6 +10,7 @@ import httpx
 GREENHOUSE_BASE_URL = "https://boards-api.greenhouse.io/v1/boards"
 LEVER_BASE_URL = "https://api.lever.co/v0/postings"
 REMOTEOK_BASE_URL = "https://remoteok.com/api"
+REMOTIVE_BASE_URL = "https://remotive.com/api/remote-jobs"
 
 DEFAULT_GREENHOUSE_BOARDS = (
     "datadog",
@@ -57,6 +58,7 @@ DEFAULT_LEVER_SITES = (
 )
 MAX_PROVIDER_RESULTS_PER_BOARD = 100
 REMOTEOK_CACHE_SECONDS = 15 * 60
+REMOTIVE_CACHE_SECONDS = 6 * 60 * 60
 
 JobLevel = Literal["any", "intern", "entry", "mid", "senior"]
 VALID_JOB_LEVELS: set[str] = {"any", "intern", "entry", "mid", "senior"}
@@ -153,6 +155,8 @@ NON_SOFTWARE_TITLE_TERMS = {
     "account executive",
     "business development",
     "customer success",
+    "developer advocate",
+    "developer relations",
     "marketing",
     "recruiter",
     "sales",
@@ -163,16 +167,37 @@ SOFTWARE_TITLE_TERMS = {
     "software engineering",
     "software developer",
     "backend engineer",
+    "backend developer",
     "back-end engineer",
+    "back-end developer",
     "frontend engineer",
+    "frontend developer",
     "front-end engineer",
+    "front-end developer",
     "full stack engineer",
+    "full stack developer",
     "full-stack engineer",
+    "full-stack developer",
+    "web developer",
+    "application developer",
+    "app developer",
+    "python developer",
+    "java developer",
+    "javascript developer",
+    "typescript developer",
+    "react developer",
+    "node developer",
     "mobile engineer",
+    "mobile developer",
     "ios engineer",
+    "ios developer",
     "android engineer",
+    "android developer",
     "platform engineer",
     "infrastructure engineer",
+    "devops engineer",
+    "programmer",
+    "developer",
     "forward deployed software engineer",
 }
 INTERN_TERMS = {"intern", "internship", "co-op", "coop", "co op"}
@@ -191,6 +216,7 @@ ENTRY_DESCRIPTION_TERMS = {
     "entry level",
     "entry-level",
     "junior engineer",
+    "junior developer",
     "new grad",
     "new graduate",
     "university grad",
@@ -202,8 +228,12 @@ MID_TERMS = {
     "mid-level",
     "software engineer ii",
     "software engineer iii",
+    "software developer ii",
+    "software developer iii",
     "engineer ii",
     "engineer iii",
+    "developer ii",
+    "developer iii",
 }
 SENIOR_TERMS = {
     "principal",
@@ -218,6 +248,7 @@ SENIOR_TERMS = {
 }
 
 _REMOTEOK_CACHE: dict[str, Any] = {"expires_at": 0.0, "jobs": []}
+_REMOTIVE_CACHE: dict[str, dict[str, Any]] = {}
 
 
 @dataclass(frozen=True)
@@ -264,6 +295,10 @@ def _remoteok_enabled() -> bool:
     return os.getenv("JOB_SEARCH_REMOTEOK_ENABLED", "true").strip().lower() not in {"0", "false", "no", "off"}
 
 
+def _remotive_enabled() -> bool:
+    return os.getenv("JOB_SEARCH_REMOTIVE_ENABLED", "true").strip().lower() not in {"0", "false", "no", "off"}
+
+
 def clean_job_description(value: str | None) -> str:
     """Turn provider HTML into plain text that is safe to display and analyze."""
     if not value:
@@ -296,7 +331,7 @@ def clean_job_description(value: str | None) -> str:
 def _query_terms(query: str) -> list[str]:
     normalized = query.lower().strip()
     expansions = {
-        "swe": ["software", "engineer"],
+        "swe": ["software", "engineer", "developer"],
         "software engineering": ["software", "engineer"],
         "backend": ["backend"],
         "back end": ["backend"],
@@ -389,6 +424,7 @@ def _is_software_role_query(query: str) -> bool:
             "full stack",
             "developer",
             "engineer",
+            "programmer",
         )
     )
 
@@ -398,7 +434,7 @@ def _looks_like_software_role(title: str) -> bool:
     if any(term in normalized_title for term in NON_SOFTWARE_TITLE_TERMS):
         return False
 
-    return any(term in normalized_title for term in SOFTWARE_TITLE_TERMS)
+    return _contains_any(normalized_title, SOFTWARE_TITLE_TERMS)
 
 
 def _max_required_years(description: str) -> int:
@@ -604,9 +640,11 @@ def _score_job(title: str, description: str, query: str, level: str | None = Non
         if term in searchable_description:
             score += 1
 
-    # Common shorthand: SWE should strongly favor software engineering titles.
+    # Common shorthand: SWE should strongly favor software engineering and developer titles.
+    if "swe" in query.lower() and _looks_like_software_role(title):
+        score += 10
     if "swe" in query.lower() and "software" in searchable_title and "engineer" in searchable_title:
-        score += 12
+        score += 4
 
     return score
 
@@ -765,6 +803,35 @@ def _normalize_remoteok_job(raw_job: dict[str, Any]) -> ExternalJobResult | None
     )
 
 
+def _normalize_remotive_job(raw_job: dict[str, Any]) -> ExternalJobResult | None:
+    job_id = str(raw_job.get("id") or "").strip()
+    title = str(raw_job.get("title") or "").strip()
+    company = str(raw_job.get("company_name") or "").strip()
+    apply_url = str(raw_job.get("url") or "").strip()
+    if not job_id or not title or not company or not apply_url:
+        return None
+
+    raw_location = str(raw_job.get("candidate_required_location") or "").strip()
+    location = f"Remote ({raw_location})" if raw_location else "Remote"
+    description_parts = [str(raw_job.get("description") or "")]
+    for key in ("job_type", "category", "salary"):
+        value = str(raw_job.get(key) or "").strip()
+        if value:
+            description_parts.append(value)
+    description = clean_job_description(" ".join(description_parts)) or title
+
+    return ExternalJobResult(
+        id=f"remotive:{job_id}",
+        source="remotive",
+        company=company,
+        title=title,
+        location=location,
+        description=description[:50_000],
+        apply_url=apply_url,
+        updated_at=str(raw_job.get("publication_date") or "").strip() or None,
+    )
+
+
 def _search_greenhouse_board(
     client: httpx.Client,
     board_token: str,
@@ -872,6 +939,75 @@ def _search_remoteok(
     return scored_jobs
 
 
+def _remotive_search_term(query: str, level: JobLevel) -> str | None:
+    normalized = query.lower().strip()
+    if level == "intern":
+        return "intern"
+    if level == "entry":
+        return "junior"
+    if level == "senior":
+        return "senior"
+    if "backend" in normalized:
+        return "backend"
+    if "frontend" in normalized or "front end" in normalized:
+        return "frontend"
+    if "full stack" in normalized or "full-stack" in normalized:
+        return "full stack"
+    if "developer" in normalized:
+        return "developer"
+    return None
+
+
+def _remotive_jobs(client: httpx.Client, search_term: str | None) -> list[dict[str, Any]]:
+    cache_key = search_term or "software-dev"
+    now = time.monotonic()
+    cached = _REMOTIVE_CACHE.get(cache_key)
+    if cached and now < float(cached.get("expires_at", 0.0)):
+        cached_jobs = cached.get("jobs")
+        if isinstance(cached_jobs, list):
+            return cached_jobs
+
+    params = {"category": "software-dev", "limit": str(MAX_PROVIDER_RESULTS_PER_BOARD)}
+    if search_term:
+        params["search"] = search_term
+
+    response = client.get(
+        REMOTIVE_BASE_URL,
+        params=params,
+        headers={"Accept": "application/json", "User-Agent": "MarketLens Career Intelligence"},
+    )
+    response.raise_for_status()
+    payload = response.json()
+    raw_jobs = payload.get("jobs", []) if isinstance(payload, dict) else []
+    if not isinstance(raw_jobs, list):
+        return []
+
+    jobs = [item for item in raw_jobs if isinstance(item, dict) and item.get("id")]
+    _REMOTIVE_CACHE[cache_key] = {"jobs": jobs, "expires_at": now + REMOTIVE_CACHE_SECONDS}
+    return jobs
+
+
+def _search_remotive(
+    client: httpx.Client,
+    query: str,
+    location: str | None,
+    level: JobLevel,
+) -> list[tuple[int, ExternalJobResult]]:
+    scored_jobs: list[tuple[int, ExternalJobResult]] = []
+    search_term = _remotive_search_term(query, level)
+    for raw_job in _remotive_jobs(client, search_term)[:MAX_PROVIDER_RESULTS_PER_BOARD]:
+        job = _normalize_remotive_job(raw_job)
+        if job is None or not _matches_location(job.location, location):
+            continue
+
+        score = _score_job(job.title, job.description, query, level)
+        if score > 0:
+            # Make attribution visible in returned source; cards already link to Remotive URLs.
+            scored_jobs.append((score + _location_score_bonus(job.location, location), job))
+
+    return scored_jobs
+
+
 def search_external_jobs(
     query: str,
     location: str | None = None,
@@ -884,18 +1020,21 @@ def search_external_jobs(
     greenhouse_boards = _configured_greenhouse_boards()
     lever_sites = _configured_lever_sites()
     remoteok_enabled = _remoteok_enabled()
+    remotive_enabled = _remotive_enabled()
 
     providers_searched = [f"greenhouse:{board}" for board in greenhouse_boards]
     providers_searched.extend(f"lever:{site}" for site in lever_sites)
     if remoteok_enabled:
         providers_searched.append("remoteok")
+    if remotive_enabled:
+        providers_searched.append("remotive")
 
     warnings: list[str] = []
     provider_errors: list[str] = []
     successful_provider_count = 0
     scored_results: list[tuple[int, ExternalJobResult]] = []
 
-    with httpx.Client(timeout=6.0, follow_redirects=True) as client:
+    with httpx.Client(timeout=8.0, follow_redirects=True) as client:
         for board in greenhouse_boards:
             try:
                 scored_results.extend(_search_greenhouse_board(client, board, cleaned_query, cleaned_location, resolved_level))
@@ -917,6 +1056,13 @@ def search_external_jobs(
             except (httpx.HTTPError, ValueError) as exc:
                 provider_errors.append(f"remoteok:{exc.__class__.__name__}")
 
+        if remotive_enabled:
+            try:
+                scored_results.extend(_search_remotive(client, cleaned_query, cleaned_location, resolved_level))
+                successful_provider_count += 1
+            except (httpx.HTTPError, ValueError) as exc:
+                provider_errors.append(f"remotive:{exc.__class__.__name__}")
+
     seen_ids: set[str] = set()
     ranked_results: list[ExternalJobResult] = []
     for _, job in sorted(scored_results, key=lambda item: (-item[0], item[1].company, item[1].title)):
@@ -933,7 +1079,7 @@ def search_external_jobs(
         if cleaned_location and cleaned_location.lower() != "remote" and _is_us_city_or_state_request(cleaned_location):
             location_hint = " U.S.-remote roles are included for city searches, but no matching results were found."
         warnings.append(
-            f"No matching external jobs were found{level_hint} in the configured public Greenhouse/Lever/Remote OK job sources."
+            f"No matching external jobs were found{level_hint} in the configured public Greenhouse/Lever/Remote OK/Remotive job sources."
             f" Try a broader query, a different location, or manual pasted-job comparison.{location_hint}"
         )
 
