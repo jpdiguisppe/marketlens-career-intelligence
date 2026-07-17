@@ -7,7 +7,6 @@ from typing import Any
 import httpx
 
 GREENHOUSE_BASE_URL = "https://boards-api.greenhouse.io/v1/boards"
-LEVER_BASE_URL = "https://api.lever.co/v0/postings"
 DEFAULT_GREENHOUSE_BOARDS = (
     "datadog",
     "airbnb",
@@ -19,21 +18,7 @@ DEFAULT_GREENHOUSE_BOARDS = (
     "cloudflare",
     "verkada",
 )
-DEFAULT_LEVER_SITES = (
-    "palantir",
-    "plus-2",
-    "SymmetrySystems",
-    "solopulseco",
-    "genbio",
-)
 MAX_PROVIDER_RESULTS_PER_BOARD = 75
-MAX_PROVIDER_RESULTS_PER_LEVER_SITE = 100
-MAX_EARLY_CAREER_YEARS = 3
-EXPERIENCE_YEARS_PATTERN = re.compile(r"\b(\d{1,2})\s*\+?\s*(?:years?|yrs?)\b", re.IGNORECASE)
-MID_OR_SENIOR_LEVEL_TITLE_PATTERN = re.compile(
-    r"\b(?:software\s+)?(?:engineer|developer)\s+(?:ii|iii|iv|v|2|3|4|5)\b",
-    re.IGNORECASE,
-)
 
 NON_US_LOCATION_TERMS = {
     "australia",
@@ -111,33 +96,7 @@ SOFTWARE_TITLE_TERMS = {
     "ios engineer",
     "android engineer",
     "platform engineer",
-}
-SENIOR_TITLE_TERMS = {
-    "principal",
-    "staff",
-    "senior",
-    "sr.",
-    "lead",
-    "manager",
-    "director",
-    "architect",
-}
-SENIOR_QUERY_TERMS = {
-    "principal",
-    "staff",
-    "senior",
-    "sr",
-    "lead",
-    "manager",
-    "director",
-    "architect",
-    "ii",
-    "iii",
-    "iv",
-    "2",
-    "3",
-    "4",
-    "5",
+    "forward deployed software engineer",
 }
 
 
@@ -171,21 +130,12 @@ def _configured_greenhouse_boards() -> list[str]:
     return list(DEFAULT_GREENHOUSE_BOARDS)
 
 
-def _configured_lever_sites() -> list[str]:
-    raw_sites = os.getenv("JOB_SEARCH_LEVER_SITES")
-    if raw_sites:
-        sites = [site.strip() for site in raw_sites.split(",") if site.strip()]
-        return sites or list(DEFAULT_LEVER_SITES)
-
-    return list(DEFAULT_LEVER_SITES)
-
-
 def clean_job_description(value: str | None) -> str:
     """Turn provider HTML into plain text that is safe to display and analyze."""
     if not value:
         return ""
 
-    # Some providers return actual HTML while others return escaped HTML.
+    # Some Greenhouse boards return actual HTML while others return escaped HTML.
     # Decode first, strip tags, then decode again for entities inside text nodes.
     decoded = unescape(value)
     no_scripts = re.sub(
@@ -252,29 +202,6 @@ def _is_software_role_query(query: str) -> bool:
     )
 
 
-def _allows_experienced_level(query: str) -> bool:
-    query_terms = set(_query_terms(query))
-    return bool(query_terms & SENIOR_QUERY_TERMS)
-
-
-def _looks_like_senior_role(title: str) -> bool:
-    normalized_title = title.lower()
-    return any(term in normalized_title for term in SENIOR_TITLE_TERMS)
-
-
-def _looks_like_mid_or_senior_numbered_role(title: str) -> bool:
-    return bool(MID_OR_SENIOR_LEVEL_TITLE_PATTERN.search(title))
-
-
-def _max_required_years(description: str) -> int:
-    years = [int(match.group(1)) for match in EXPERIENCE_YEARS_PATTERN.finditer(description)]
-    return max(years, default=0)
-
-
-def _exceeds_early_career_experience(description: str) -> bool:
-    return _max_required_years(description) > MAX_EARLY_CAREER_YEARS
-
-
 def _looks_like_software_role(title: str) -> bool:
     normalized_title = title.lower()
     if any(term in normalized_title for term in NON_SOFTWARE_TITLE_TERMS):
@@ -321,16 +248,10 @@ def _matches_location(job_location: str | None, requested_location: str | None) 
 
 
 def _score_job(title: str, description: str, query: str) -> int:
-    if _is_software_role_query(query):
-        if not _looks_like_software_role(title):
-            return 0
-        if not _allows_experienced_level(query):
-            if _looks_like_senior_role(title):
-                return 0
-            if _looks_like_mid_or_senior_numbered_role(title):
-                return 0
-            if _exceeds_early_career_experience(description):
-                return 0
+    # Search should find jobs, not decide whether a candidate is qualified.
+    # For software queries, only block obvious non-software roles. Fit happens later.
+    if _is_software_role_query(query) and not _looks_like_software_role(title):
+        return 0
 
     terms = _query_terms(query)
     searchable_title = title.lower()
@@ -343,7 +264,7 @@ def _score_job(title: str, description: str, query: str) -> int:
         if term in searchable_description:
             score += 1
 
-    # Common student shorthand: SWE should strongly favor software engineering titles.
+    # Common shorthand: SWE should strongly favor software engineering titles.
     if "swe" in query.lower() and "software" in searchable_title and "engineer" in searchable_title:
         score += 12
 
@@ -355,16 +276,6 @@ def _greenhouse_company_name(board_token: str) -> str:
         "scaleai": "Scale AI",
     }
     return special_names.get(board_token, board_token.replace("-", " ").replace("_", " ").title())
-
-
-def _lever_company_name(site: str) -> str:
-    special_names = {
-        "plus-2": "PlusAI",
-        "SymmetrySystems": "Symmetry Systems",
-        "solopulseco": "SoloPulse",
-        "genbio": "GenBio AI",
-    }
-    return special_names.get(site, site.replace("-", " ").replace("_", " ").title())
 
 
 def _normalize_greenhouse_job(board_token: str, raw_job: dict[str, Any]) -> ExternalJobResult | None:
@@ -393,68 +304,6 @@ def _normalize_greenhouse_job(board_token: str, raw_job: dict[str, Any]) -> Exte
         description=description[:50_000],
         apply_url=apply_url,
         updated_at=str(raw_job.get("updated_at") or "").strip() or None,
-    )
-
-
-def _lever_description(raw_job: dict[str, Any]) -> str:
-    parts: list[str] = []
-
-    for key in ("descriptionPlain", "description"):
-        value = raw_job.get(key)
-        if isinstance(value, str) and value.strip():
-            parts.append(clean_job_description(value))
-            break
-
-    lists = raw_job.get("lists")
-    if isinstance(lists, list):
-        for section in lists:
-            if not isinstance(section, dict):
-                continue
-            section_title = section.get("text")
-            section_content = section.get("content")
-            if isinstance(section_title, str) and section_title.strip():
-                parts.append(clean_job_description(section_title))
-            if isinstance(section_content, str) and section_content.strip():
-                parts.append(clean_job_description(section_content))
-
-    for key in ("additionalPlain", "additional"):
-        value = raw_job.get(key)
-        if isinstance(value, str) and value.strip():
-            parts.append(clean_job_description(value))
-            break
-
-    return " ".join(part for part in parts if part).strip()
-
-
-def _normalize_lever_job(site: str, raw_job: dict[str, Any]) -> ExternalJobResult | None:
-    job_id = str(raw_job.get("id") or "").strip()
-    title = str(raw_job.get("text") or "").strip()
-    apply_url = str(raw_job.get("hostedUrl") or raw_job.get("applyUrl") or "").strip()
-    if not job_id or not title or not apply_url:
-        return None
-
-    location = None
-    categories = raw_job.get("categories")
-    if isinstance(categories, dict):
-        raw_location = categories.get("location")
-        location = str(raw_location).strip() if raw_location else None
-
-    description = _lever_description(raw_job)
-    if not description:
-        description = title
-
-    created_at = raw_job.get("createdAt")
-    updated_at = str(created_at) if created_at is not None else None
-
-    return ExternalJobResult(
-        id=f"lever:{site}:{job_id}",
-        source="lever",
-        company=_lever_company_name(site),
-        title=title,
-        location=location,
-        description=description[:50_000],
-        apply_url=apply_url,
-        updated_at=updated_at,
     )
 
 
@@ -490,45 +339,11 @@ def _search_greenhouse_board(
     return scored_jobs
 
 
-def _search_lever_site(
-    client: httpx.Client,
-    site: str,
-    query: str,
-    location: str | None,
-) -> list[tuple[int, ExternalJobResult]]:
-    response = client.get(
-        f"{LEVER_BASE_URL}/{site}",
-        params={"mode": "json"},
-    )
-    response.raise_for_status()
-    payload = response.json()
-    if not isinstance(payload, list):
-        return []
-
-    scored_jobs: list[tuple[int, ExternalJobResult]] = []
-    for raw_job in payload[:MAX_PROVIDER_RESULTS_PER_LEVER_SITE]:
-        if not isinstance(raw_job, dict):
-            continue
-
-        job = _normalize_lever_job(site, raw_job)
-        if job is None or not _matches_location(job.location, location):
-            continue
-
-        score = _score_job(job.title, job.description, query)
-        if score > 0:
-            scored_jobs.append((score, job))
-
-    return scored_jobs
-
-
 def search_external_jobs(query: str, location: str | None = None, limit: int = 15) -> JobSearchResults:
     cleaned_query = query.strip()
     cleaned_location = location.strip() if location and location.strip() else None
     boards = _configured_greenhouse_boards()
-    lever_sites = _configured_lever_sites()
-    providers_searched = [f"greenhouse:{board}" for board in boards] + [
-        f"lever:{site}" for site in lever_sites
-    ]
+    providers_searched = [f"greenhouse:{board}" for board in boards]
     warnings: list[str] = []
     scored_results: list[tuple[int, ExternalJobResult]] = []
 
@@ -538,12 +353,6 @@ def search_external_jobs(query: str, location: str | None = None, limit: int = 1
                 scored_results.extend(_search_greenhouse_board(client, board, cleaned_query, cleaned_location))
             except (httpx.HTTPError, ValueError) as exc:
                 warnings.append(f"Greenhouse board '{board}' could not be searched: {exc.__class__.__name__}.")
-
-        for site in lever_sites:
-            try:
-                scored_results.extend(_search_lever_site(client, site, cleaned_query, cleaned_location))
-            except (httpx.HTTPError, ValueError) as exc:
-                warnings.append(f"Lever site '{site}' could not be searched: {exc.__class__.__name__}.")
 
     seen_ids: set[str] = set()
     ranked_results: list[ExternalJobResult] = []
@@ -557,7 +366,7 @@ def search_external_jobs(query: str, location: str | None = None, limit: int = 1
 
     if not ranked_results:
         warnings.append(
-            "No early-career-friendly external jobs were found in the configured public job boards. Try a more specific query like 'software engineer intern', a different location, or configure more boards."
+            "No matching external jobs were found in the configured public job boards. Try a broader query, a different location, or configure more boards."
         )
 
     return JobSearchResults(
