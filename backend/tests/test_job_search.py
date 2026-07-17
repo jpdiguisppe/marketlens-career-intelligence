@@ -139,6 +139,21 @@ def test_intern_level_filters_to_internship_roles() -> None:
     ) == 0
 
 
+def test_intern_level_does_not_match_internal_or_internally() -> None:
+    assert _score_job(
+        title="Software Engineer II, Backend",
+        description="Collaborate with internal teams and improve internal developer platforms.",
+        query="SWE",
+        level="intern",
+    ) == 0
+
+    assert _score_job(
+        title="Software Engineer II, Backend",
+        description="You will learn new techniques internally and mentor others.",
+        query="SWE Intern",
+    ) == 0
+
+
 def test_entry_level_filters_to_entry_friendly_roles() -> None:
     assert _score_job(
         title="Software Engineer I",
