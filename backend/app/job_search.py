@@ -126,9 +126,12 @@ US_LOCATION_TERMS = {
     "washington, d.c.",
 }
 LOCATION_ALIASES: dict[str, set[str]] = {
-    "philadelphia": {"philadelphia", "philly", "pennsylvania", "pa"},
-    "philly": {"philadelphia", "philly", "pennsylvania", "pa"},
-    "pittsburgh": {"pittsburgh", "pennsylvania", "pa"},
+    # Keep city searches city-specific. Philadelphia should not match every PA job.
+    "philadelphia": {"philadelphia", "philly"},
+    "philly": {"philadelphia", "philly"},
+    "pittsburgh": {"pittsburgh"},
+    "pennsylvania": {"pennsylvania", "pa", "philadelphia", "pittsburgh"},
+    "pa": {"pennsylvania", "pa", "philadelphia", "pittsburgh"},
     "new york": {"new york", "nyc", "new york city", "ny"},
     "new york city": {"new york", "nyc", "new york city", "ny"},
     "nyc": {"new york", "nyc", "new york city", "ny"},
@@ -170,11 +173,21 @@ SOFTWARE_TITLE_TERMS = {
     "forward deployed software engineer",
 }
 INTERN_TERMS = {"intern", "internship", "co-op", "coop", "co op"}
-ENTRY_TERMS = {
+ENTRY_TITLE_TERMS = {
     "entry level",
     "entry-level",
     "junior",
     "associate",
+    "new grad",
+    "new graduate",
+    "university grad",
+    "university graduate",
+    "early career",
+}
+ENTRY_DESCRIPTION_TERMS = {
+    "entry level",
+    "entry-level",
+    "junior engineer",
     "new grad",
     "new graduate",
     "university grad",
@@ -305,7 +318,7 @@ def _contains_phrase(value: str, phrase: str) -> bool:
     if not cleaned_phrase:
         return False
 
-    escaped_words = [re.escape(part) for part in re.split(r"[\s-]+", cleaned_phrase) if part]
+    escaped_words = [re.escape(part) for part in re.split(r"[\s,.-]+", cleaned_phrase) if part]
     if not escaped_words:
         return False
 
@@ -333,7 +346,7 @@ def _infer_level_from_query(query: str) -> JobLevel:
     normalized = query.lower()
     if _contains_any(normalized, INTERN_TERMS):
         return "intern"
-    if _contains_any(normalized, ENTRY_TERMS):
+    if _contains_any(normalized, ENTRY_TITLE_TERMS):
         return "entry"
     if _contains_any(normalized, SENIOR_TERMS) or SENIOR_NUMBERED_TITLE_PATTERN.search(normalized):
         return "senior"
@@ -386,6 +399,14 @@ def _max_required_years(description: str) -> int:
     return max(years, default=0)
 
 
+def _title_has_senior_signal(title: str) -> bool:
+    return _contains_any(title.lower(), SENIOR_TERMS) or SENIOR_NUMBERED_TITLE_PATTERN.search(title) is not None
+
+
+def _title_has_mid_signal(title: str) -> bool:
+    return _contains_any(title.lower(), MID_TERMS) or MID_LEVEL_TITLE_PATTERN.search(title) is not None
+
+
 def _looks_like_intern_role(title: str, description: str) -> bool:
     searchable = f"{title} {description}".lower()
     return _contains_any(searchable, INTERN_TERMS)
@@ -393,19 +414,29 @@ def _looks_like_intern_role(title: str, description: str) -> bool:
 
 def _looks_like_senior_role(title: str, description: str) -> bool:
     searchable = f"{title} {description}".lower()
-    if _contains_any(searchable, SENIOR_TERMS) or SENIOR_NUMBERED_TITLE_PATTERN.search(title):
+    if _title_has_senior_signal(title) or _contains_any(searchable, SENIOR_TERMS):
         return True
 
     return _max_required_years(description) >= 5
 
 
 def _looks_like_entry_role(title: str, description: str) -> bool:
-    searchable = f"{title} {description}".lower()
+    title_lower = title.lower()
+    description_lower = description.lower()
+
     if _looks_like_intern_role(title, description):
         return False
-    if _contains_any(searchable, ENTRY_TERMS):
+
+    # A requested Entry filter should not allow senior/staff/principal/lead or Engineer II/III+ titles.
+    if _title_has_senior_signal(title) or _title_has_mid_signal(title):
+        return False
+
+    if _contains_any(title_lower, ENTRY_TITLE_TERMS) or SOFTWARE_ENGINEER_I_PATTERN.search(title):
         return True
-    if SOFTWARE_ENGINEER_I_PATTERN.search(title):
+
+    # Description signals can help, but keep them conservative. Generic words like
+    # "associate" often appear in HR/legal text and should not make a senior role entry-level.
+    if _contains_any(description_lower, ENTRY_DESCRIPTION_TERMS):
         return True
 
     max_years = _max_required_years(description)
@@ -413,10 +444,9 @@ def _looks_like_entry_role(title: str, description: str) -> bool:
 
 
 def _looks_like_mid_role(title: str, description: str) -> bool:
-    searchable = f"{title} {description}".lower()
     if _looks_like_intern_role(title, description) or _looks_like_entry_role(title, description):
         return False
-    if _contains_any(searchable, MID_TERMS) or MID_LEVEL_TITLE_PATTERN.search(title):
+    if _title_has_mid_signal(title):
         return True
 
     max_years = _max_required_years(description)
@@ -448,11 +478,11 @@ def _level_score_bonus(title: str, description: str, level: JobLevel) -> int:
     title_lower = title.lower()
     if level == "intern" and _contains_any(title_lower, INTERN_TERMS):
         return 10
-    if level == "entry" and (_contains_any(title_lower, ENTRY_TERMS) or SOFTWARE_ENGINEER_I_PATTERN.search(title)):
+    if level == "entry" and (_contains_any(title_lower, ENTRY_TITLE_TERMS) or SOFTWARE_ENGINEER_I_PATTERN.search(title)):
         return 8
-    if level == "mid" and (MID_LEVEL_TITLE_PATTERN.search(title) or _contains_any(title_lower, MID_TERMS)):
+    if level == "mid" and _title_has_mid_signal(title):
         return 8
-    if level == "senior" and (_contains_any(title_lower, SENIOR_TERMS) or SENIOR_NUMBERED_TITLE_PATTERN.search(title)):
+    if level == "senior" and _title_has_senior_signal(title):
         return 8
 
     return 4
@@ -484,8 +514,9 @@ def _requested_location_terms(requested_location: str) -> set[str]:
     requested = requested_location.lower().strip()
     requested = re.sub(r"\s+", " ", requested)
     normalized_no_punctuation = requested.replace(",", "")
+    words = [part for part in re.split(r"[\s,]+", requested) if len(part) > 2]
 
-    terms = {requested, normalized_no_punctuation}
+    terms = {requested, normalized_no_punctuation, *words}
     terms.update(LOCATION_ALIASES.get(requested, set()))
     terms.update(LOCATION_ALIASES.get(normalized_no_punctuation, set()))
     return {term for term in terms if term}
@@ -501,7 +532,8 @@ def _is_us_remote_location(job_location: str | None) -> bool:
 def _is_us_city_or_state_request(requested_location: str) -> bool:
     terms = _requested_location_terms(requested_location)
     known_terms = set(US_LOCATION_TERMS)
-    known_terms.update(*LOCATION_ALIASES.values())
+    for aliases in LOCATION_ALIASES.values():
+        known_terms.update(aliases)
     known_terms.update(LOCATION_ALIASES.keys())
     return bool(terms & known_terms)
 
