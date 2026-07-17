@@ -9,7 +9,6 @@ import httpx
 GREENHOUSE_BASE_URL = "https://boards-api.greenhouse.io/v1/boards"
 DEFAULT_GREENHOUSE_BOARDS = (
     "datadog",
-    "notion",
     "airbnb",
     "figma",
     "duolingo",
@@ -19,7 +18,81 @@ DEFAULT_GREENHOUSE_BOARDS = (
     "cloudflare",
     "verkada",
 )
-MAX_PROVIDER_RESULTS_PER_BOARD = 50
+MAX_PROVIDER_RESULTS_PER_BOARD = 75
+
+NON_US_LOCATION_TERMS = {
+    "australia",
+    "beijing",
+    "brazil",
+    "canada",
+    "china",
+    "denmark",
+    "europe",
+    "france",
+    "germany",
+    "india",
+    "ireland",
+    "japan",
+    "lisbon",
+    "london",
+    "mexico",
+    "norway",
+    "portugal",
+    "singapore",
+    "spain",
+    "sweden",
+    "united kingdom",
+    "uk",
+}
+US_LOCATION_TERMS = {
+    "united states",
+    "u.s.",
+    "usa",
+    "us remote",
+    "remote us",
+    "remote - us",
+    "atlanta",
+    "austin",
+    "boston",
+    "chicago",
+    "colorado",
+    "dc",
+    "denver",
+    "los angeles",
+    "new york",
+    "philadelphia",
+    "pittsburgh",
+    "san francisco",
+    "san jose",
+    "seattle",
+    "st. louis",
+    "washington",
+    "washington, dc",
+}
+NON_SOFTWARE_TITLE_TERMS = {
+    "account executive",
+    "business development",
+    "customer success",
+    "marketing",
+    "recruiter",
+    "sales",
+    "salesforce",
+}
+SOFTWARE_TITLE_TERMS = {
+    "software engineer",
+    "software engineering",
+    "software developer",
+    "backend engineer",
+    "back-end engineer",
+    "frontend engineer",
+    "front-end engineer",
+    "full stack engineer",
+    "full-stack engineer",
+    "mobile engineer",
+    "ios engineer",
+    "android engineer",
+    "platform engineer",
+}
 
 
 @dataclass(frozen=True)
@@ -52,12 +125,23 @@ def _configured_greenhouse_boards() -> list[str]:
     return list(DEFAULT_GREENHOUSE_BOARDS)
 
 
-def _clean_html(value: str | None) -> str:
+def clean_job_description(value: str | None) -> str:
+    """Turn provider HTML into plain text that is safe to display and analyze."""
     if not value:
         return ""
 
-    no_scripts = re.sub(r"<script\b[^<]*(?:(?!</script>)<[^<]*)*</script>", " ", value, flags=re.IGNORECASE)
-    no_styles = re.sub(r"<style\b[^<]*(?:(?!</style>)<[^<]*)*</style>", " ", no_scripts, flags=re.IGNORECASE)
+    no_scripts = re.sub(
+        r"<script\b[^<]*(?:(?!</script>)<[^<]*)*</script>",
+        " ",
+        value,
+        flags=re.IGNORECASE,
+    )
+    no_styles = re.sub(
+        r"<style\b[^<]*(?:(?!</style>)<[^<]*)*</style>",
+        " ",
+        no_scripts,
+        flags=re.IGNORECASE,
+    )
     no_tags = re.sub(r"<[^>]+>", " ", no_styles)
     cleaned = unescape(no_tags)
     return re.sub(r"\s+", " ", cleaned).strip()
@@ -71,6 +155,7 @@ def _query_terms(query: str) -> list[str]:
         "backend": ["backend"],
         "back end": ["backend"],
         "front end": ["frontend"],
+        "full stack": ["full", "stack"],
         "ml": ["machine", "learning"],
         "ai": ["ai"],
         "intern": ["intern"],
@@ -85,9 +170,57 @@ def _query_terms(query: str) -> list[str]:
     return sorted(set(term for term in terms if len(term) > 1))
 
 
+def _is_software_role_query(query: str) -> bool:
+    normalized = query.lower()
+    return any(
+        phrase in normalized
+        for phrase in (
+            "swe",
+            "software",
+            "backend",
+            "back end",
+            "frontend",
+            "front end",
+            "full stack",
+            "developer",
+            "engineer",
+        )
+    )
+
+
+def _looks_like_software_role(title: str) -> bool:
+    normalized_title = title.lower()
+    if any(term in normalized_title for term in NON_SOFTWARE_TITLE_TERMS):
+        return False
+
+    return any(term in normalized_title for term in SOFTWARE_TITLE_TERMS)
+
+
+def _has_non_us_location(job_location: str | None) -> bool:
+    if not job_location:
+        return False
+
+    normalized_location = job_location.lower()
+    return any(term in normalized_location for term in NON_US_LOCATION_TERMS)
+
+
+def _is_default_us_market_location(job_location: str | None) -> bool:
+    if not job_location:
+        return True
+
+    normalized_location = job_location.lower()
+    if _has_non_us_location(job_location):
+        return False
+
+    if "remote" in normalized_location:
+        return True
+
+    return any(term in normalized_location for term in US_LOCATION_TERMS)
+
+
 def _matches_location(job_location: str | None, requested_location: str | None) -> bool:
     if not requested_location:
-        return True
+        return _is_default_us_market_location(job_location)
 
     if not job_location:
         return False
@@ -95,12 +228,15 @@ def _matches_location(job_location: str | None, requested_location: str | None) 
     requested = requested_location.lower().strip()
     location = job_location.lower()
     if requested == "remote":
-        return "remote" in location
+        return "remote" in location and not _has_non_us_location(job_location)
 
     return requested in location
 
 
 def _score_job(title: str, description: str, query: str) -> int:
+    if _is_software_role_query(query) and not _looks_like_software_role(title):
+        return 0
+
     terms = _query_terms(query)
     searchable_title = title.lower()
     searchable_description = description.lower()
@@ -112,15 +248,18 @@ def _score_job(title: str, description: str, query: str) -> int:
         if term in searchable_description:
             score += 1
 
-    # Common student shorthand: SWE should strongly favor software engineering roles.
+    # Common student shorthand: SWE should strongly favor software engineering titles.
     if "swe" in query.lower() and "software" in searchable_title and "engineer" in searchable_title:
-        score += 8
+        score += 12
 
     return score
 
 
 def _greenhouse_company_name(board_token: str) -> str:
-    return board_token.replace("-", " ").replace("_", " ").title()
+    special_names = {
+        "scaleai": "Scale AI",
+    }
+    return special_names.get(board_token, board_token.replace("-", " ").replace("_", " ").title())
 
 
 def _normalize_greenhouse_job(board_token: str, raw_job: dict[str, Any]) -> ExternalJobResult | None:
@@ -136,7 +275,7 @@ def _normalize_greenhouse_job(board_token: str, raw_job: dict[str, Any]) -> Exte
         raw_location = location_payload.get("name")
         location = str(raw_location).strip() if raw_location else None
 
-    description = _clean_html(str(raw_job.get("content") or ""))
+    description = clean_job_description(str(raw_job.get("content") or ""))
     if not description:
         description = title
 
@@ -211,7 +350,7 @@ def search_external_jobs(query: str, location: str | None = None, limit: int = 1
 
     if not ranked_results:
         warnings.append(
-            "No matching external jobs were found in the configured public job boards. Try a broader query or configure more boards."
+            "No matching external jobs were found in the configured public job boards. Try a broader query, a different location, or configure more boards."
         )
 
     return JobSearchResults(
