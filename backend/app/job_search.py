@@ -127,13 +127,20 @@ ENTRY_TERMS = {
     "university graduate",
     "early career",
 }
-MID_TERMS = {"mid level", "mid-level", "software engineer ii", "software engineer iii", "engineer ii", "engineer iii"}
+MID_TERMS = {
+    "mid level",
+    "mid-level",
+    "software engineer ii",
+    "software engineer iii",
+    "engineer ii",
+    "engineer iii",
+}
 SENIOR_TERMS = {
     "principal",
     "staff",
     "senior",
     "sr.",
-    "sr ",
+    "sr",
     "lead",
     "manager",
     "director",
@@ -229,9 +236,23 @@ def _query_terms(query: str) -> list[str]:
     return sorted(set(term for term in terms if len(term) > 1))
 
 
+def _contains_phrase(value: str, phrase: str) -> bool:
+    """Match whole words/phrases, so 'intern' does not match 'internal'."""
+    cleaned_phrase = phrase.strip().lower()
+    if not cleaned_phrase:
+        return False
+
+    escaped_words = [re.escape(part) for part in re.split(r"[\s-]+", cleaned_phrase) if part]
+    if not escaped_words:
+        return False
+
+    separator = r"[\s-]+"
+    pattern = r"(?<![a-z0-9])" + separator.join(escaped_words) + r"(?![a-z0-9])"
+    return bool(re.search(pattern, value.lower()))
+
+
 def _contains_any(value: str, terms: set[str]) -> bool:
-    normalized = value.lower()
-    return any(term in normalized for term in terms)
+    return any(_contains_phrase(value, term) for term in terms)
 
 
 def _normalize_level(level: str | None) -> JobLevel | None:
@@ -307,6 +328,14 @@ def _looks_like_intern_role(title: str, description: str) -> bool:
     return _contains_any(searchable, INTERN_TERMS)
 
 
+def _looks_like_senior_role(title: str, description: str) -> bool:
+    searchable = f"{title} {description}".lower()
+    if _contains_any(searchable, SENIOR_TERMS) or SENIOR_NUMBERED_TITLE_PATTERN.search(title):
+        return True
+
+    return _max_required_years(description) >= 5
+
+
 def _looks_like_entry_role(title: str, description: str) -> bool:
     searchable = f"{title} {description}".lower()
     if _looks_like_intern_role(title, description):
@@ -329,14 +358,6 @@ def _looks_like_mid_role(title: str, description: str) -> bool:
 
     max_years = _max_required_years(description)
     return 3 <= max_years <= 5 and not _looks_like_senior_role(title, description)
-
-
-def _looks_like_senior_role(title: str, description: str) -> bool:
-    searchable = f"{title} {description}".lower()
-    if _contains_any(searchable, SENIOR_TERMS) or SENIOR_NUMBERED_TITLE_PATTERN.search(title):
-        return True
-
-    return _max_required_years(description) >= 5
 
 
 def _matches_level(title: str, description: str, level: JobLevel) -> bool:
