@@ -27,14 +27,33 @@ export type ExternalJobPosting = {
   extracted_skills: string[];
 };
 
+export type SourceCoverage = {
+  provider: string;
+  label: string;
+  status: string;
+  fetched_count: number;
+  matched_count: number;
+  notes: string[];
+};
+
+export type ExternalSearchLink = {
+  label: string;
+  url: string;
+  note: string;
+};
+
 export type ExternalJobSearchResponse = {
   query: string;
   location: string | null;
   level: JobSearchLevel;
+  role_family: string | null;
   providers_searched: string[];
   result_count: number;
   results: ExternalJobPosting[];
   warnings: string[];
+  source_coverage: SourceCoverage[];
+  search_suggestions: string[];
+  external_search_links: ExternalSearchLink[];
 };
 
 export type ResumeAnalysisRequest = {
