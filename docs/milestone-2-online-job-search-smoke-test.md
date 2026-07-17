@@ -8,12 +8,33 @@ Confirm that MarketLens can:
 
 ```text
 Upload or paste a resume
-Search public job boards
+Search configured public job sources
 Filter by experience level
+Filter by location when useful
 Select returned jobs
 Compare selected jobs with Smart Fit
 Show ranked fit results
 ```
+
+## Source coverage
+
+Milestone 2 searches public company-hosted ATS APIs instead of scraping closed job boards.
+
+Current source types:
+
+```text
+Greenhouse Job Board API
+Lever Postings API
+```
+
+Default configured sources are intentionally editable through backend environment variables:
+
+```text
+JOB_SEARCH_GREENHOUSE_BOARDS=<comma-separated board tokens>
+JOB_SEARCH_LEVER_SITES=<comma-separated site tokens>
+```
+
+A no-results response means no matching jobs were found in the currently configured sources, not that no such jobs exist anywhere.
 
 ## Backend API checks
 
@@ -39,8 +60,32 @@ Expected:
 
 - `level` is `any`
 - response includes `providers_searched`
-- `results` contains general software engineering roles when matching configured boards have openings
+- `providers_searched` can include both `greenhouse:*` and `lever:*` providers
+- `results` contains general software engineering roles when matching configured sources have openings
 - descriptions are readable plain text, not raw HTML
+
+Remote SWE search:
+
+```bash
+curl "https://marketlens-career-intelligence-production.up.railway.app/jobs/search?query=SWE&level=any&location=Remote&limit=3"
+```
+
+Expected:
+
+- returned roles, if any, should be remote-looking U.S. roles
+- obvious non-U.S. remote locations such as `Remote, Brazil` should not appear
+
+U.S. city search:
+
+```bash
+curl "https://marketlens-career-intelligence-production.up.railway.app/jobs/search?query=SWE&level=any&location=Philadelphia&limit=3"
+```
+
+Expected:
+
+- exact Philadelphia/Pennsylvania matches may appear when available
+- U.S.-remote roles may also appear as a fallback because many software jobs are labeled `Remote-US` instead of listing every eligible city
+- non-U.S. remote roles should not appear
 
 Internship search:
 
@@ -52,7 +97,7 @@ Expected:
 
 - `level` is `intern`
 - results, if any, should be internship/co-op-looking roles
-- a `result_count` of `0` is acceptable when the configured boards have no matching internships
+- a `result_count` of `0` is acceptable when the configured sources have no matching internships
 - Software Engineer II, Principal, Staff, or Senior roles should not appear for `level=intern`
 
 Typed internship search:
@@ -87,10 +132,11 @@ https://marketlens-career-intelligence-production-8a34.up.railway.app
 
 1. Upload or paste resume text in the main Smart Fit panel.
 2. In **Online job search**, search `SWE` with **Any level**.
-3. Confirm job cards appear when the configured boards have matching jobs.
-4. Select one or more jobs.
-5. Click **Compare selected**.
-6. Confirm Smart Fit returns ranked results with:
+3. Try `Remote` or `Philadelphia` as location.
+4. Confirm job cards appear when the configured sources have matching jobs.
+5. Select one or more jobs.
+6. Click **Compare selected**.
+7. Confirm Smart Fit returns ranked results with:
    - job fit ranking
    - top matches
    - top gaps
@@ -147,6 +193,4 @@ Expected:
 
 ## Known limitation
 
-Search coverage is intentionally limited to the configured public Greenhouse boards for now. A no-results response means no matching jobs were found in those configured sources, not that no such jobs exist anywhere.
-
-Manual pasted-job comparison remains available for jobs outside the configured search sources.
+Search coverage is broader than the first Milestone 2 pass, but it is still limited to configured public Greenhouse and Lever sources. Manual pasted-job comparison remains available for jobs outside those sources.
