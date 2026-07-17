@@ -96,6 +96,46 @@ def test_swe_query_rejects_senior_level_roles_unless_requested() -> None:
     ) > 0
 
 
+def test_swe_query_rejects_numbered_mid_level_roles_by_default() -> None:
+    assert _score_job(
+        title="Software Engineer II, Backend",
+        description="Build backend systems with Python and Java.",
+        query="SWE",
+    ) == 0
+
+    assert _score_job(
+        title="Software Engineer III, Backend",
+        description="Build backend systems with Python and Java.",
+        query="SWE",
+    ) == 0
+
+    assert _score_job(
+        title="Software Engineer II, Backend",
+        description="Build backend systems with Python and Java.",
+        query="software engineer II",
+    ) > 0
+
+
+def test_swe_query_rejects_roles_requiring_too_many_years_by_default() -> None:
+    assert _score_job(
+        title="Forward Deployed Software Engineer",
+        description="Required: 5+ years of software engineering experience with Python.",
+        query="SWE",
+    ) == 0
+
+    assert _score_job(
+        title="Software Engineer I",
+        description="Required: 0-1 years of software engineering experience with Python.",
+        query="SWE",
+    ) > 0
+
+    assert _score_job(
+        title="Forward Deployed Software Engineer",
+        description="Required: 5+ years of software engineering experience with Python.",
+        query="senior SWE",
+    ) > 0
+
+
 def test_default_search_market_excludes_obvious_non_us_locations() -> None:
     assert _matches_location("Remote, Brazil", None) is False
     assert _matches_location("Beijing, China", None) is False
