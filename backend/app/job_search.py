@@ -1,5 +1,6 @@
 import os
 import re
+import time
 from dataclasses import dataclass
 from html import unescape
 from typing import Any, Literal
@@ -8,6 +9,7 @@ import httpx
 
 GREENHOUSE_BASE_URL = "https://boards-api.greenhouse.io/v1/boards"
 LEVER_BASE_URL = "https://api.lever.co/v0/postings"
+REMOTEOK_BASE_URL = "https://remoteok.com/api"
 
 DEFAULT_GREENHOUSE_BOARDS = (
     "datadog",
@@ -54,6 +56,7 @@ DEFAULT_LEVER_SITES = (
     "addepar",
 )
 MAX_PROVIDER_RESULTS_PER_BOARD = 100
+REMOTEOK_CACHE_SECONDS = 15 * 60
 
 JobLevel = Literal["any", "intern", "entry", "mid", "senior"]
 VALID_JOB_LEVELS: set[str] = {"any", "intern", "entry", "mid", "senior"}
@@ -214,6 +217,8 @@ SENIOR_TERMS = {
     "architect",
 }
 
+_REMOTEOK_CACHE: dict[str, Any] = {"expires_at": 0.0, "jobs": []}
+
 
 @dataclass(frozen=True)
 class ExternalJobResult:
@@ -255,13 +260,15 @@ def _configured_lever_sites() -> list[str]:
     return list(DEFAULT_LEVER_SITES)
 
 
+def _remoteok_enabled() -> bool:
+    return os.getenv("JOB_SEARCH_REMOTEOK_ENABLED", "true").strip().lower() not in {"0", "false", "no", "off"}
+
+
 def clean_job_description(value: str | None) -> str:
     """Turn provider HTML into plain text that is safe to display and analyze."""
     if not value:
         return ""
 
-    # Some providers return actual HTML while others return escaped HTML.
-    # Decode first, strip tags, then decode again for entities inside text nodes.
     decoded = unescape(value)
     no_scripts = re.sub(
         r"<script\b[^<]*(?:(?!</script>)<[^<]*)*</script>",
@@ -504,7 +511,7 @@ def _is_default_us_market_location(job_location: str | None) -> bool:
     if _has_non_us_location(job_location):
         return False
 
-    if "remote" in normalized_location:
+    if "remote" in normalized_location or "worldwide" in normalized_location:
         return True
 
     return any(term in normalized_location for term in US_LOCATION_TERMS)
@@ -526,7 +533,8 @@ def _is_us_remote_location(job_location: str | None) -> bool:
     if not job_location or _has_non_us_location(job_location):
         return False
 
-    return "remote" in job_location.lower() and _is_default_us_market_location(job_location)
+    normalized = job_location.lower()
+    return ("remote" in normalized or "worldwide" in normalized) and _is_default_us_market_location(job_location)
 
 
 def _is_us_city_or_state_request(requested_location: str) -> bool:
@@ -548,7 +556,7 @@ def _matches_location(job_location: str | None, requested_location: str | None) 
     requested = requested_location.lower().strip()
     location = job_location.lower()
     if requested == "remote":
-        return "remote" in location and not _has_non_us_location(job_location)
+        return ("remote" in location or "worldwide" in location) and not _has_non_us_location(job_location)
 
     requested_terms = _requested_location_terms(requested_location)
     if _contains_any(location, requested_terms):
@@ -565,7 +573,7 @@ def _location_score_bonus(job_location: str | None, requested_location: str | No
 
     requested = requested_location.lower().strip()
     location = job_location.lower()
-    if requested == "remote" and "remote" in location:
+    if requested == "remote" and ("remote" in location or "worldwide" in location):
         return 6
     if _contains_any(location, _requested_location_terms(requested_location)):
         return 8
@@ -606,8 +614,10 @@ def _score_job(title: str, description: str, query: str, level: str | None = Non
 def _provider_company_name(provider_token: str) -> str:
     special_names = {
         "addepar": "Addepar",
+        "affirm": "Affirm",
         "algolia": "Algolia",
         "asana": "Asana",
+        "benchling": "Benchling",
         "box": "Box",
         "brex": "Brex",
         "cloudflare": "Cloudflare",
@@ -623,12 +633,15 @@ def _provider_company_name(provider_token: str) -> str:
         "hubspot": "HubSpot",
         "intercom": "Intercom",
         "lyft": "Lyft",
+        "mixpanel": "Mixpanel",
         "mongodb": "MongoDB",
         "notion": "Notion",
         "okta": "Okta",
         "openai": "OpenAI",
         "pinterest": "Pinterest",
         "plaid": "Plaid",
+        "postman": "Postman",
+        "ramp": "Ramp",
         "reddit": "Reddit",
         "rippling": "Rippling",
         "roblox": "Roblox",
@@ -728,6 +741,30 @@ def _normalize_lever_job(site_name: str, raw_job: dict[str, Any]) -> ExternalJob
     )
 
 
+def _normalize_remoteok_job(raw_job: dict[str, Any]) -> ExternalJobResult | None:
+    job_id = str(raw_job.get("id") or raw_job.get("slug") or "").strip()
+    title = str(raw_job.get("position") or raw_job.get("title") or "").strip()
+    company = str(raw_job.get("company") or "").strip()
+    apply_url = str(raw_job.get("url") or raw_job.get("apply_url") or "").strip()
+    if not job_id or not title or not company or not apply_url:
+        return None
+
+    raw_location = str(raw_job.get("location") or "").strip()
+    location = f"Remote ({raw_location})" if raw_location else "Remote"
+    description = clean_job_description(str(raw_job.get("description") or "")) or title
+
+    return ExternalJobResult(
+        id=f"remoteok:{job_id}",
+        source="remoteok",
+        company=company,
+        title=title,
+        location=location,
+        description=description[:50_000],
+        apply_url=apply_url,
+        updated_at=str(raw_job.get("date") or raw_job.get("epoch") or "").strip() or None,
+    )
+
+
 def _search_greenhouse_board(
     client: httpx.Client,
     board_token: str,
@@ -794,6 +831,47 @@ def _search_lever_site(
     return scored_jobs
 
 
+def _remoteok_jobs(client: httpx.Client) -> list[dict[str, Any]]:
+    now = time.monotonic()
+    cached_jobs = _REMOTEOK_CACHE.get("jobs")
+    if isinstance(cached_jobs, list) and now < float(_REMOTEOK_CACHE.get("expires_at", 0.0)):
+        return cached_jobs
+
+    response = client.get(
+        REMOTEOK_BASE_URL,
+        params={"tag": "dev"},
+        headers={"Accept": "application/json", "User-Agent": "MarketLens Career Intelligence"},
+    )
+    response.raise_for_status()
+    payload = response.json()
+    if not isinstance(payload, list):
+        return []
+
+    jobs = [item for item in payload if isinstance(item, dict) and item.get("id")]
+    _REMOTEOK_CACHE["jobs"] = jobs
+    _REMOTEOK_CACHE["expires_at"] = now + REMOTEOK_CACHE_SECONDS
+    return jobs
+
+
+def _search_remoteok(
+    client: httpx.Client,
+    query: str,
+    location: str | None,
+    level: JobLevel,
+) -> list[tuple[int, ExternalJobResult]]:
+    scored_jobs: list[tuple[int, ExternalJobResult]] = []
+    for raw_job in _remoteok_jobs(client)[:MAX_PROVIDER_RESULTS_PER_BOARD]:
+        job = _normalize_remoteok_job(raw_job)
+        if job is None or not _matches_location(job.location, location):
+            continue
+
+        score = _score_job(job.title, job.description, query, level)
+        if score > 0:
+            scored_jobs.append((score + _location_score_bonus(job.location, location), job))
+
+    return scored_jobs
+
+
 def search_external_jobs(
     query: str,
     location: str | None = None,
@@ -805,8 +883,13 @@ def search_external_jobs(
     resolved_level = resolve_job_level(cleaned_query, level)
     greenhouse_boards = _configured_greenhouse_boards()
     lever_sites = _configured_lever_sites()
+    remoteok_enabled = _remoteok_enabled()
+
     providers_searched = [f"greenhouse:{board}" for board in greenhouse_boards]
     providers_searched.extend(f"lever:{site}" for site in lever_sites)
+    if remoteok_enabled:
+        providers_searched.append("remoteok")
+
     warnings: list[str] = []
     provider_errors: list[str] = []
     successful_provider_count = 0
@@ -827,6 +910,13 @@ def search_external_jobs(
             except (httpx.HTTPError, ValueError) as exc:
                 provider_errors.append(f"lever:{site}:{exc.__class__.__name__}")
 
+        if remoteok_enabled:
+            try:
+                scored_results.extend(_search_remoteok(client, cleaned_query, cleaned_location, resolved_level))
+                successful_provider_count += 1
+            except (httpx.HTTPError, ValueError) as exc:
+                provider_errors.append(f"remoteok:{exc.__class__.__name__}")
+
     seen_ids: set[str] = set()
     ranked_results: list[ExternalJobResult] = []
     for _, job in sorted(scored_results, key=lambda item: (-item[0], item[1].company, item[1].title)):
@@ -843,8 +933,8 @@ def search_external_jobs(
         if cleaned_location and cleaned_location.lower() != "remote" and _is_us_city_or_state_request(cleaned_location):
             location_hint = " U.S.-remote roles are included for city searches, but no matching results were found."
         warnings.append(
-            f"No matching external jobs were found{level_hint} in the configured public Greenhouse/Lever job boards."
-            f" Try a broader query, a different location, or configure more sources.{location_hint}"
+            f"No matching external jobs were found{level_hint} in the configured public Greenhouse/Lever/Remote OK job sources."
+            f" Try a broader query, a different location, or manual pasted-job comparison.{location_hint}"
         )
 
     if successful_provider_count == 0 and provider_errors:
