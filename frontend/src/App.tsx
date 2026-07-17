@@ -10,10 +10,13 @@ import {
   getTopSkills,
   getTopSkillsByCompany,
   getTopSkillsByRole,
+  searchExternalJobs,
 } from "./api";
 import type {
+  ExternalJobPosting,
   GroupedSkillCounts,
   JobPosting,
+  JobSearchLevel,
   ModelAssistedStatusResponse,
   ResumeAnalysisResponse,
   SkillCounts,
@@ -37,17 +40,21 @@ const emptyDashboardData: DashboardData = {
   skillsByRole: {},
 };
 
+const jobSearchLevels: { value: JobSearchLevel; label: string }[] = [
+  { value: "any", label: "Any level" },
+  { value: "intern", label: "Internship" },
+  { value: "entry", label: "Entry level" },
+  { value: "mid", label: "Mid level" },
+  { value: "senior", label: "Senior" },
+];
+
 function sortSkillCounts(skillCounts: SkillCounts): SkillEntry[] {
   return Object.entries(skillCounts).sort((a, b) => b[1] - a[1]);
 }
 
 function countUniqueSkills(jobs: JobPosting[]): number {
   const uniqueSkills = new Set<string>();
-
-  jobs.forEach((job) => {
-    job.extracted_skills.forEach((skill) => uniqueSkills.add(skill));
-  });
-
+  jobs.forEach((job) => job.extracted_skills.forEach((skill) => uniqueSkills.add(skill)));
   return uniqueSkills.size;
 }
 
@@ -191,10 +198,7 @@ function SkillList({ title, skills }: { title: string; skills: SkillCounts }) {
                 <strong>{count}</strong>
               </div>
               <div className="bar-track">
-                <div
-                  className="bar-fill"
-                  style={{ width: `${Math.max((count / maxCount) * 100, 8)}%` }}
-                />
+                <div className="bar-fill" style={{ width: `${Math.max((count / maxCount) * 100, 8)}%` }} />
               </div>
             </div>
           ))}
@@ -221,13 +225,11 @@ function GroupedSkillPanel({ title, groups }: { title: string; groups: GroupedSk
             <div className="group-card" key={groupName}>
               <h3>{groupName}</h3>
               <div className="pill-row">
-                {sortSkillCounts(skillCounts)
-                  .slice(0, 6)
-                  .map(([skill, count]) => (
-                    <span className="skill-pill" key={skill}>
-                      {skill} <strong>{count}</strong>
-                    </span>
-                  ))}
+                {sortSkillCounts(skillCounts).slice(0, 6).map(([skill, count]) => (
+                  <span className="skill-pill" key={skill}>
+                    {skill} <strong>{count}</strong>
+                  </span>
+                ))}
               </div>
             </div>
           ))}
@@ -257,17 +259,14 @@ function AnalysisResults({
           <h3>Matched Skills</h3>
           <SkillPills skills={analysis.matched_skills} emptyText="No matched skills found yet." />
         </div>
-
         <div className="analysis-card">
           <h3>Missing Skills</h3>
           <SkillPills skills={analysis.missing_skills} emptyText="No missing target skills found." />
         </div>
-
         <div className="analysis-card">
           <h3>Resume Skills Found</h3>
           <SkillPills skills={analysis.resume_skills} emptyText="No known skills found in resume text." />
         </div>
-
         <div className="analysis-card priority-card">
           <h3>Learning Priorities</h3>
           <SkillPills skills={analysis.learning_priorities} emptyText="No learning priorities yet." />
@@ -544,6 +543,33 @@ function SmartFitComparisonResults({ rankedJobs }: { rankedJobs: SmartFitBatchRe
   );
 }
 
+function ExternalJobCard({
+  job,
+  isSelected,
+  onToggle,
+}: {
+  job: ExternalJobPosting;
+  isSelected: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <article className="action-row">
+      <input type="checkbox" checked={isSelected} onChange={onToggle} aria-label={`Select ${job.title}`} />
+      <div>
+        <div className="gap-group-header">
+          <h4>{job.company} — {job.title}</h4>
+          <span className="status-badge status-mentioned">{job.source}</span>
+        </div>
+        <p>
+          {job.location ?? "Location not listed"} · <a href={job.apply_url} target="_blank" rel="noreferrer">Open posting</a>
+        </p>
+        <p>{job.description.slice(0, 260)}{job.description.length > 260 ? "..." : ""}</p>
+        <SkillPills skills={job.extracted_skills} emptyText="No known skills extracted yet." max={6} />
+      </div>
+    </article>
+  );
+}
+
 function CustomAnalysisPanel() {
   const [resumeText, setResumeText] = useState("");
   const [jobDescriptionsText, setJobDescriptionsText] = useState("");
@@ -555,10 +581,19 @@ function CustomAnalysisPanel() {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isUploadingResume, setIsUploadingResume] = useState(false);
+  const [jobSearchQuery, setJobSearchQuery] = useState("SWE");
+  const [jobSearchLocation, setJobSearchLocation] = useState("");
+  const [jobSearchLevel, setJobSearchLevel] = useState<JobSearchLevel>("any");
+  const [jobSearchResults, setJobSearchResults] = useState<ExternalJobPosting[]>([]);
+  const [selectedExternalJobIds, setSelectedExternalJobIds] = useState<string[]>([]);
+  const [jobSearchWarnings, setJobSearchWarnings] = useState<string[]>([]);
+  const [jobSearchError, setJobSearchError] = useState<string | null>(null);
+  const [isSearchingJobs, setIsSearchingJobs] = useState(false);
 
   const parsedJobDescriptions = splitPastedJobDescriptions(jobDescriptionsText);
   const parsedJobCount = parsedJobDescriptions.length;
   const isModelAssistedAvailable = modelAssistedStatus?.enabled === true;
+  const selectedExternalJobs = jobSearchResults.filter((job) => selectedExternalJobIds.includes(job.id));
 
   useEffect(() => {
     let isMounted = true;
@@ -616,18 +651,14 @@ function CustomAnalysisPanel() {
     }
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    const jobDescriptions = splitPastedJobDescriptions(jobDescriptionsText);
-
+  async function runSmartFitBatch(jobs: { title: string; description: string }[], emptyError: string) {
     if (!resumeText.trim()) {
       setAnalysisError("Paste or upload resume text before running the analysis.");
       return;
     }
 
-    if (jobDescriptions.length === 0) {
-      setAnalysisError("Paste at least one job description before running the analysis.");
+    if (jobs.length === 0) {
+      setAnalysisError(emptyError);
       return;
     }
 
@@ -639,9 +670,9 @@ function CustomAnalysisPanel() {
       const useConfiguredModelAssisted = useModelAssisted && isModelAssistedAvailable;
       const result = await analyzeSmartFitBatch({
         resume_text: resumeText,
-        job_descriptions: jobDescriptions.map((description, index) => ({
-          title: inferJobTitle(description, index),
-          job_description: description,
+        job_descriptions: jobs.map((job) => ({
+          title: job.title,
+          job_description: job.description,
         })),
         use_model_assisted: useConfiguredModelAssisted,
       });
@@ -652,11 +683,78 @@ function CustomAnalysisPanel() {
       setAnalysisError(
         error instanceof Error
           ? error.message
-          : "Something went wrong while analyzing the pasted job descriptions.",
+          : "Something went wrong while analyzing the selected job descriptions.",
       );
     } finally {
       setIsAnalyzing(false);
     }
+  }
+
+  async function handleManualSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await runSmartFitBatch(
+      splitPastedJobDescriptions(jobDescriptionsText).map((description, index) => ({
+        title: inferJobTitle(description, index),
+        description,
+      })),
+      "Paste at least one job description before running the analysis.",
+    );
+  }
+
+  async function handleExternalJobSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!jobSearchQuery.trim()) {
+      setJobSearchError("Enter a search term like SWE, SWE Intern, backend engineer, or senior SWE.");
+      return;
+    }
+
+    try {
+      setIsSearchingJobs(true);
+      setJobSearchError(null);
+      setJobSearchWarnings([]);
+      setSelectedExternalJobIds([]);
+      const searchResult = await searchExternalJobs({
+        query: jobSearchQuery.trim(),
+        location: jobSearchLocation,
+        level: jobSearchLevel,
+        limit: 10,
+      });
+      setJobSearchResults(searchResult.results);
+      setJobSearchWarnings(searchResult.warnings);
+    } catch (error) {
+      setJobSearchResults([]);
+      setJobSearchWarnings([]);
+      setJobSearchError(
+        error instanceof Error ? error.message : "Could not search external job boards.",
+      );
+    } finally {
+      setIsSearchingJobs(false);
+    }
+  }
+
+  function toggleExternalJob(jobId: string) {
+    setSelectedExternalJobIds((currentIds) => {
+      if (currentIds.includes(jobId)) {
+        return currentIds.filter((id) => id !== jobId);
+      }
+
+      if (currentIds.length >= 10) {
+        return currentIds;
+      }
+
+      return [...currentIds, jobId];
+    });
+  }
+
+  async function handleCompareSelectedExternalJobs() {
+    await runSmartFitBatch(
+      selectedExternalJobs.map((job) => ({
+        title: `${job.company} — ${job.title}`,
+        description: job.description,
+      })),
+      "Select at least one searched job before comparing.",
+    );
   }
 
   return (
@@ -666,58 +764,152 @@ function CustomAnalysisPanel() {
           <p className="eyebrow inline-eyebrow">Start here</p>
           <h2>Analyze a Resume Against Real Job Descriptions</h2>
           <p className="panel-subtitle">
-            Paste or upload resume-style text and one or more job descriptions to get non-saved Smart Fit reports.
+            Upload or paste resume text, then either search public job boards or paste job descriptions manually.
             Text is sent to the backend for analysis, but it is not saved to the shared database.
           </p>
         </div>
       </div>
 
-      <form className="resume-form" onSubmit={handleSubmit}>
-        <div className="form-grid">
-          <div className="form-control">
-            <label className="form-label" htmlFor="custom-resume-text">Resume text</label>
-            <label className="form-control" htmlFor="resume-file-upload">
-              <span>Upload resume file</span>
-              <input
-                id="resume-file-upload"
-                className="select-input"
-                type="file"
-                accept=".txt,.md,.pdf,.docx,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                disabled={isUploadingResume}
-                onChange={handleResumeFileUpload}
-              />
-              <small className="helper-text">
-                TXT, Markdown, DOCX, and text-based PDF files work now. Scanned/image-only PDFs may not extract text.
-              </small>
-            </label>
-            {resumeUploadMessage && <p className="helper-text">{resumeUploadMessage}</p>}
-            <textarea
-              id="custom-resume-text"
-              className="resume-textarea"
-              placeholder="Paste resume bullets, project descriptions, coursework, and skills here. Do not include sensitive personal information."
-              value={resumeText}
-              onChange={(event) => setResumeText(event.target.value)}
-            />
-          </div>
+      <div className="form-control">
+        <label className="form-label" htmlFor="custom-resume-text">Resume text</label>
+        <label className="form-control" htmlFor="resume-file-upload">
+          <span>Upload resume file</span>
+          <input
+            id="resume-file-upload"
+            className="select-input"
+            type="file"
+            accept=".txt,.md,.pdf,.docx,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            disabled={isUploadingResume}
+            onChange={handleResumeFileUpload}
+          />
+          <small className="helper-text">
+            TXT, Markdown, DOCX, and text-based PDF files work now. Scanned/image-only PDFs may not extract text.
+          </small>
+        </label>
+        {resumeUploadMessage && <p className="helper-text">{resumeUploadMessage}</p>}
+        <textarea
+          id="custom-resume-text"
+          className="resume-textarea"
+          placeholder="Paste resume bullets, project descriptions, coursework, and skills here. Do not include sensitive personal information."
+          value={resumeText}
+          onChange={(event) => setResumeText(event.target.value)}
+        />
+      </div>
 
-          <label className="form-control" htmlFor="custom-job-descriptions">
-            <span>Job description text</span>
-            <textarea
-              id="custom-job-descriptions"
-              className="resume-textarea"
-              placeholder="Paste one job description here. To compare multiple postings, put --- on its own line between jobs."
-              value={jobDescriptionsText}
-              onChange={(event) => setJobDescriptionsText(event.target.value)}
-            />
-            <small className="helper-text">
-              {parsedJobCount === 0
-                ? "No job descriptions detected yet."
-                : parsedJobCount === 1
-                  ? "1 job description detected."
-                  : `${parsedJobCount} job descriptions detected and ready to rank.`}
-            </small>
-          </label>
+      <section className="report-card">
+        <div className="gap-group-header">
+          <div>
+            <p className="eyebrow inline-eyebrow">Online job search</p>
+            <h3>Search jobs, then compare selected roles</h3>
+          </div>
+          {selectedExternalJobIds.length > 0 && (
+            <span className="status-badge status-demonstrated">{selectedExternalJobIds.length} selected</span>
+          )}
         </div>
+
+        <form className="resume-form" onSubmit={handleExternalJobSearch}>
+          <div className="form-row">
+            <label className="form-control" htmlFor="job-search-query">
+              <span>Search</span>
+              <input
+                id="job-search-query"
+                className="select-input"
+                value={jobSearchQuery}
+                onChange={(event) => setJobSearchQuery(event.target.value)}
+                placeholder="SWE, SWE Intern, backend engineer..."
+              />
+            </label>
+            <label className="form-control" htmlFor="job-search-level">
+              <span>Level</span>
+              <select
+                id="job-search-level"
+                className="select-input"
+                value={jobSearchLevel}
+                onChange={(event) => setJobSearchLevel(event.target.value as JobSearchLevel)}
+              >
+                {jobSearchLevels.map((level) => (
+                  <option key={level.value} value={level.value}>{level.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="form-control" htmlFor="job-search-location">
+              <span>Location</span>
+              <input
+                id="job-search-location"
+                className="select-input"
+                value={jobSearchLocation}
+                onChange={(event) => setJobSearchLocation(event.target.value)}
+                placeholder="Optional: Remote, Pittsburgh, New York..."
+              />
+            </label>
+            <button className="refresh-button analyze-button" disabled={isSearchingJobs} type="submit">
+              {isSearchingJobs ? "Searching..." : "Search jobs"}
+            </button>
+          </div>
+        </form>
+
+        {jobSearchError && (
+          <div className="error-box compact-error">
+            <strong>Could not search jobs.</strong>
+            <p>{jobSearchError}</p>
+          </div>
+        )}
+
+        {jobSearchWarnings.length > 0 && (
+          <div className="notice-box smart-warning-box">
+            <strong>Search notes</strong>
+            <ul>
+              {jobSearchWarnings.map((warning) => <li key={warning}>{warning}</li>)}
+            </ul>
+          </div>
+        )}
+
+        {jobSearchResults.length > 0 && (
+          <div className="action-list smart-section">
+            {jobSearchResults.map((job) => (
+              <ExternalJobCard
+                key={job.id}
+                job={job}
+                isSelected={selectedExternalJobIds.includes(job.id)}
+                onToggle={() => toggleExternalJob(job.id)}
+              />
+            ))}
+          </div>
+        )}
+
+        <div className="form-footer">
+          <p className="helper-text">
+            Search does not decide fit. Select up to 10 jobs and Smart Fit will rank them against the uploaded resume.
+          </p>
+          <button
+            className="refresh-button analyze-button"
+            disabled={isAnalyzing || isUploadingResume || selectedExternalJobIds.length === 0}
+            type="button"
+            onClick={handleCompareSelectedExternalJobs}
+          >
+            {isAnalyzing ? "Analyzing..." : `Compare selected${selectedExternalJobIds.length ? ` (${selectedExternalJobIds.length})` : ""}`}
+          </button>
+        </div>
+      </section>
+
+      <form className="resume-form" onSubmit={handleManualSubmit}>
+        <label className="form-control" htmlFor="custom-job-descriptions">
+          <span>Or paste job description text manually</span>
+          <textarea
+            id="custom-job-descriptions"
+            className="resume-textarea"
+            placeholder="Paste one job description here. To compare multiple postings, put --- on its own line between jobs."
+            value={jobDescriptionsText}
+            onChange={(event) => setJobDescriptionsText(event.target.value)}
+          />
+          <small className="helper-text">
+            {parsedJobCount === 0
+              ? "No pasted job descriptions detected yet."
+              : parsedJobCount === 1
+                ? "1 pasted job description detected."
+                : `${parsedJobCount} pasted job descriptions detected and ready to rank.`}
+          </small>
+        </label>
 
         <label className="notice-box" htmlFor="model-assisted-toggle">
           <input
@@ -738,23 +930,23 @@ function CustomAnalysisPanel() {
 
         <div className="form-footer">
           <p className="helper-text">
-            Smart Fit analyzes each separated job independently through the backend batch endpoint, ranks the roles, and lets you inspect each result.
+            Manual Smart Fit still works for jobs outside the configured search sources.
           </p>
           <button className="refresh-button analyze-button" disabled={isAnalyzing || isUploadingResume} type="submit">
             {isAnalyzing
               ? "Analyzing..."
               : parsedJobCount > 1
-                ? `Rank ${parsedJobCount} jobs`
+                ? `Rank ${parsedJobCount} pasted jobs`
                 : useModelAssisted && isModelAssistedAvailable
-                  ? "Analyze with AI assist"
-                  : "Analyze fit"}
+                  ? "Analyze pasted job with AI assist"
+                  : "Analyze pasted job"}
           </button>
         </div>
       </form>
 
       {analysisError && (
         <div className="error-box compact-error">
-          <strong>Could not analyze pasted jobs.</strong>
+          <strong>Could not analyze jobs.</strong>
           <p>{analysisError}</p>
         </div>
       )}
@@ -855,11 +1047,7 @@ function ResumeAnalyzer({
             </select>
           </label>
 
-          <button
-            className="refresh-button analyze-button"
-            disabled={isAnalyzing || !hasJobs}
-            type="submit"
-          >
+          <button className="refresh-button analyze-button" disabled={isAnalyzing || !hasJobs} type="submit">
             {isAnalyzing ? "Analyzing..." : "Analyze sample dataset"}
           </button>
         </div>
@@ -991,20 +1179,15 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const uniqueSkillCount = useMemo(
-    () => countUniqueSkills(dashboardData.jobs),
-    [dashboardData.jobs],
-  );
+  const uniqueSkillCount = useMemo(() => countUniqueSkills(dashboardData.jobs), [dashboardData.jobs]);
 
   const roleCategories = useMemo(() => {
     const categories = new Set<string>();
-
     dashboardData.jobs.forEach((job) => {
       if (job.role_category) {
         categories.add(job.role_category);
       }
     });
-
     return Array.from(categories).sort((a, b) => a.localeCompare(b));
   }, [dashboardData.jobs]);
 
@@ -1020,12 +1203,7 @@ function App() {
         getTopSkillsByRole(),
       ]);
 
-      setDashboardData({
-        jobs,
-        topSkills,
-        skillsByCompany,
-        skillsByRole,
-      });
+      setDashboardData({ jobs, topSkills, skillsByCompany, skillsByRole });
     } catch (error) {
       setErrorMessage(
         error instanceof Error
