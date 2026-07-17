@@ -1,7 +1,9 @@
 import type {
   CustomAnalysisRequest,
+  ExternalJobSearchResponse,
   GroupedSkillCounts,
   JobPosting,
+  JobSearchLevel,
   ModelAssistedStatusResponse,
   ResumeAnalysisRequest,
   ResumeAnalysisResponse,
@@ -40,7 +42,18 @@ async function fetchJson<T>(path: string): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`);
 
   if (!response.ok) {
-    throw new Error(`Request failed: ${response.status} ${response.statusText}`);
+    let detail = `${response.status} ${response.statusText}`;
+
+    try {
+      const errorBody = (await response.json()) as { detail?: string | { msg?: string }[] };
+      if (typeof errorBody.detail === "string") {
+        detail = errorBody.detail;
+      }
+    } catch {
+      // Keep the default error message if the response is not JSON.
+    }
+
+    throw new Error(`Request failed: ${detail}`);
   }
 
   return response.json() as Promise<T>;
@@ -115,6 +128,30 @@ export async function getTopSkillsByRole(): Promise<GroupedSkillCounts> {
 
 export async function getModelAssistedStatus(): Promise<ModelAssistedStatusResponse> {
   return fetchJson<ModelAssistedStatusResponse>("/analysis/model-status");
+}
+
+export async function searchExternalJobs({
+  query,
+  location,
+  level,
+  limit = 10,
+}: {
+  query: string;
+  location?: string;
+  level: JobSearchLevel;
+  limit?: number;
+}): Promise<ExternalJobSearchResponse> {
+  const params = new URLSearchParams({
+    query,
+    level,
+    limit: String(limit),
+  });
+
+  if (location?.trim()) {
+    params.set("location", location.trim());
+  }
+
+  return fetchJson<ExternalJobSearchResponse>(`/jobs/search?${params.toString()}`);
 }
 
 export async function analyzeResume(request: ResumeAnalysisRequest): Promise<ResumeAnalysisResponse> {
