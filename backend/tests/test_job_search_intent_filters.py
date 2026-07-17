@@ -33,6 +33,24 @@ def test_specific_data_entry_query_is_admin_operations_not_data_analytics() -> N
     ) > 0
 
 
+def test_computer_science_rejects_marketing_roles_that_only_mention_analytics() -> None:
+    assert _score_job(
+        title="Social Media Coordinator",
+        description="Entry level role using analytics, dashboards, and data-driven marketing campaigns for social media clients.",
+        query="computer science",
+        level="entry",
+    ) == 0
+
+
+def test_data_analyst_rejects_business_market_specialist_roles() -> None:
+    assert _score_job(
+        title="Entry Level Crypto Market Specialist",
+        description="Entry level market research and data-driven trading role using Microsoft Office and market reports.",
+        query="data analyst",
+        level="entry",
+    ) == 0
+
+
 def test_computer_science_still_allows_real_entry_technical_roles() -> None:
     assert _score_job(
         title="Analytics Engineer",
