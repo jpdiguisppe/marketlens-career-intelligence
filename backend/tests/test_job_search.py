@@ -3,6 +3,7 @@ from app.job_search import (
     _normalize_greenhouse_job,
     _score_job,
     clean_job_description,
+    resolve_job_level,
 )
 
 
@@ -102,16 +103,92 @@ def test_swe_query_is_general_purpose_not_early_career_only() -> None:
     ) > 0
 
 
-def test_specific_intern_query_scores_intern_roles_well() -> None:
+def test_query_terms_can_infer_level_when_specific() -> None:
+    assert resolve_job_level("SWE") == "any"
+    assert resolve_job_level("SWE Intern") == "intern"
+    assert resolve_job_level("entry level SWE") == "entry"
+    assert resolve_job_level("senior SWE") == "senior"
+    assert resolve_job_level("SWE", "intern") == "intern"
+
+
+def test_intern_level_filters_to_internship_roles() -> None:
     assert _score_job(
         title="Software Engineer Intern",
         description="Build backend services with Python during a summer internship.",
-        query="software engineer intern",
-    ) > _score_job(
+        query="SWE",
+        level="intern",
+    ) > 0
+
+    assert _score_job(
         title="Software Engineer, Backend",
         description="Build backend services with Python.",
-        query="software engineer intern",
-    )
+        query="SWE",
+        level="intern",
+    ) == 0
+
+    assert _score_job(
+        title="Software Engineer Intern",
+        description="Build backend services with Python during a summer internship.",
+        query="SWE Intern",
+    ) > 0
+
+    assert _score_job(
+        title="Software Engineer, Backend",
+        description="Build backend services with Python.",
+        query="SWE Intern",
+    ) == 0
+
+
+def test_entry_level_filters_to_entry_friendly_roles() -> None:
+    assert _score_job(
+        title="Software Engineer I",
+        description="Required: 0-1 years of software engineering experience with Python.",
+        query="SWE",
+        level="entry",
+    ) > 0
+
+    assert _score_job(
+        title="Senior Software Engineer, Backend",
+        description="Required: 7+ years of software engineering experience with Python.",
+        query="SWE",
+        level="entry",
+    ) == 0
+
+    assert _score_job(
+        title="Forward Deployed Software Engineer",
+        description="Required: 5+ years of software engineering experience with Python.",
+        query="entry level SWE",
+    ) == 0
+
+
+def test_mid_and_senior_levels_filter_separately() -> None:
+    assert _score_job(
+        title="Software Engineer II, Backend",
+        description="Build backend systems with Python and Java.",
+        query="SWE",
+        level="mid",
+    ) > 0
+
+    assert _score_job(
+        title="Software Engineer I",
+        description="Required: 0-1 years of software engineering experience with Python.",
+        query="SWE",
+        level="mid",
+    ) == 0
+
+    assert _score_job(
+        title="Principal Software Engineer, Performance",
+        description="Required: 10+ years of software engineering experience with Python.",
+        query="SWE",
+        level="senior",
+    ) > 0
+
+    assert _score_job(
+        title="Software Engineer I",
+        description="Required: 0-1 years of software engineering experience with Python.",
+        query="SWE",
+        level="senior",
+    ) == 0
 
 
 def test_default_search_market_excludes_obvious_non_us_locations() -> None:
