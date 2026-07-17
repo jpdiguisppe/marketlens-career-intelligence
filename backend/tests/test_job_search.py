@@ -1,6 +1,7 @@
 from app.job_search import (
     _matches_location,
     _normalize_greenhouse_job,
+    _normalize_lever_job,
     _score_job,
     clean_job_description,
     resolve_job_level,
@@ -43,6 +44,7 @@ def test_greenhouse_normalization_returns_plain_text_description() -> None:
     assert job is not None
     assert job.description == "Build Python services with SQL."
     assert "<p>" not in job.description
+    assert job.source == "greenhouse"
 
 
 def test_greenhouse_normalization_returns_plain_text_from_escaped_html() -> None:
@@ -61,6 +63,38 @@ def test_greenhouse_normalization_returns_plain_text_from_escaped_html() -> None
     assert job is not None
     assert job.description == "Build Python services."
     assert "<" not in job.description
+
+
+def test_lever_normalization_returns_plain_text_description() -> None:
+    job = _normalize_lever_job(
+        "github",
+        {
+            "id": "abc123",
+            "text": "Software Engineer I",
+            "hostedUrl": "https://jobs.lever.co/github/abc123",
+            "categories": {
+                "location": "Remote - United States",
+                "allLocations": ["Remote - United States"],
+            },
+            "descriptionPlain": "Build Python services.",
+            "lists": [
+                {
+                    "text": "Requirements",
+                    "content": "<ul><li>Use SQL and REST APIs.</li></ul>",
+                }
+            ],
+            "createdAt": 1780000000000,
+        },
+    )
+
+    assert job is not None
+    assert job.id == "lever:github:abc123"
+    assert job.source == "lever"
+    assert job.company == "GitHub"
+    assert job.location == "Remote - United States"
+    assert "Build Python services." in job.description
+    assert "Use SQL and REST APIs." in job.description
+    assert "<li>" not in job.description
 
 
 def test_swe_query_rejects_non_software_titles_even_when_description_mentions_software() -> None:
@@ -217,3 +251,12 @@ def test_default_search_market_excludes_obvious_non_us_locations() -> None:
 def test_remote_filter_excludes_country_specific_non_us_remote_roles() -> None:
     assert _matches_location("Remote, Brazil", "Remote") is False
     assert _matches_location("Remote, United States", "Remote") is True
+
+
+def test_us_city_search_includes_exact_aliases_and_us_remote_roles() -> None:
+    assert _matches_location("Philadelphia, PA", "Philadelphia") is True
+    assert _matches_location("Pennsylvania, United States", "Philadelphia") is True
+    assert _matches_location("Remote, United States", "Philadelphia") is True
+    assert _matches_location("Remote-US", "Philadelphia") is True
+    assert _matches_location("Remote, Brazil", "Philadelphia") is False
+    assert _matches_location("New York, NY", "Philadelphia") is False
