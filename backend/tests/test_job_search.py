@@ -2,6 +2,7 @@ from app.job_search import (
     _matches_location,
     _normalize_greenhouse_job,
     _normalize_lever_job,
+    _normalize_remoteok_job,
     _score_job,
     clean_job_description,
     resolve_job_level,
@@ -95,6 +96,28 @@ def test_lever_normalization_returns_plain_text_description() -> None:
     assert "Build Python services." in job.description
     assert "Use SQL and REST APIs." in job.description
     assert "<li>" not in job.description
+
+
+def test_remoteok_normalization_returns_remote_plain_text_description() -> None:
+    job = _normalize_remoteok_job(
+        {
+            "id": 456,
+            "position": "Junior Software Engineer",
+            "company": "Example Remote Co",
+            "url": "https://remoteok.com/remote-jobs/456",
+            "location": "Worldwide",
+            "description": "<p>Build <strong>Python</strong> APIs.</p>",
+            "date": "2026-07-17T00:00:00Z",
+        }
+    )
+
+    assert job is not None
+    assert job.id == "remoteok:456"
+    assert job.source == "remoteok"
+    assert job.company == "Example Remote Co"
+    assert job.location == "Remote (Worldwide)"
+    assert job.description == "Build Python APIs."
+    assert job.apply_url == "https://remoteok.com/remote-jobs/456"
 
 
 def test_swe_query_rejects_non_software_titles_even_when_description_mentions_software() -> None:
@@ -288,12 +311,14 @@ def test_default_search_market_excludes_obvious_non_us_locations() -> None:
 def test_remote_filter_excludes_country_specific_non_us_remote_roles() -> None:
     assert _matches_location("Remote, Brazil", "Remote") is False
     assert _matches_location("Remote, United States", "Remote") is True
+    assert _matches_location("Remote (Worldwide)", "Remote") is True
 
 
 def test_us_city_search_includes_exact_aliases_and_us_remote_roles() -> None:
     assert _matches_location("Philadelphia, PA", "Philadelphia") is True
     assert _matches_location("Remote, United States", "Philadelphia") is True
     assert _matches_location("Remote-US", "Philadelphia") is True
+    assert _matches_location("Remote (Worldwide)", "Philadelphia") is True
     assert _matches_location("Remote, Brazil", "Philadelphia") is False
     assert _matches_location("New York, NY", "Philadelphia") is False
     assert _matches_location("Pittsburgh, PA", "Philadelphia") is False
