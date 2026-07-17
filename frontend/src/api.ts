@@ -117,15 +117,13 @@ function includeFallbackSearchNotes(response: ExternalJobSearchResponse): Extern
     return response;
   }
 
-  const fallbackSummary = fallbackLinks
-    .map((link) => `${link.label}: ${link.url}`)
-    .join(" | ");
+  const fallbackLabels = fallbackLinks.map((link) => link.label.replace(" search", ""));
 
   return {
     ...response,
     warnings: [
       ...response.warnings,
-      `Try fallback searches outside MarketLens: ${fallbackSummary}`,
+      `Try fallback searches outside MarketLens: ${fallbackLabels.join(", ")}. Manual Smart Fit still works if you paste one of those postings below.`,
     ],
   };
 }
