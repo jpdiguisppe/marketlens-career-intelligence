@@ -16,6 +16,16 @@ def test_clean_job_description_removes_provider_html() -> None:
     assert "script" not in cleaned.lower()
 
 
+def test_clean_job_description_removes_escaped_provider_html() -> None:
+    cleaned = clean_job_description(
+        '&lt;div&gt;&lt;p&gt;Build &lt;strong&gt;Python&lt;/strong&gt; APIs.&lt;/p&gt;&lt;/div&gt;'
+    )
+
+    assert cleaned == "Build Python APIs."
+    assert "<" not in cleaned
+    assert "&lt;" not in cleaned
+
+
 def test_greenhouse_normalization_returns_plain_text_description() -> None:
     job = _normalize_greenhouse_job(
         "exampleco",
@@ -34,6 +44,24 @@ def test_greenhouse_normalization_returns_plain_text_description() -> None:
     assert "<p>" not in job.description
 
 
+def test_greenhouse_normalization_returns_plain_text_from_escaped_html() -> None:
+    job = _normalize_greenhouse_job(
+        "exampleco",
+        {
+            "id": 124,
+            "title": "Software Engineer I",
+            "absolute_url": "https://example.com/jobs/124",
+            "location": {"name": "Remote, United States"},
+            "content": "&lt;p&gt;Build &lt;strong&gt;Python&lt;/strong&gt; services.&lt;/p&gt;",
+            "updated_at": "2026-07-01T00:00:00-04:00",
+        },
+    )
+
+    assert job is not None
+    assert job.description == "Build Python services."
+    assert "<" not in job.description
+
+
 def test_swe_query_rejects_non_software_titles_even_when_description_mentions_software() -> None:
     assert _score_job(
         title="Business Development Representative",
@@ -45,6 +73,26 @@ def test_swe_query_rejects_non_software_titles_even_when_description_mentions_so
         title="Software Engineer I",
         description="Build product features with Python and Java.",
         query="SWE",
+    ) > 0
+
+
+def test_swe_query_rejects_senior_level_roles_unless_requested() -> None:
+    assert _score_job(
+        title="Principal Software Engineer, Performance",
+        description="Build high-scale infrastructure with Python.",
+        query="SWE",
+    ) == 0
+
+    assert _score_job(
+        title="Senior Software Engineer, Backend",
+        description="Build backend systems with Python.",
+        query="SWE",
+    ) == 0
+
+    assert _score_job(
+        title="Senior Software Engineer, Backend",
+        description="Build backend systems with Python.",
+        query="senior SWE",
     ) > 0
 
 
