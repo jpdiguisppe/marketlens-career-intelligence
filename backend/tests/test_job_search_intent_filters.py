@@ -22,20 +22,29 @@ def test_computer_science_blocks_clerical_data_entry_roles() -> None:
     ) == 0
 
 
-def test_computer_science_still_allows_real_technical_roles() -> None:
+def test_computer_science_still_allows_real_entry_technical_roles() -> None:
     assert _score_job(
         title="Analytics Engineer",
-        description="Build data pipelines with SQL and Python.",
+        description="Entry level role. Build data pipelines with SQL and Python.",
         query="computer science",
         level="entry",
     ) > 0
 
     assert _score_job(
         title="Insider Threat Analyst",
-        description="Investigate security signals and suspicious account behavior.",
+        description="Entry level security role. Investigate security signals and suspicious account behavior.",
         query="computer science",
         level="entry",
     ) > 0
+
+
+def test_entry_level_filter_still_requires_entry_evidence_for_technical_roles() -> None:
+    assert _score_job(
+        title="Analytics Engineer",
+        description="Build data pipelines with SQL and Python.",
+        query="computer science",
+        level="entry",
+    ) == 0
 
 
 def test_data_analyst_requires_data_or_analytics_signal() -> None:
@@ -69,7 +78,7 @@ def test_data_analyst_requires_data_or_analytics_signal() -> None:
 
     assert _score_job(
         title="Analytics Engineer",
-        description="Build analytics models and data pipelines with Python and SQL.",
+        description="Entry level role. Build analytics models and data pipelines with Python and SQL.",
         query="data analyst",
         level="entry",
     ) > 0
