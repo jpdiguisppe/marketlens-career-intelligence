@@ -105,7 +105,6 @@ DATA_TITLE_TERMS = {
     "data scientist",
     "data science",
     "data engineer",
-    "analytics",
     "business intelligence",
     "bi analyst",
     "machine learning",
@@ -174,6 +173,8 @@ MARKETING_TITLE_TERMS = {
     "social media",
     "brand",
     "communications",
+    "market specialist",
+    "crypto market specialist",
 }
 
 OPERATIONS_TITLE_TERMS = {
@@ -234,11 +235,14 @@ NON_DATA_ANALYST_TITLE_TERMS = {
     "finance analyst",
     "financial analyst",
     "marketing analyst",
+    "market specialist",
+    "crypto market specialist",
     "operations analyst",
     "policy analyst",
     "pricing analyst",
     "risk analyst",
     "sales analyst",
+    "trading specialist",
 }
 
 SALES_SUPPORT_TITLE_TERMS = {
@@ -275,6 +279,7 @@ ROLE_TITLE_TERMS: dict[RoleFamily, set[str]] = {
 }
 
 TECHNOLOGY_FAMILIES = frozenset({"software", "data", "cybersecurity"})
+NON_TECHNICAL_FAMILIES = frozenset({"finance", "product", "marketing", "operations", "healthcare", "design"})
 ENGINE_HANDLED_FAMILIES = frozenset({
     "technology",
     "software",
@@ -359,7 +364,8 @@ class JobIntent:
     is_clerical_admin: bool = False
     is_sales_support: bool = False
     is_non_data_analyst: bool = False
-    is_generic_early_career: bool = False
+    has_internship_title: bool = False
+    has_entry_title: bool = False
     is_technology_adjacent: bool = False
 
 
@@ -437,9 +443,25 @@ def _title_matches_family(title: str, family: RoleFamily) -> bool:
 
 
 def _description_matches_family(description: str, family: RoleFamily) -> bool:
+    description_lower = description.lower()
     if family == "technology":
         return any(_description_matches_family(description, technical_family) for technical_family in TECHNOLOGY_FAMILIES)
-    return _contains_any(description.lower(), ROLE_TITLE_TERMS.get(family, set()))
+    if family == "data":
+        strong_data_terms = {
+            "data analyst",
+            "data analytics",
+            "data science",
+            "data pipeline",
+            "data pipelines",
+            "datasets",
+            "sql",
+            "dashboard",
+            "dashboards",
+            "business intelligence",
+            "analytics models",
+        }
+        return _contains_any(description_lower, strong_data_terms)
+    return _contains_any(description_lower, ROLE_TITLE_TERMS.get(family, set()))
 
 
 def _generic_analyst_without_technical_signal(title: str, families: set[RoleFamily]) -> bool:
@@ -461,8 +483,6 @@ def classify_job(title: str, description: str = "") -> JobIntent:
     is_technology_adjacent = _contains_any(title_lower, TECHNOLOGY_ADJACENT_TITLE_TERMS)
 
     for family, terms in ROLE_TITLE_TERMS.items():
-        if family in {"operations"}:
-            continue
         if _contains_any(title_lower, terms):
             families.add(family)
 
@@ -476,7 +496,8 @@ def classify_job(title: str, description: str = "") -> JobIntent:
         and not (families & {"software", "data", "cybersecurity", "finance"})
     )
     is_non_data_analyst = _contains_any(title_lower, NON_DATA_ANALYST_TITLE_TERMS) or _generic_analyst_without_technical_signal(title, families)
-    is_generic_early_career = _contains_any(title_lower, INTERN_TITLE_TERMS) or _contains_any(title_lower, ENTRY_TEXT_TERMS)
+    has_internship_title = _contains_any(title_lower, INTERN_TITLE_TERMS)
+    has_entry_title = _contains_any(title_lower, ENTRY_TEXT_TERMS)
 
     return JobIntent(
         title=title,
@@ -484,13 +505,10 @@ def classify_job(title: str, description: str = "") -> JobIntent:
         is_clerical_admin=is_clerical_admin,
         is_sales_support=is_sales_support,
         is_non_data_analyst=is_non_data_analyst,
-        is_generic_early_career=is_generic_early_career,
+        has_internship_title=has_internship_title,
+        has_entry_title=has_entry_title,
         is_technology_adjacent=is_technology_adjacent,
     )
-
-
-def _is_entry_or_intern_context(intent: SearchIntent) -> bool:
-    return intent.level in {"intern", "entry"}
 
 
 def _has_early_career_description(description: str) -> bool:
@@ -499,16 +517,31 @@ def _has_early_career_description(description: str) -> bool:
     return _contains_any(description_lower, ENTRY_TEXT_TERMS | INTERN_TITLE_TERMS) or (0 < max_years <= 3)
 
 
+def _has_non_target_title_family(job: JobIntent, intent: SearchIntent) -> bool:
+    if intent.role_family not in {"software", "data", "technology", "cybersecurity"}:
+        return False
+    return bool((job.families & NON_TECHNICAL_FAMILIES) and not (job.families & intent.accepted_families))
+
+
+def _can_use_description_fallback(job: JobIntent, description: str, intent: SearchIntent) -> bool:
+    # Description fallback is intentionally narrow. It is for true generic
+    # internship postings like "Summer Analyst" or "Engineering Intern", not
+    # arbitrary entry-level business/admin roles that merely mention data.
+    if intent.level != "intern":
+        return False
+    if not (job.has_internship_title or _contains_any(description.lower(), INTERN_TITLE_TERMS)):
+        return False
+    return any(_description_matches_family(description, family) for family in intent.accepted_families)
+
+
 def job_matches_search_intent(title: str, description: str, intent: SearchIntent) -> bool:
     if intent.role_family is None:
         return True
 
     job = classify_job(title, description)
 
-    # Clerical/admin and sales/support roles should not appear in technical search
-    # results unless the user specifically searched for those admin/ops roles.
     if intent.role_family in {"software", "data", "technology", "cybersecurity"} and (
-        job.is_clerical_admin or job.is_sales_support
+        job.is_clerical_admin or job.is_sales_support or _has_non_target_title_family(job, intent)
     ):
         return False
 
@@ -521,19 +554,19 @@ def job_matches_search_intent(title: str, description: str, intent: SearchIntent
     if intent.role_family == "technology" and job.is_technology_adjacent:
         return True
 
-    # Generic titles like "Intern", "Summer Analyst", or "Associate" can match
-    # only when the body strongly identifies the requested domain.
-    if _is_entry_or_intern_context(intent) and (job.is_generic_early_career or _has_early_career_description(description)):
-        return any(_description_matches_family(description, family) for family in intent.accepted_families)
-
-    return False
+    return _can_use_description_fallback(job, description, intent)
 
 
 def title_matches_search_family(title: str, family: RoleFamily) -> bool:
     job = classify_job(title, "")
-    if family in {"software", "data", "technology", "cybersecurity"} and (job.is_clerical_admin or job.is_sales_support):
+    accepted_families = _infer_accepted_families(family)
+    if family in {"software", "data", "technology", "cybersecurity"} and (
+        job.is_clerical_admin
+        or job.is_sales_support
+        or bool((job.families & NON_TECHNICAL_FAMILIES) and not (job.families & accepted_families))
+    ):
         return False
-    if family in {"data", "technology"} and job.is_non_data_analyst and not (job.families & _infer_accepted_families(family)):
+    if family in {"data", "technology"} and job.is_non_data_analyst and not (job.families & accepted_families):
         return False
     if family == "technology":
         return bool(job.families & TECHNOLOGY_FAMILIES) or job.is_technology_adjacent
