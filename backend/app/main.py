@@ -19,7 +19,7 @@ from app.analysis import (
 )
 from app.analysis.model_extractor import is_model_assisted_configured
 from app.database import Base, engine, get_db
-from app.job_search import ExternalJobResult, search_external_jobs
+from app.job_search import ExternalJobResult, JobSearchResults, search_external_jobs
 from app.models import JobPostingDB
 from app.resume_files import ResumeFileExtractionError, extract_resume_text_from_upload
 from app.skill_extractor import count_skills, extract_skills
@@ -247,14 +247,33 @@ class ExternalJobPostingResponse(BaseModel):
     extracted_skills: list[str]
 
 
+class SourceCoverageResponse(BaseModel):
+    provider: str
+    label: str
+    status: str
+    fetched_count: int
+    matched_count: int
+    notes: list[str]
+
+
+class ExternalSearchLinkResponse(BaseModel):
+    label: str
+    url: str
+    note: str
+
+
 class ExternalJobSearchResponse(BaseModel):
     query: str
     location: str | None
     level: JobSearchLevel
+    role_family: str | None
     providers_searched: list[str]
     result_count: int
     results: list[ExternalJobPostingResponse]
     warnings: list[str]
+    source_coverage: list[SourceCoverageResponse]
+    search_suggestions: list[str]
+    external_search_links: list[ExternalSearchLinkResponse]
 
 
 class SmartFitBatchJobDescription(BaseModel):
@@ -427,20 +446,20 @@ def _build_resume_analysis_response(
 
     target_skill_counts = count_skills(target_descriptions)
     target_skills = list(target_skill_counts.keys())
-
-    if not target_skills:
-        raise HTTPException(
-            status_code=400,
-            detail="No recognizable target skills found in the provided job descriptions.",
-        )
-
     target_skill_set = set(target_skills)
-    matched_skill_set = resume_skill_set & target_skill_set
-    missing_skill_set = target_skill_set - resume_skill_set
 
-    matched_skills = _sort_skills_by_target_frequency(matched_skill_set, target_skill_counts)
-    missing_skills = _sort_skills_by_target_frequency(missing_skill_set, target_skill_counts)
-    match_percentage = round((len(matched_skills) / len(target_skills)) * 100, 1)
+    matched_skills = _sort_skills_by_target_frequency(
+        resume_skill_set & target_skill_set,
+        target_skill_counts,
+    )
+    missing_skills = _sort_skills_by_target_frequency(
+        target_skill_set - resume_skill_set,
+        target_skill_counts,
+    )
+
+    match_percentage = 0.0
+    if target_skills:
+        match_percentage = round((len(matched_skills) / len(target_skills)) * 100, 1)
 
     return ResumeAnalysisResponse(
         resume_skills=resume_skills,
@@ -454,82 +473,165 @@ def _build_resume_analysis_response(
     )
 
 
-def _extract_text_from_resume_upload(filename: str, contents: bytes) -> ResumeFileExtractionResponse:
-    try:
-        text, warnings = extract_resume_text_from_upload(filename, contents)
-    except ResumeFileExtractionError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    if len(text) > MAX_EXTRACTED_RESUME_TEXT_LENGTH:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Extracted resume text is too long. Maximum is {MAX_EXTRACTED_RESUME_TEXT_LENGTH} characters.",
-        )
-
-    return ResumeFileExtractionResponse(
-        filename=filename,
-        text=text,
-        character_count=len(text),
-        warnings=warnings,
-    )
-
-
-def _normalize_csv_fieldnames(fieldnames: list[str]) -> dict[str, str]:
-    return {
-        fieldname.strip().lower(): fieldname
-        for fieldname in fieldnames
-        if fieldname and fieldname.strip()
-    }
-
-
-def _get_csv_value(row: dict[str, str], normalized_fieldnames: dict[str, str], field_name: str) -> str | None:
-    original_fieldname = normalized_fieldnames.get(field_name)
-    if original_fieldname is None:
-        return None
-
-    value = row.get(original_fieldname)
-    if value is None:
-        return None
-
-    cleaned_value = value.strip()
-    return cleaned_value or None
-
-
-def _get_required_csv_value(row: dict[str, str], normalized_fieldnames: dict[str, str], field_name: str, row_number: int) -> str:
-    value = _get_csv_value(row, normalized_fieldnames, field_name)
-    if value is None:
-        raise ValueError(f"Row {row_number}: missing required field '{field_name}'")
-
-    return value
-
-
-def _posting_from_csv_row(row: dict[str, str], normalized_fieldnames: dict[str, str], row_number: int) -> JobPostingCreate:
-    return JobPostingCreate(
-        company=_get_required_csv_value(row, normalized_fieldnames, "company", row_number),
-        title=_get_required_csv_value(row, normalized_fieldnames, "title", row_number),
-        description=_get_required_csv_value(row, normalized_fieldnames, "description", row_number),
-        location=_get_csv_value(row, normalized_fieldnames, "location"),
-        role_category=_get_csv_value(row, normalized_fieldnames, "role_category"),
-        experience_level=_get_csv_value(row, normalized_fieldnames, "experience_level"),
-    )
-
-
-@app.get("/")
-def root() -> dict[str, str]:
-    return {
-        "message": "Welcome to the MarketLens API",
-        "docs": "/docs",
-    }
-
-
 @app.get("/health")
 def health_check() -> dict[str, str]:
     return {"status": "ok"}
 
 
 @app.get("/analysis/model-status", response_model=ModelAssistedStatusResponse)
-def get_model_assisted_status() -> ModelAssistedStatusResponse:
+def model_assisted_status() -> ModelAssistedStatusResponse:
     return _model_assisted_status_response()
+
+
+@app.post("/postings", response_model=JobPosting, dependencies=[Depends(require_admin_api_key)])
+def create_job_posting(posting: JobPostingCreate, db: Session = Depends(get_db)) -> JobPosting:
+    return _create_job_posting(db, posting)
+
+
+@app.get("/postings", response_model=list[JobPosting])
+def list_job_postings(db: Session = Depends(get_db)) -> list[JobPosting]:
+    postings = _list_db_postings(db)
+    return [_to_api_job_posting(posting) for posting in postings]
+
+
+@app.get("/skills/top", response_model=dict[str, int])
+def top_skills(db: Session = Depends(get_db)) -> dict[str, int]:
+    descriptions = [posting.description for posting in _list_db_postings(db)]
+    return count_skills(descriptions)
+
+
+@app.get("/skills/by-company", response_model=dict[str, dict[str, int]])
+def skills_by_company(db: Session = Depends(get_db)) -> dict[str, dict[str, int]]:
+    return _group_skill_counts_by_posting_field(db, "company")
+
+
+@app.get("/skills/by-role", response_model=dict[str, dict[str, int]])
+def skills_by_role(db: Session = Depends(get_db)) -> dict[str, dict[str, int]]:
+    return _group_skill_counts_by_posting_field(db, "role_category")
+
+
+@app.get("/postings/{posting_id}", response_model=JobPosting)
+def get_job_posting(posting_id: int, db: Session = Depends(get_db)) -> JobPosting:
+    posting = db.get(JobPostingDB, posting_id)
+    if posting is None:
+        raise HTTPException(status_code=404, detail="Job posting not found.")
+
+    return _to_api_job_posting(posting)
+
+
+@app.delete("/postings/{posting_id}", dependencies=[Depends(require_admin_api_key)])
+def delete_job_posting(posting_id: int, db: Session = Depends(get_db)) -> dict[str, str]:
+    posting = db.get(JobPostingDB, posting_id)
+    if posting is None:
+        raise HTTPException(status_code=404, detail="Job posting not found.")
+
+    db.delete(posting)
+    db.commit()
+
+    return {"status": "deleted"}
+
+
+@app.post("/skills/extract", response_model=SkillExtractionResponse)
+def extract_skills_endpoint(request: SkillExtractionRequest) -> SkillExtractionResponse:
+    return SkillExtractionResponse(skills=extract_skills(request.text))
+
+
+@app.post("/import/csv", response_model=CSVImportResponse, dependencies=[Depends(require_admin_api_key)])
+async def import_postings_csv(file: UploadFile = File(...), db: Session = Depends(get_db)) -> CSVImportResponse:
+    content = await file.read(MAX_CSV_FILE_SIZE_BYTES + 1)
+
+    if len(content) > MAX_CSV_FILE_SIZE_BYTES:
+        raise HTTPException(status_code=400, detail="CSV file is too large. Maximum size is 1 MB.")
+
+    try:
+        decoded_content = content.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise HTTPException(status_code=400, detail="CSV must be UTF-8 encoded.") from exc
+
+    reader = csv.DictReader(io.StringIO(decoded_content))
+    if reader.fieldnames is None:
+        raise HTTPException(status_code=400, detail="CSV must include a header row.")
+
+    csv_columns = {column.strip() for column in reader.fieldnames if column is not None}
+    missing_columns = REQUIRED_CSV_COLUMNS - csv_columns
+    unsupported_columns = csv_columns - SUPPORTED_CSV_COLUMNS
+
+    if missing_columns:
+        raise HTTPException(status_code=400, detail=f"Missing required columns: {sorted(missing_columns)}")
+
+    if unsupported_columns:
+        raise HTTPException(status_code=400, detail=f"Unsupported columns: {sorted(unsupported_columns)}")
+
+    created_postings: list[JobPosting] = []
+    errors: list[str] = []
+
+    for row_number, row in enumerate(reader, start=2):
+        if row_number - 1 > MAX_CSV_ROWS:
+            errors.append(f"Row {row_number}: skipped because the maximum row limit is {MAX_CSV_ROWS}.")
+            break
+
+        try:
+            posting = JobPostingCreate(
+                company=(row.get("company") or "").strip(),
+                title=(row.get("title") or "").strip(),
+                location=(row.get("location") or "").strip() or None,
+                role_category=(row.get("role_category") or "").strip() or None,
+                experience_level=(row.get("experience_level") or "").strip() or None,
+                description=(row.get("description") or "").strip(),
+            )
+        except ValidationError as exc:
+            errors.append(f"Row {row_number}: {exc.errors()[0]['msg']}")
+            continue
+
+        created_postings.append(_create_job_posting(db, posting))
+
+    return CSVImportResponse(
+        imported_count=len(created_postings),
+        failed_count=len(errors),
+        created_postings=created_postings,
+        errors=errors,
+    )
+
+
+@app.post("/analysis/resume", response_model=ResumeAnalysisResponse)
+def analyze_resume(request: ResumeAnalysisRequest, db: Session = Depends(get_db)) -> ResumeAnalysisResponse:
+    query = db.query(JobPostingDB)
+    if request.target_role_category:
+        query = query.filter(JobPostingDB.role_category == request.target_role_category)
+
+    postings = query.all()
+    if not postings:
+        raise HTTPException(status_code=404, detail="No job postings found for the requested analysis.")
+
+    return _build_resume_analysis_response(
+        resume_text=request.resume_text,
+        target_descriptions=[posting.description for posting in postings],
+        postings_analyzed=len(postings),
+        target_role_category=request.target_role_category,
+    )
+
+
+@app.post(
+    "/analysis/resume-file/extract",
+    response_model=ResumeFileExtractionResponse,
+    dependencies=[Depends(enforce_public_rate_limit)],
+)
+async def extract_resume_file(file: UploadFile = File(...)) -> ResumeFileExtractionResponse:
+    try:
+        result = await extract_resume_text_from_upload(
+            file=file,
+            max_upload_bytes=MAX_RESUME_UPLOAD_BYTES,
+            max_extracted_characters=MAX_EXTRACTED_RESUME_TEXT_LENGTH,
+        )
+    except ResumeFileExtractionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return ResumeFileExtractionResponse(
+        filename=result.filename,
+        text=result.text,
+        character_count=result.character_count,
+        warnings=result.warnings,
+    )
 
 
 @app.get(
@@ -540,206 +642,39 @@ def get_model_assisted_status() -> ModelAssistedStatusResponse:
 def search_external_job_postings(
     query: Annotated[str, Query(min_length=1, max_length=100)],
     location: Annotated[str | None, Query(max_length=120)] = None,
-    level: Annotated[JobSearchLevel | None, Query(description="Optional experience level filter: any, intern, entry, mid, or senior.")] = None,
+    level: Annotated[
+        JobSearchLevel | None,
+        Query(description="Optional experience level filter: any, intern, entry, mid, or senior."),
+    ] = None,
     limit: Annotated[int, Query(ge=1, le=50)] = 15,
 ) -> ExternalJobSearchResponse:
-    search_results = search_external_jobs(query=query, location=location, level=level, limit=limit)
-    results = [_to_external_job_response(job) for job in search_results.results]
+    search_results: JobSearchResults = search_external_jobs(query=query, location=location, level=level, limit=limit)
+    api_results = [_to_external_job_response(job) for job in search_results.results]
     return ExternalJobSearchResponse(
         query=search_results.query,
         location=search_results.location,
         level=search_results.level,
+        role_family=search_results.role_family,
         providers_searched=search_results.providers_searched,
-        result_count=len(results),
-        results=results,
+        result_count=len(api_results),
+        results=api_results,
         warnings=search_results.warnings,
-    )
-
-
-@app.post(
-    "/analysis/resume-file/extract",
-    response_model=ResumeFileExtractionResponse,
-    dependencies=[Depends(enforce_public_rate_limit)],
-)
-async def extract_resume_file_text(file: UploadFile = File(...)) -> ResumeFileExtractionResponse:
-    filename = file.filename or "uploaded-resume.txt"
-    file_contents = await file.read()
-
-    if not file_contents:
-        raise HTTPException(status_code=400, detail="Uploaded resume file is empty.")
-
-    if len(file_contents) > MAX_RESUME_UPLOAD_BYTES:
-        raise HTTPException(
-            status_code=413,
-            detail=f"Resume file is too large. Maximum size is {MAX_RESUME_UPLOAD_BYTES} bytes.",
-        )
-
-    return _extract_text_from_resume_upload(filename, file_contents)
-
-
-@app.post(
-    "/job-postings",
-    response_model=JobPosting,
-    status_code=201,
-    dependencies=[Depends(require_admin_api_key)],
-)
-def create_job_posting(posting: JobPostingCreate, db: Session = Depends(get_db)) -> JobPosting:
-    return _create_job_posting(db, posting)
-
-
-@app.get("/job-postings", response_model=list[JobPosting])
-def list_job_postings(db: Session = Depends(get_db)) -> list[JobPosting]:
-    return [_to_api_job_posting(posting) for posting in _list_db_postings(db)]
-
-
-@app.post(
-    "/job-postings/import-csv",
-    response_model=CSVImportResponse,
-    status_code=201,
-    dependencies=[Depends(require_admin_api_key)],
-)
-async def import_job_postings_from_csv(
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-) -> CSVImportResponse:
-    file_contents = await file.read()
-
-    if not file_contents:
-        raise HTTPException(status_code=400, detail="Uploaded CSV file is empty")
-
-    if len(file_contents) > MAX_CSV_FILE_SIZE_BYTES:
-        raise HTTPException(
-            status_code=413,
-            detail=f"CSV file is too large. Maximum size is {MAX_CSV_FILE_SIZE_BYTES} bytes.",
-        )
-
-    try:
-        csv_text = file_contents.decode("utf-8-sig")
-    except UnicodeDecodeError as exc:
-        raise HTTPException(status_code=400, detail="CSV file must be UTF-8 encoded") from exc
-
-    reader = csv.DictReader(io.StringIO(csv_text))
-    if reader.fieldnames is None:
-        raise HTTPException(status_code=400, detail="CSV file must include a header row")
-
-    normalized_fieldnames = _normalize_csv_fieldnames(reader.fieldnames)
-    missing_required_columns = sorted(REQUIRED_CSV_COLUMNS - set(normalized_fieldnames.keys()))
-
-    if missing_required_columns:
-        raise HTTPException(
-            status_code=400,
-            detail=f"CSV file is missing required columns: {', '.join(missing_required_columns)}",
-        )
-
-    unsupported_columns = sorted(set(normalized_fieldnames.keys()) - SUPPORTED_CSV_COLUMNS)
-    created_postings: list[JobPosting] = []
-    errors: list[str] = []
-    non_empty_row_count = 0
-
-    for row_number, row in enumerate(reader, start=2):
-        if not any(value and value.strip() for value in row.values()):
-            continue
-
-        non_empty_row_count += 1
-        if non_empty_row_count > MAX_CSV_ROWS:
-            raise HTTPException(
-                status_code=400,
-                detail=f"CSV file may include at most {MAX_CSV_ROWS} non-empty data rows.",
+        source_coverage=[
+            SourceCoverageResponse(
+                provider=coverage.provider,
+                label=coverage.label,
+                status=coverage.status,
+                fetched_count=coverage.fetched_count,
+                matched_count=coverage.matched_count,
+                notes=coverage.notes,
             )
-
-        try:
-            posting_create = _posting_from_csv_row(row, normalized_fieldnames, row_number)
-            created_postings.append(_create_job_posting(db, posting_create))
-        except (ValueError, ValidationError) as exc:
-            errors.append(str(exc))
-
-    if unsupported_columns:
-        errors.insert(
-            0,
-            f"Ignored unsupported columns: {', '.join(unsupported_columns)}",
-        )
-
-    return CSVImportResponse(
-        imported_count=len(created_postings),
-        failed_count=len(errors),
-        created_postings=created_postings,
-        errors=errors,
-    )
-
-
-@app.get("/job-postings/{posting_id}", response_model=JobPosting)
-def get_job_posting(posting_id: int, db: Session = Depends(get_db)) -> JobPosting:
-    posting = db.get(JobPostingDB, posting_id)
-
-    if posting is None:
-        raise HTTPException(status_code=404, detail="Job posting not found")
-
-    return _to_api_job_posting(posting)
-
-
-@app.delete(
-    "/job-postings",
-    status_code=204,
-    dependencies=[Depends(require_admin_api_key)],
-)
-def delete_all_job_postings(db: Session = Depends(get_db)) -> None:
-    db.query(JobPostingDB).delete()
-    db.commit()
-
-
-@app.post(
-    "/skills/extract",
-    response_model=SkillExtractionResponse,
-    dependencies=[Depends(enforce_public_rate_limit)],
-)
-def extract_skills_from_text(request: SkillExtractionRequest) -> SkillExtractionResponse:
-    return SkillExtractionResponse(skills=extract_skills(request.text))
-
-
-@app.get("/skills/top")
-def get_top_skills(db: Session = Depends(get_db)) -> dict[str, int]:
-    descriptions = [posting.description for posting in _list_db_postings(db)]
-    return count_skills(descriptions)
-
-
-@app.get("/skills/top-by-company")
-def get_top_skills_by_company(db: Session = Depends(get_db)) -> dict[str, dict[str, int]]:
-    return _group_skill_counts_by_posting_field(db, "company")
-
-
-@app.get("/skills/top-by-role")
-def get_top_skills_by_role(db: Session = Depends(get_db)) -> dict[str, dict[str, int]]:
-    return _group_skill_counts_by_posting_field(db, "role_category")
-
-
-@app.post(
-    "/resume/analyze",
-    response_model=ResumeAnalysisResponse,
-    dependencies=[Depends(enforce_public_rate_limit)],
-)
-def analyze_resume(request: ResumeAnalysisRequest, db: Session = Depends(get_db)) -> ResumeAnalysisResponse:
-    all_postings = _list_db_postings(db)
-    target_postings = all_postings
-
-    if request.target_role_category:
-        target_postings = [
-            posting
-            for posting in all_postings
-            if posting.role_category == request.target_role_category
-        ]
-
-    if not target_postings:
-        raise HTTPException(
-            status_code=400,
-            detail="No saved job postings found for that target role category.",
-        )
-
-    target_descriptions = [posting.description for posting in target_postings]
-    return _build_resume_analysis_response(
-        resume_text=request.resume_text,
-        target_descriptions=target_descriptions,
-        postings_analyzed=len(target_postings),
-        target_role_category=request.target_role_category,
+            for coverage in search_results.source_coverage
+        ],
+        search_suggestions=search_results.search_suggestions,
+        external_search_links=[
+            ExternalSearchLinkResponse(label=link.label, url=link.url, note=link.note)
+            for link in search_results.external_search_links
+        ],
     )
 
 
@@ -749,23 +684,10 @@ def analyze_resume(request: ResumeAnalysisRequest, db: Session = Depends(get_db)
     dependencies=[Depends(enforce_public_rate_limit)],
 )
 def analyze_custom_job_descriptions(request: CustomAnalysisRequest) -> ResumeAnalysisResponse:
-    cleaned_descriptions = [
-        description.strip()
-        for description in request.job_descriptions
-        if description.strip()
-    ]
-
-    if not cleaned_descriptions:
-        raise HTTPException(
-            status_code=400,
-            detail="At least one non-empty job description is required.",
-        )
-
     return _build_resume_analysis_response(
         resume_text=request.resume_text,
-        target_descriptions=cleaned_descriptions,
-        postings_analyzed=len(cleaned_descriptions),
-        target_role_category=None,
+        target_descriptions=request.job_descriptions,
+        postings_analyzed=len(request.job_descriptions),
     )
 
 
@@ -774,13 +696,9 @@ def analyze_custom_job_descriptions(request: CustomAnalysisRequest) -> ResumeAna
     response_model=SmartFitAnalysisResponse,
     dependencies=[Depends(enforce_public_rate_limit)],
 )
-def analyze_smart_fit_request(request: SmartFitAnalysisRequest) -> SmartFitAnalysisResponse:
+def analyze_smart_fit_endpoint(request: SmartFitAnalysisRequest) -> SmartFitAnalysisResponse:
     try:
-        return analyze_smart_fit(
-            resume_text=request.resume_text,
-            job_description=request.job_description,
-            use_model_assisted=request.use_model_assisted,
-        )
+        return analyze_smart_fit(request)
     except AnalysisInputError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -790,25 +708,24 @@ def analyze_smart_fit_request(request: SmartFitAnalysisRequest) -> SmartFitAnaly
     response_model=SmartFitBatchAnalysisResponse,
     dependencies=[Depends(enforce_public_rate_limit)],
 )
-def analyze_smart_fit_batch_request(request: SmartFitBatchAnalysisRequest) -> SmartFitBatchAnalysisResponse:
+def analyze_smart_fit_batch_endpoint(request: SmartFitBatchAnalysisRequest) -> SmartFitBatchAnalysisResponse:
     results: list[SmartFitBatchResult] = []
 
     for index, job in enumerate(request.job_descriptions):
         try:
             analysis = analyze_smart_fit(
-                resume_text=request.resume_text,
-                job_description=job.job_description,
-                use_model_assisted=request.use_model_assisted,
+                SmartFitAnalysisRequest(
+                    resume_text=request.resume_text,
+                    job_description=job.job_description,
+                    use_model_assisted=request.use_model_assisted,
+                )
             )
         except AnalysisInputError as exc:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Job {index + 1}: {exc}",
-            ) from exc
+            raise HTTPException(status_code=400, detail=f"Job {index + 1}: {exc}") from exc
 
         results.append(
             SmartFitBatchResult(
-                rank=0,
+                rank=index + 1,
                 job_index=index,
                 title=_infer_batch_job_title(job, index),
                 analysis=analysis,
