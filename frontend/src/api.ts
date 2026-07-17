@@ -110,6 +110,26 @@ async function postFormData<TResponse>(path: string, body: FormData): Promise<TR
   return response.json() as Promise<TResponse>;
 }
 
+function includeFallbackSearchNotes(response: ExternalJobSearchResponse): ExternalJobSearchResponse {
+  const fallbackLinks = response.external_search_links ?? [];
+
+  if (response.results.length > 0 || fallbackLinks.length === 0) {
+    return response;
+  }
+
+  const fallbackSummary = fallbackLinks
+    .map((link) => `${link.label}: ${link.url}`)
+    .join(" | ");
+
+  return {
+    ...response,
+    warnings: [
+      ...response.warnings,
+      `Try fallback searches outside MarketLens: ${fallbackSummary}`,
+    ],
+  };
+}
+
 export async function getJobPostings(): Promise<JobPosting[]> {
   return fetchJson<JobPosting[]>("/job-postings");
 }
@@ -151,7 +171,8 @@ export async function searchExternalJobs({
     params.set("location", location.trim());
   }
 
-  return fetchJson<ExternalJobSearchResponse>(`/jobs/search?${params.toString()}`);
+  const response = await fetchJson<ExternalJobSearchResponse>(`/jobs/search?${params.toString()}`);
+  return includeFallbackSearchNotes(response);
 }
 
 export async function analyzeResume(request: ResumeAnalysisRequest): Promise<ResumeAnalysisResponse> {
