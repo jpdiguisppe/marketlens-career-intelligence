@@ -197,6 +197,20 @@ def test_entry_level_filters_to_entry_friendly_roles() -> None:
     ) > 0
 
     assert _score_job(
+        title="Associate Software Engineer",
+        description="Build APIs with Python and JavaScript.",
+        query="SWE",
+        level="entry",
+    ) > 0
+
+    assert _score_job(
+        title="New Grad Software Engineer",
+        description="Build backend services with Python.",
+        query="SWE",
+        level="entry",
+    ) > 0
+
+    assert _score_job(
         title="Senior Software Engineer, Backend",
         description="Required: 7+ years of software engineering experience with Python.",
         query="SWE",
@@ -207,6 +221,29 @@ def test_entry_level_filters_to_entry_friendly_roles() -> None:
         title="Forward Deployed Software Engineer",
         description="Required: 5+ years of software engineering experience with Python.",
         query="entry level SWE",
+    ) == 0
+
+
+def test_entry_level_does_not_return_mid_senior_or_staff_roles() -> None:
+    assert _score_job(
+        title="Software Engineer II, Android",
+        description="Our mission is to build education products. You will grow your career with us.",
+        query="SWE",
+        level="entry",
+    ) == 0
+
+    assert _score_job(
+        title="Senior Software Engineer, Frontend",
+        description="Ready to do the most impactful work of your career? Build React systems.",
+        query="SWE",
+        level="entry",
+    ) == 0
+
+    assert _score_job(
+        title="Staff Software Engineer, AI Developer Tools",
+        description="Build high-scale engineering systems with CI/CD and machine learning.",
+        query="SWE",
+        level="entry",
     ) == 0
 
 
@@ -255,8 +292,8 @@ def test_remote_filter_excludes_country_specific_non_us_remote_roles() -> None:
 
 def test_us_city_search_includes_exact_aliases_and_us_remote_roles() -> None:
     assert _matches_location("Philadelphia, PA", "Philadelphia") is True
-    assert _matches_location("Pennsylvania, United States", "Philadelphia") is True
     assert _matches_location("Remote, United States", "Philadelphia") is True
     assert _matches_location("Remote-US", "Philadelphia") is True
     assert _matches_location("Remote, Brazil", "Philadelphia") is False
     assert _matches_location("New York, NY", "Philadelphia") is False
+    assert _matches_location("Pittsburgh, PA", "Philadelphia") is False
