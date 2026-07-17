@@ -19,6 +19,12 @@ DEFAULT_GREENHOUSE_BOARDS = (
     "verkada",
 )
 MAX_PROVIDER_RESULTS_PER_BOARD = 75
+MAX_EARLY_CAREER_YEARS = 3
+EXPERIENCE_YEARS_PATTERN = re.compile(r"\b(\d{1,2})\s*\+?\s*(?:years?|yrs?)\b", re.IGNORECASE)
+MID_OR_SENIOR_LEVEL_TITLE_PATTERN = re.compile(
+    r"\b(?:software\s+)?(?:engineer|developer)\s+(?:ii|iii|iv|v|2|3|4|5)\b",
+    re.IGNORECASE,
+)
 
 NON_US_LOCATION_TERMS = {
     "australia",
@@ -113,6 +119,13 @@ SENIOR_QUERY_TERMS = {
     "manager",
     "director",
     "architect",
+    "ii",
+    "iii",
+    "iv",
+    "2",
+    "3",
+    "4",
+    "5",
 }
 
 
@@ -218,7 +231,7 @@ def _is_software_role_query(query: str) -> bool:
     )
 
 
-def _allows_senior_level(query: str) -> bool:
+def _allows_experienced_level(query: str) -> bool:
     query_terms = set(_query_terms(query))
     return bool(query_terms & SENIOR_QUERY_TERMS)
 
@@ -226,6 +239,19 @@ def _allows_senior_level(query: str) -> bool:
 def _looks_like_senior_role(title: str) -> bool:
     normalized_title = title.lower()
     return any(term in normalized_title for term in SENIOR_TITLE_TERMS)
+
+
+def _looks_like_mid_or_senior_numbered_role(title: str) -> bool:
+    return bool(MID_OR_SENIOR_LEVEL_TITLE_PATTERN.search(title))
+
+
+def _max_required_years(description: str) -> int:
+    years = [int(match.group(1)) for match in EXPERIENCE_YEARS_PATTERN.finditer(description)]
+    return max(years, default=0)
+
+
+def _exceeds_early_career_experience(description: str) -> bool:
+    return _max_required_years(description) > MAX_EARLY_CAREER_YEARS
 
 
 def _looks_like_software_role(title: str) -> bool:
@@ -277,8 +303,13 @@ def _score_job(title: str, description: str, query: str) -> int:
     if _is_software_role_query(query):
         if not _looks_like_software_role(title):
             return 0
-        if _looks_like_senior_role(title) and not _allows_senior_level(query):
-            return 0
+        if not _allows_experienced_level(query):
+            if _looks_like_senior_role(title):
+                return 0
+            if _looks_like_mid_or_senior_numbered_role(title):
+                return 0
+            if _exceeds_early_career_experience(description):
+                return 0
 
     terms = _query_terms(query)
     searchable_title = title.lower()
@@ -393,7 +424,7 @@ def search_external_jobs(query: str, location: str | None = None, limit: int = 1
 
     if not ranked_results:
         warnings.append(
-            "No matching external jobs were found in the configured public job boards. Try a broader query, a different location, or configure more boards."
+            "No early-career-friendly external jobs were found in the configured public job boards. Try a more specific query like 'software engineer intern', a different location, or configure more boards."
         )
 
     return JobSearchResults(
