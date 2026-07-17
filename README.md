@@ -27,6 +27,7 @@ Upload or paste resume
 Search configured public job sources
 Filter by level: Any, Internship, Entry, Mid, Senior
 Optionally filter by location
+Review source coverage and search notes
 Select one or more returned jobs
 Compare selected jobs against the resume
 Rank jobs with Smart Fit
@@ -58,9 +59,11 @@ Public visitors can:
 - view top skills, company breakdowns, and role-category breakdowns
 - upload `.txt`, `.md`, `.pdf`, or `.docx` resumes for text extraction
 - paste resume text manually
-- search configured public Greenhouse, Lever, and Remote OK job sources
+- search configured public Greenhouse, Lever, Remote OK, and Remotive job sources
+- search across multiple role families, not only software
 - filter searched jobs by experience level
 - optionally filter searched jobs by location
+- inspect warnings, source coverage metadata, and fallback search links when sources are thin
 - select searched jobs and compare them through Smart Fit
 - paste one or more job descriptions without saving them to the shared database
 - separate multiple pasted jobs with `---`
@@ -71,9 +74,9 @@ Public visitors can:
 
 Admin-only actions require the `X-Admin-API-Key` header:
 
-- `POST /job-postings`
-- `POST /job-postings/import-csv`
-- `DELETE /job-postings`
+- `POST /postings`
+- `POST /import/csv`
+- `DELETE /postings/{posting_id}`
 
 This keeps the public demo useful while preventing anonymous users from modifying or deleting shared demo data.
 
@@ -82,22 +85,22 @@ This keeps the public demo useful while preventing anonymous users from modifyin
 The FastAPI backend currently supports:
 
 - `GET /health` — health check
-- `GET /job-postings` — list saved demo postings
-- `GET /job-postings/{posting_id}` — retrieve one saved posting
-- `GET /jobs/search` — search configured public Greenhouse, Lever, and Remote OK job sources, normalize results, and support level/location filters
+- `GET /postings` — list saved demo postings
+- `GET /postings/{posting_id}` — retrieve one saved posting
+- `GET /jobs/search` — search configured public job sources, normalize results, and support role-family, level, location, source-coverage, and fallback-link metadata
 - `POST /skills/extract` — extract skills from pasted text
 - `GET /skills/top` — view overall skill frequency
-- `GET /skills/top-by-company` — compare skill frequency by company
-- `GET /skills/top-by-role` — compare skill frequency by role category
-- `POST /resume/analyze` — compare resume skills against saved postings
+- `GET /skills/by-company` — compare skill frequency by company
+- `GET /skills/by-role` — compare skill frequency by role category
+- `POST /analysis/resume` — compare resume skills against saved postings
 - `POST /analysis/custom` — compare resume skills against pasted job descriptions using the simpler skill-gap engine
 - `POST /analysis/resume-file/extract` — extract text from `.txt`, `.md`, `.pdf`, or `.docx` resume uploads
 - `POST /analysis/smart` — run evidence-aware Smart Fit analysis against one pasted job description
 - `POST /analysis/smart/batch` — run Smart Fit analysis against 1–10 jobs and return ranked results
 - `GET /analysis/model-status` — report whether model-assisted extraction is configured without exposing secrets
-- `POST /job-postings` — admin-protected manual job posting creation
-- `POST /job-postings/import-csv` — admin-protected CSV import
-- `DELETE /job-postings` — admin-protected clearing of saved postings
+- `POST /postings` — admin-protected manual job posting creation
+- `POST /import/csv` — admin-protected CSV import
+- `DELETE /postings/{posting_id}` — admin-protected deletion of saved postings
 
 ## Online Job Search Sources
 
@@ -105,36 +108,64 @@ MarketLens uses public job APIs instead of scraping closed job boards.
 
 Configured source types:
 
-- **Greenhouse Job Board API**
-- **Lever Postings API**
-- **Remote OK public JSON feed**
+- **Greenhouse Job Board API** — company-specific ATS boards
+- **Lever Postings API** — company-specific ATS boards
+- **Remote OK public JSON feed** — remote-first job feed
+- **Remotive public API** — remote-first job feed with search/category support
 
-Default Greenhouse board tokens currently include:
+MarketLens does **not** claim to search all of LinkedIn, Indeed, Handshake, Workday, company career pages, or school career portals. When no results are found, the API now returns source-coverage metadata, human-readable search notes, and fallback search links so the user can continue outside the configured API-friendly sources and paste those jobs back into Smart Fit.
+
+### Role-family search behavior
+
+Search is no longer software-only. The backend detects role-family intent from the query and uses family-specific title matching.
+
+Currently supported families include:
 
 ```text
-datadog, airbnb, figma, duolingo, roblox, scaleai, hubspot, cloudflare, verkada,
-doordash, okta, mongodb, asana, plaid, brex, coinbase, ramp, gusto
+software, finance, data, cybersecurity, product, marketing, operations, healthcare, design
 ```
 
-Default Lever site tokens currently include:
+Examples:
 
 ```text
-github, postman, benchling, box, coursera, lyft, pinterest, reddit, snap, twitch,
-zapier, affirm, robinhood, rippling, webflow, notion, loom, intercom, mixpanel,
-fivetran, algolia, addepar
+finance internship
+accounting internship
+financial analyst internship
+data analyst internship
+cybersecurity internship
+marketing intern
+software engineer intern
+backend developer
 ```
 
-Remote OK is enabled by default as a broader remote-job source. MarketLens keeps the provider source on each job card and links users back to the original posting URL.
+For finance/accounting, the matcher recognizes signals such as:
 
-Search behavior:
+```text
+finance, financial analyst, accounting, accountant, audit, tax, FP&A, treasury,
+investment banking, valuation, credit analyst, portfolio analyst, summer analyst
+```
+
+It also protects against level-only false positives. For example, `finance internship` should match `Finance Intern` or `Accounting Intern`, but not `Sales Intern` or `Software Engineer Intern` merely because those titles contain `Intern`.
+
+### Experience level behavior
 
 - `level=any` keeps the search general-purpose and can return senior, mid-level, entry-level, or internship roles.
 - `level=intern` only returns internship/co-op-looking roles.
 - `level=entry`, `level=mid`, and `level=senior` filter by experience signal.
-- Query text can infer level intent, such as `SWE Intern`, `entry level SWE`, or `senior SWE`.
-- `Philadelphia` means Philadelphia/Philly plus remote fallback; it does not include Pittsburgh.
-- `PA` or `Pennsylvania` can include Philadelphia, Pittsburgh, PA-wide, and remote roles.
-- Manual pasted-job analysis remains available for postings outside the configured sources.
+- Query text can infer level intent, such as `SWE Intern`, `entry level finance`, or `senior product manager`.
+
+### Location behavior
+
+- `Philadelphia` means Philadelphia/Philly plus U.S.-remote fallback; it does not include Pittsburgh.
+- `PA` or `Pennsylvania` can include Philadelphia, Pittsburgh, PA-wide, and U.S.-remote roles.
+- `Remote` means U.S.-remote or worldwide-remote roles unless the source clearly labels a non-U.S. country-specific remote role.
+- Blank location means broad U.S./U.S.-remote matching.
+
+### Source coverage limitations
+
+Public remote-job APIs are stronger for remote/general roles than for campus internships. Finance/accounting internships are especially likely to appear on Handshake, Workday-backed company career pages, LinkedIn, Indeed, school portals, and company internship pages. MarketLens handles that honestly by surfacing no-result explanations and fallback links rather than pretending those sources were searched.
+
+Manual pasted-job analysis remains available for any posting copied from outside the configured sources.
 
 Source coverage is configurable through backend environment variables:
 
@@ -142,6 +173,7 @@ Source coverage is configurable through backend environment variables:
 JOB_SEARCH_GREENHOUSE_BOARDS=datadog,airbnb,figma
 JOB_SEARCH_LEVER_SITES=github,postman,benchling
 JOB_SEARCH_REMOTEOK_ENABLED=true
+JOB_SEARCH_REMOTIVE_ENABLED=true
 ```
 
 ## Frontend Features
@@ -196,7 +228,7 @@ See [`SECURITY.md`](SECURITY.md) for the security policy and known limitations.
 Current checks include:
 
 - backend API tests for job posting creation, CSV import, admin API key protection, input validation, resume extraction, model status, and Smart Fit batch comparison
-- backend unit tests for skill extraction, job search normalization/filtering, and Smart Fit analysis behavior
+- backend unit tests for skill extraction, job search normalization/filtering, role-family search, and Smart Fit analysis behavior
 - backend evaluation cases for Smart Fit analysis
 - frontend production build validation
 - Docker image build validation for the backend and frontend
@@ -222,282 +254,61 @@ npm install
 npm run build
 ```
 
-Build Docker images:
+Run both apps locally:
 
 ```bash
-docker build -t marketlens-backend ./backend
-docker build --build-arg VITE_API_BASE_URL=http://localhost:8000 -t marketlens-frontend ./frontend
-```
-
-## Running the Backend Locally
-
-From the project root:
-
-```bash
+# terminal 1
 cd backend
 source .venv/bin/activate
-python -m pip install -r requirements.txt
 python -m uvicorn app.main:app --reload
-```
 
-Then open:
-
-```text
-http://127.0.0.1:8000/docs
-```
-
-For local admin-protected endpoints, set an admin key before starting the backend:
-
-```bash
-export ADMIN_API_KEY=local-dev-admin-key
-```
-
-Then pass this header in Swagger or API requests:
-
-```text
-X-Admin-API-Key: local-dev-admin-key
-```
-
-## Running the Frontend Locally
-
-Open a second terminal tab from the project root:
-
-```bash
+# terminal 2
 cd frontend
-npm install
 npm run dev
-```
-
-Then open:
-
-```text
-http://localhost:5173
-```
-
-The frontend expects the backend to be running at:
-
-```text
-http://127.0.0.1:8000
-```
-
-You can override that by creating a local `.env` file inside `frontend/`:
-
-```text
-VITE_API_BASE_URL=http://127.0.0.1:8000
-```
-
-## Persistence
-
-MarketLens uses SQLAlchemy for database-backed storage.
-
-For local development, the backend defaults to SQLite:
-
-```text
-sqlite:///./marketlens.db
-```
-
-In Docker, the backend uses a named Docker volume and stores SQLite data at:
-
-```text
-/app/data/marketlens.db
-```
-
-For public deployment, MarketLens uses PostgreSQL by setting a `DATABASE_URL` environment variable.
-
-## CSV Format
-
-CSV imports should use this header row:
-
-```csv
-company,title,location,role_category,experience_level,description
-```
-
-Required columns:
-
-- `company`
-- `title`
-- `description`
-
-Optional columns:
-
-- `location`
-- `role_category`
-- `experience_level`
-
-A sample file is included at:
-
-```text
-data/sample_job_postings.csv
-```
-
-CSV import is admin-protected in the deployed demo and requires the `X-Admin-API-Key` header.
-
-## Running with Docker
-
-From the project root:
-
-```bash
-docker compose up --build
-```
-
-Then open:
-
-```text
-http://localhost:5173
-```
-
-The backend API will be available at:
-
-```text
-http://localhost:8000
-```
-
-FastAPI docs will be available at:
-
-```text
-http://localhost:8000/docs
-```
-
-Stop the containers with:
-
-```bash
-docker compose down
-```
-
-To also delete the Docker-managed SQLite database volume:
-
-```bash
-docker compose down -v
-```
-
-## Railway Deployment
-
-MarketLens is deployed on Railway as an isolated monorepo with separate backend and frontend services plus a Railway Postgres database.
-
-Deployment guide:
-
-```text
-docs/railway-deployment.md
-```
-
-Expected Railway services:
-
-- `backend` from `/backend`
-- `frontend` from `/frontend`
-- `Postgres` database service
-
-Important backend variables:
-
-```text
-DATABASE_URL=<Railway Postgres connection string>
-ADMIN_API_KEY=<long random secret value>
-CORS_ALLOWED_ORIGINS=<public frontend Railway URL>
-```
-
-Optional backend job-search variables:
-
-```text
-JOB_SEARCH_GREENHOUSE_BOARDS=<comma-separated Greenhouse board tokens>
-JOB_SEARCH_LEVER_SITES=<comma-separated Lever site tokens>
-JOB_SEARCH_REMOTEOK_ENABLED=true
-```
-
-Important frontend variable:
-
-```text
-VITE_API_BASE_URL=<public backend Railway URL>
-```
-
-Never commit or publicly share `DATABASE_URL`, Postgres connection strings, `ADMIN_API_KEY`, GitHub tokens, model-provider API keys, or other secrets.
-
-## Project Structure
-
-```text
-.github/
-  dependabot.yml
-  workflows/
-    ci.yml
-backend/
-  app/
-    analysis/
-    database.py
-    job_search.py
-    main.py
-    models.py
-    resume_files.py
-    skill_extractor.py
-  tests/
-frontend/
-  src/
-    api.ts
-    App.tsx
-    main.tsx
-    styles.css
-    types.ts
-data/
-  sample_job_postings.csv
-docs/
-  images/
-  auth-user-ownership-roadmap.md
-  database-schema.md
-  evaluation-set.md
-  milestone-1-manual-comparison-smoke-test.md
-  milestone-2-online-job-search-smoke-test.md
-  project-plan.md
-  railway-deployment.md
-SECURITY.md
-docker-compose.yml
-README.md
 ```
 
 ## Roadmap
 
-### Milestone 1: Manual Job Comparison Workflow
+### Milestone 1 — Manual Job Comparison Workflow: complete
 
-Status: complete.
+- resume upload and paste
+- manual job-description paste
+- multi-job splitting with `---`
+- Smart Fit batch ranking
+- detailed per-job reports
 
-- resume upload and extraction
-- manual job description paste
-- multi-job detection with `---`
-- backend batch comparison
-- ranked results
-- ranking explanation
-- detail switching between ranked jobs
-- local tests and frontend build check
-- live Railway verification
+### Milestone 2 — Online Job Search + Smart Fit Comparison: active / stabilizing
 
-### Milestone 2: Online Job Search
+Completed:
 
-Status: active / finishing.
+- online job search endpoint
+- frontend search UI
+- Greenhouse + Lever provider support
+- Remote OK + Remotive provider support
+- level filters
+- location filtering with U.S.-remote fallback
+- field-aware role-family matching
+- selected-job comparison through Smart Fit
+- source coverage metadata
+- no-result explanations and fallback links
 
-- backend provider interface for public job sources
-- Greenhouse provider
-- Lever provider
-- Remote OK remote-job provider
-- frontend search fields for role, location, and level
-- normalized job results
-- searched-job selection
-- comparison of selected jobs through the Smart Fit batch endpoint
-- level filtering for Any, Internship, Entry, Mid, and Senior
-- source coverage and no-results behavior improvements
+Still being tuned:
 
-### Milestone 3: AI-Assisted Intelligence
+- provider quality for non-software roles
+- internship coverage, especially finance/accounting internships
+- frontend display of the new source-coverage metadata
 
-- safely enable backend-only model-provider configuration
-- test whether model-assisted extraction improves unknown skill detection
-- add stricter provider-specific rate limiting
-- keep deterministic fallback behavior
+### Milestone 3 — AI-Assisted Intelligence: not started
 
-### Milestone 4: Accounts and Saved Reports
+Planned direction:
 
-- add authentication
-- add user-owned resumes, searches, and reports
-- save analysis history per user
-- consider PostgreSQL Row Level Security after ownership is stable
+- optional model-assisted extraction when safely configured
+- better job requirement parsing
+- better resume evidence matching
+- stronger coaching explanations
 
-### Milestone 5: Polish, Demo, and Resume Packaging
+### Later Milestones
 
-- polish UI after workflows are stable
-- refresh screenshots
-- record demo walkthrough
-- write final project story and resume bullets
+- accounts and saved reports
+- richer source integrations if a legitimate job aggregator API is selected
+- improved UI polish and demo packaging
