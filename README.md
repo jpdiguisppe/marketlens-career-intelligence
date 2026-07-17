@@ -8,33 +8,37 @@ MarketLens is a full-stack career intelligence platform that compares resume evi
 - **Backend API docs:** [FastAPI Swagger UI](https://marketlens-career-intelligence-production.up.railway.app/docs)
 - **Backend health check:** [API health endpoint](https://marketlens-career-intelligence-production.up.railway.app/health)
 
-The deployed version is a secured portfolio/demo app. Public visitors can view the saved demo dataset, explore skill dashboards, upload or paste non-sensitive resume text, paste job descriptions, and run non-saved Smart Fit comparisons. Creating postings, importing CSV files, and deleting saved postings are admin-only actions protected by an `X-Admin-API-Key` header.
+The deployed version is a secured portfolio/demo app. Public visitors can view the saved demo dataset, explore skill dashboards, upload or paste non-sensitive resume text, search configured public job boards, paste job descriptions, and run non-saved Smart Fit comparisons. Creating postings, importing CSV files, and deleting saved postings are admin-only actions protected by an `X-Admin-API-Key` header.
 
 Do not upload sensitive personal information, secrets, API keys, database URLs, or confidential employer/customer data.
 
 ## Problem
 
-Career advice is often vague, and job descriptions are noisy. Students and early-career candidates are told to “learn cloud,” “build projects,” or “get better at AI,” but it is hard to know which skills are actually showing up in the roles they want or which roles fit their current resume best.
+Career advice is often vague, and job descriptions are noisy. Students, early-career candidates, and working professionals are told to “learn cloud,” “build projects,” or “get better at AI,” but it is hard to know which skills are actually showing up in the roles they want or which roles fit their current resume best.
 
-MarketLens turns messy job postings into evidence. Instead of guessing what to learn next, users can compare their resume against real job descriptions, rank roles by fit, and see which missing skills matter most.
+MarketLens turns messy job postings into evidence. Instead of guessing what to learn next, users can search for roles, compare their resume against real job descriptions, rank jobs by fit, and see which missing skills matter most.
 
-## Current Milestone: Manual Job Comparison Workflow
+## Current Milestone: Online Job Search + Smart Fit Comparison
 
 The active product workflow is:
 
 ```text
 Upload or paste resume
-Paste one or more job descriptions
-Separate multiple jobs with ---
-Analyze each job independently
+Search configured public job boards or paste job descriptions manually
+Filter searched roles by level: any, intern, entry, mid, senior
+Select one or more job results
+Compare selected jobs with Smart Fit
 Rank jobs against the resume
 Explain why the ranking happened
 Inspect each job's detailed Smart Fit report
 ```
 
-For multiple job descriptions, put a line containing only `---` between each posting. The frontend detects the job count before analysis and uses the backend batch endpoint to rank the jobs.
+For manual comparison, put a line containing only `---` between each pasted posting. The frontend detects the job count before analysis and uses the backend batch endpoint to rank the jobs.
 
-Smoke-test checklist: [`docs/milestone-1-manual-comparison-smoke-test.md`](docs/milestone-1-manual-comparison-smoke-test.md)
+Smoke-test checklists:
+
+- [`docs/milestone-1-manual-comparison-smoke-test.md`](docs/milestone-1-manual-comparison-smoke-test.md)
+- [`docs/milestone-2-online-job-search-smoke-test.md`](docs/milestone-2-online-job-search-smoke-test.md)
 
 ## Current Demo Capabilities
 
@@ -44,8 +48,12 @@ Public visitors can:
 - view top skills, company breakdowns, and role-category breakdowns
 - upload `.txt`, `.md`, `.pdf`, or `.docx` resumes for text extraction
 - paste resume text manually
+- search configured public Greenhouse job boards
+- filter searched jobs by `any`, `intern`, `entry`, `mid`, or `senior` level
+- use typed searches such as `SWE`, `SWE Intern`, `entry level SWE`, or `senior SWE`
+- select searched jobs and compare them with Smart Fit
 - paste one or more job descriptions without saving them to the shared database
-- separate multiple jobs with `---`
+- separate multiple pasted jobs with `---`
 - run Smart Fit analysis against one job
 - run batch Smart Fit comparison against 2–10 jobs
 - view ranked jobs, top matches, top gaps, and detailed reports per job
@@ -59,6 +67,34 @@ Admin-only actions require the `X-Admin-API-Key` header:
 
 This keeps the public demo useful while preventing anonymous users from modifying or deleting shared demo data.
 
+## Job Search Scope
+
+Online job search currently uses configured public Greenhouse job boards. A no-results response means no matching jobs were found in those configured sources, not that no such jobs exist anywhere.
+
+Current default configured boards:
+
+```text
+datadog, airbnb, figma, duolingo, roblox, scaleai, hubspot, cloudflare, verkada
+```
+
+The backend supports overriding that list with:
+
+```text
+JOB_SEARCH_GREENHOUSE_BOARDS=companytoken1,companytoken2,companytoken3
+```
+
+Level behavior:
+
+```text
+query=SWE&level=any      -> general software engineering search
+query=SWE&level=intern   -> internship/co-op-looking results only
+query=SWE Intern         -> inferred internship search
+query=entry level SWE    -> inferred entry-level search
+query=senior SWE         -> inferred senior search
+```
+
+Manual pasted-job comparison remains available for jobs outside the configured search sources.
+
 ## Backend Features
 
 The FastAPI backend currently supports:
@@ -66,6 +102,7 @@ The FastAPI backend currently supports:
 - `GET /health` — health check
 - `GET /job-postings` — list saved demo postings
 - `GET /job-postings/{posting_id}` — retrieve one saved posting
+- `GET /jobs/search` — search configured external job boards with optional `query`, `location`, `level`, and `limit`
 - `POST /skills/extract` — extract skills from pasted text
 - `GET /skills/top` — view overall skill frequency
 - `GET /skills/top-by-company` — compare skill frequency by company
@@ -86,9 +123,12 @@ The React frontend currently supports:
 
 - resume upload and extraction for supported resume files
 - manual resume text entry
+- online job search with role query, level dropdown, and optional location
+- selectable external job result cards
+- comparing selected searched jobs through Smart Fit batch analysis
 - manual job description entry
 - `---`-based multiple-job splitting
-- visible detected job count before analysis
+- visible detected pasted-job count before analysis
 - backend batch Smart Fit comparison
 - ranked job results
 - ranking explanation summary
@@ -115,6 +155,7 @@ Current security controls include:
 - basic public endpoint rate limiting for analysis endpoints
 - SQLAlchemy ORM usage instead of raw string-built SQL queries
 - resume uploads are processed for the current request and are not saved to the shared database
+- external job search results are normalized before display and analysis
 - model-assisted extraction is disabled unless configured through backend-only environment variables
 - Dependabot checks for backend, frontend, and GitHub Actions dependencies
 
@@ -126,8 +167,8 @@ See [`SECURITY.md`](SECURITY.md) for the security policy and known limitations.
 
 Current checks include:
 
-- backend API tests for job posting creation, CSV import, admin API key protection, input validation, resume extraction, model status, and Smart Fit batch comparison
-- backend unit tests for skill extraction and Smart Fit analysis behavior
+- backend API tests for job posting creation, CSV import, admin API key protection, input validation, resume extraction, model status, external job search, and Smart Fit batch comparison
+- backend unit tests for skill extraction, job-search level filtering, and Smart Fit analysis behavior
 - backend evaluation cases for Smart Fit analysis
 - frontend production build validation
 - Docker image build validation for the backend and frontend
@@ -344,6 +385,7 @@ backend/
   app/
     analysis/
     database.py
+    job_search.py
     main.py
     models.py
     resume_files.py
@@ -364,6 +406,7 @@ docs/
   database-schema.md
   evaluation-set.md
   milestone-1-manual-comparison-smoke-test.md
+  milestone-2-online-job-search-smoke-test.md
   project-plan.md
   railway-deployment.md
 SECURITY.md
@@ -375,7 +418,7 @@ README.md
 
 ### Milestone 1: Manual Job Comparison Workflow
 
-Status: active / nearly complete.
+Status: complete.
 
 - resume upload and extraction
 - manual job description paste
@@ -389,47 +432,44 @@ Status: active / nearly complete.
 
 ### Milestone 2: Online Job Search
 
-Planned next product direction after Milestone 1 is verified.
+Status: base functionality complete.
 
-- add a backend provider interface for external job sources
-- start with one legal/API-friendly provider
-- add frontend search fields for role, location, and employment type
-- show normalized job results
-- allow selecting jobs from search results
-- compare selected jobs through the Smart Fit batch endpoint
+- backend provider interface for external job sources
+- public Greenhouse job-board search
+- normalized job results
+- cleaned plain-text job descriptions
+- level support: `any`, `intern`, `entry`, `mid`, `senior`
+- typed query level inference such as `SWE Intern` and `senior SWE`
+- frontend search fields for role, level, and location
+- selectable searched job results
+- comparison of selected searched jobs through the Smart Fit batch endpoint
+- live Railway verification
 
-### Milestone 3: AI-Assisted Intelligence
+### Milestone 3: Better Source Coverage and Search Quality
+
+- expand configurable source coverage while avoiding scraping-restricted sites
+- improve no-results guidance
+- improve result ranking and de-duplication
+- add clearer source/provider metadata in the UI
+- consider additional legal APIs such as government or partner job feeds
+
+### Milestone 4: AI-Assisted Intelligence
 
 - safely enable backend-only model-provider configuration
 - test whether model-assisted extraction improves unknown skill detection
 - add stricter provider-specific rate limiting
 - keep deterministic fallback behavior
 
-### Milestone 4: Accounts and Saved Reports
+### Milestone 5: Accounts and Saved Reports
 
 - add authentication
 - add user-owned resumes, searches, and reports
 - save analysis history per user
 - consider PostgreSQL Row Level Security after ownership is stable
 
-### Milestone 5: Polish, Demo, and Resume Packaging
+### Milestone 6: Polish, Demo, and Resume Packaging
 
 - polish UI after workflows are stable
 - refresh screenshots
 - record demo walkthrough
 - write final project story and resume bullets
-
-## Long-Term Ideas
-
-- AI-generated learning roadmaps
-- company-specific career intelligence
-- regional market trends
-- role comparison between backend, systems, cloud, and AI jobs
-- vector search over job postings
-- browser extension for saving postings from job sites
-- broader public job API integrations
-- production security hardening, monitoring, and accessibility improvements
-
-## Status
-
-MarketLens is currently at **Manual Smart Fit Comparison MVP**. The app can upload or paste resume text, accept one or more manually pasted job descriptions, split jobs with `---`, analyze each job independently, rank roles by resume fit, explain the ranking, and let users inspect detailed reports for each ranked job. The project remains a secured portfolio/demo app and does not yet include online job search, user accounts, saved reports, or live model-provider configuration.
