@@ -13,6 +13,30 @@ export type SkillCounts = Record<string, number>;
 
 export type GroupedSkillCounts = Record<string, SkillCounts>;
 
+export type JobSearchLevel = "any" | "intern" | "entry" | "mid" | "senior";
+
+export type ExternalJobPosting = {
+  id: string;
+  source: string;
+  company: string;
+  title: string;
+  location: string | null;
+  description: string;
+  apply_url: string;
+  updated_at: string | null;
+  extracted_skills: string[];
+};
+
+export type ExternalJobSearchResponse = {
+  query: string;
+  location: string | null;
+  level: JobSearchLevel;
+  providers_searched: string[];
+  result_count: number;
+  results: ExternalJobPosting[];
+  warnings: string[];
+};
+
 export type ResumeAnalysisRequest = {
   resume_text: string;
   target_role_category?: string | null;
