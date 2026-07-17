@@ -62,6 +62,7 @@ REMOTIVE_CACHE_SECONDS = 6 * 60 * 60
 
 JobLevel = Literal["any", "intern", "entry", "mid", "senior"]
 VALID_JOB_LEVELS: set[str] = {"any", "intern", "entry", "mid", "senior"}
+RoleFamily = Literal["software", "finance", "data", "cybersecurity", "product", "marketing", "operations", "healthcare", "design"]
 
 EXPERIENCE_YEARS_PATTERN = re.compile(r"\b(\d{1,2})\s*\+?\s*(?:years?|yrs?)\b", re.IGNORECASE)
 MID_LEVEL_TITLE_PATTERN = re.compile(
@@ -131,7 +132,6 @@ US_LOCATION_TERMS = {
     "washington, d.c.",
 }
 LOCATION_ALIASES: dict[str, set[str]] = {
-    # Keep city searches city-specific. Philadelphia should not match every PA job.
     "philadelphia": {"philadelphia", "philly"},
     "philly": {"philadelphia", "philly"},
     "pittsburgh": {"pittsburgh"},
@@ -151,6 +151,7 @@ LOCATION_ALIASES: dict[str, set[str]] = {
     "austin": {"austin", "texas", "tx"},
     "denver": {"denver", "colorado", "co"},
 }
+
 NON_SOFTWARE_TITLE_TERMS = {
     "account executive",
     "business development",
@@ -199,6 +200,141 @@ SOFTWARE_TITLE_TERMS = {
     "programmer",
     "developer",
     "forward deployed software engineer",
+}
+FINANCE_TITLE_TERMS = {
+    "finance",
+    "financial",
+    "fp&a",
+    "fpa",
+    "accounting",
+    "accountant",
+    "audit",
+    "auditor",
+    "tax",
+    "treasury",
+    "investment",
+    "investment banking",
+    "banking",
+    "private equity",
+    "equity research",
+    "valuation",
+    "wealth",
+    "risk analyst",
+    "credit analyst",
+    "financial analyst",
+    "finance analyst",
+    "business analyst",
+    "quantitative analyst",
+    "portfolio analyst",
+}
+DATA_TITLE_TERMS = {
+    "data analyst",
+    "data scientist",
+    "data engineer",
+    "analytics",
+    "business intelligence",
+    "bi analyst",
+    "machine learning",
+    "ml engineer",
+    "research analyst",
+    "reporting analyst",
+}
+CYBERSECURITY_TITLE_TERMS = {
+    "cybersecurity",
+    "cyber security",
+    "security analyst",
+    "soc analyst",
+    "information security",
+    "infosec",
+    "security engineer",
+    "threat analyst",
+}
+PRODUCT_TITLE_TERMS = {
+    "product manager",
+    "product analyst",
+    "product owner",
+    "program manager",
+    "project manager",
+    "scrum master",
+}
+MARKETING_TITLE_TERMS = {
+    "marketing",
+    "growth",
+    "content marketing",
+    "seo",
+    "social media",
+    "brand",
+    "communications",
+}
+OPERATIONS_TITLE_TERMS = {
+    "operations",
+    "business operations",
+    "strategy",
+    "supply chain",
+    "logistics",
+    "procurement",
+    "customer success",
+    "human resources",
+    "hr intern",
+}
+HEALTHCARE_TITLE_TERMS = {
+    "healthcare",
+    "health care",
+    "clinical",
+    "patient",
+    "medical",
+    "hospital",
+    "health analyst",
+}
+DESIGN_TITLE_TERMS = {
+    "designer",
+    "product designer",
+    "ux",
+    "ui designer",
+    "visual designer",
+    "graphic designer",
+}
+ROLE_FAMILY_TITLE_TERMS: dict[RoleFamily, set[str]] = {
+    "software": SOFTWARE_TITLE_TERMS,
+    "finance": FINANCE_TITLE_TERMS,
+    "data": DATA_TITLE_TERMS,
+    "cybersecurity": CYBERSECURITY_TITLE_TERMS,
+    "product": PRODUCT_TITLE_TERMS,
+    "marketing": MARKETING_TITLE_TERMS,
+    "operations": OPERATIONS_TITLE_TERMS,
+    "healthcare": HEALTHCARE_TITLE_TERMS,
+    "design": DESIGN_TITLE_TERMS,
+}
+ROLE_FAMILY_QUERY_TERMS: dict[RoleFamily, set[str]] = {
+    "software": {"swe", "software", "backend", "frontend", "front end", "back end", "full stack", "developer", "engineer", "programmer"},
+    "finance": {"finance", "financial", "accounting", "accountant", "audit", "tax", "fp&a", "fpa", "investment", "banking", "equity", "valuation", "treasury", "wealth", "portfolio", "credit"},
+    "data": {"data", "analytics", "business intelligence", "bi", "data analyst", "data scientist", "machine learning", "ml", "reporting"},
+    "cybersecurity": {"cybersecurity", "cyber security", "security analyst", "soc", "infosec", "information security"},
+    "product": {"product manager", "product management", "product analyst", "project manager", "program manager", "scrum"},
+    "marketing": {"marketing", "growth", "seo", "social media", "brand", "communications"},
+    "operations": {"operations", "strategy", "supply chain", "logistics", "procurement", "human resources", "hr"},
+    "healthcare": {"healthcare", "health care", "clinical", "patient", "medical", "hospital"},
+    "design": {"design", "designer", "ux", "ui", "visual design", "graphic design"},
+}
+LEVEL_QUERY_TERMS = {
+    "intern",
+    "internship",
+    "co-op",
+    "coop",
+    "co",
+    "op",
+    "entry",
+    "level",
+    "junior",
+    "associate",
+    "new",
+    "grad",
+    "graduate",
+    "senior",
+    "staff",
+    "principal",
+    "lead",
+    "mid",
 }
 INTERN_TERMS = {"intern", "internship", "co-op", "coop", "co op"}
 ENTRY_TITLE_TERMS = {
@@ -278,7 +414,6 @@ def _configured_greenhouse_boards() -> list[str]:
     if raw_boards:
         boards = [board.strip() for board in raw_boards.split(",") if board.strip()]
         return boards or list(DEFAULT_GREENHOUSE_BOARDS)
-
     return list(DEFAULT_GREENHOUSE_BOARDS)
 
 
@@ -287,7 +422,6 @@ def _configured_lever_sites() -> list[str]:
     if raw_sites:
         sites = [site.strip() for site in raw_sites.split(",") if site.strip()]
         return sites or list(DEFAULT_LEVER_SITES)
-
     return list(DEFAULT_LEVER_SITES)
 
 
@@ -300,29 +434,12 @@ def _remotive_enabled() -> bool:
 
 
 def clean_job_description(value: str | None) -> str:
-    """Turn provider HTML into plain text that is safe to display and analyze."""
     if not value:
         return ""
-
     decoded = unescape(value)
-    no_scripts = re.sub(
-        r"<script\b[^<]*(?:(?!</script>)<[^<]*)*</script>",
-        " ",
-        decoded,
-        flags=re.IGNORECASE,
-    )
-    no_styles = re.sub(
-        r"<style\b[^<]*(?:(?!</style>)<[^<]*)*</style>",
-        " ",
-        no_scripts,
-        flags=re.IGNORECASE,
-    )
-    with_section_spacing = re.sub(
-        r"</?(p|div|li|ul|ol|br|h[1-6])\b[^>]*>",
-        " ",
-        no_styles,
-        flags=re.IGNORECASE,
-    )
+    no_scripts = re.sub(r"<script\b[^<]*(?:(?!</script>)<[^<]*)*</script>", " ", decoded, flags=re.IGNORECASE)
+    no_styles = re.sub(r"<style\b[^<]*(?:(?!</style>)<[^<]*)*</style>", " ", no_scripts, flags=re.IGNORECASE)
+    with_section_spacing = re.sub(r"</?(p|div|li|ul|ol|br|h[1-6])\b[^>]*>", " ", no_styles, flags=re.IGNORECASE)
     no_tags = re.sub(r"<[^>]+>", " ", with_section_spacing)
     cleaned = unescape(no_tags)
     return re.sub(r"\s+", " ", cleaned).strip()
@@ -339,31 +456,32 @@ def _query_terms(query: str) -> list[str]:
         "full stack": ["full", "stack"],
         "ml": ["machine", "learning"],
         "ai": ["ai"],
+        "fp&a": ["finance", "financial"],
+        "fpa": ["finance", "financial"],
         "intern": ["intern"],
         "internship": ["intern"],
         "entry level": ["entry", "level"],
         "entry-level": ["entry", "level"],
         "new grad": ["new", "grad"],
     }
-
-    terms = re.findall(r"[a-z0-9+#.]+", normalized)
+    terms = re.findall(r"[a-z0-9+#&.]+", normalized)
     for phrase, extra_terms in expansions.items():
         if phrase in normalized:
             terms.extend(extra_terms)
-
     return sorted(set(term for term in terms if len(term) > 1))
 
 
+def _core_query_terms(query: str) -> set[str]:
+    return {term for term in _query_terms(query) if term not in LEVEL_QUERY_TERMS}
+
+
 def _contains_phrase(value: str, phrase: str) -> bool:
-    """Match whole words/phrases, so 'intern' does not match 'internal'."""
     cleaned_phrase = phrase.strip().lower()
     if not cleaned_phrase:
         return False
-
     escaped_words = [re.escape(part) for part in re.split(r"[\s,.-]+", cleaned_phrase) if part]
     if not escaped_words:
         return False
-
     separator = r"[\s,.-]+"
     pattern = r"(?<![a-z0-9])" + separator.join(escaped_words) + r"(?![a-z0-9])"
     return bool(re.search(pattern, value.lower()))
@@ -376,11 +494,9 @@ def _contains_any(value: str, terms: set[str]) -> bool:
 def _normalize_level(level: str | None) -> JobLevel | None:
     if level is None or not level.strip():
         return None
-
     normalized = level.strip().lower()
     if normalized not in VALID_JOB_LEVELS:
         raise ValueError(f"Unsupported job level '{level}'. Expected one of: any, intern, entry, mid, senior.")
-
     return normalized  # type: ignore[return-value]
 
 
@@ -400,41 +516,51 @@ def _infer_level_from_query(query: str) -> JobLevel:
 def resolve_job_level(query: str, level: str | None = None) -> JobLevel:
     normalized_level = _normalize_level(level)
     inferred_level = _infer_level_from_query(query)
-
     if normalized_level and normalized_level != "any":
         return normalized_level
-
     if inferred_level != "any":
         return inferred_level
-
     return normalized_level or "any"
 
 
-def _is_software_role_query(query: str) -> bool:
+def _query_role_family(query: str) -> RoleFamily | None:
     normalized = query.lower()
-    return any(
-        phrase in normalized
-        for phrase in (
-            "swe",
-            "software",
-            "backend",
-            "back end",
-            "frontend",
-            "front end",
-            "full stack",
-            "developer",
-            "engineer",
-            "programmer",
-        )
-    )
+    for family, terms in ROLE_FAMILY_QUERY_TERMS.items():
+        if _contains_any(normalized, terms):
+            return family
+    return None
+
+
+def _is_software_role_query(query: str) -> bool:
+    return _query_role_family(query) == "software"
+
+
+def _title_matches_role_family(title: str, family: RoleFamily) -> bool:
+    normalized_title = title.lower()
+    if family == "software" and any(term in normalized_title for term in NON_SOFTWARE_TITLE_TERMS):
+        return False
+    return _contains_any(normalized_title, ROLE_FAMILY_TITLE_TERMS[family])
 
 
 def _looks_like_software_role(title: str) -> bool:
-    normalized_title = title.lower()
-    if any(term in normalized_title for term in NON_SOFTWARE_TITLE_TERMS):
-        return False
+    return _title_matches_role_family(title, "software")
 
-    return _contains_any(normalized_title, SOFTWARE_TITLE_TERMS)
+
+def _title_contains_core_query_term(title: str, query: str) -> bool:
+    title_lower = title.lower()
+    core_terms = _core_query_terms(query)
+    return any(_contains_phrase(title_lower, term) for term in core_terms if len(term) > 2)
+
+
+def _matches_requested_role(title: str, description: str, query: str) -> bool:
+    family = _query_role_family(query)
+    if family is None:
+        return True
+    if _title_matches_role_family(title, family):
+        return True
+    # Allow title words from the user's actual role query, but do not let level-only
+    # terms like "intern" make Sales Intern match Finance Internship.
+    return _title_contains_core_query_term(title, query)
 
 
 def _max_required_years(description: str) -> int:
@@ -459,29 +585,20 @@ def _looks_like_senior_role(title: str, description: str) -> bool:
     searchable = f"{title} {description}".lower()
     if _title_has_senior_signal(title) or _contains_any(searchable, SENIOR_TERMS):
         return True
-
     return _max_required_years(description) >= 5
 
 
 def _looks_like_entry_role(title: str, description: str) -> bool:
     title_lower = title.lower()
     description_lower = description.lower()
-
     if _looks_like_intern_role(title, description):
         return False
-
-    # A requested Entry filter should not allow senior/staff/principal/lead or Engineer II/III+ titles.
     if _title_has_senior_signal(title) or _title_has_mid_signal(title):
         return False
-
     if _contains_any(title_lower, ENTRY_TITLE_TERMS) or SOFTWARE_ENGINEER_I_PATTERN.search(title):
         return True
-
-    # Description signals can help, but keep them conservative. Generic words like
-    # "associate" often appear in HR/legal text and should not make a senior role entry-level.
     if _contains_any(description_lower, ENTRY_DESCRIPTION_TERMS):
         return True
-
     max_years = _max_required_years(description)
     return 0 < max_years <= 3 and not _looks_like_senior_role(title, description)
 
@@ -491,7 +608,6 @@ def _looks_like_mid_role(title: str, description: str) -> bool:
         return False
     if _title_has_mid_signal(title):
         return True
-
     max_years = _max_required_years(description)
     return 3 <= max_years <= 5 and not _looks_like_senior_role(title, description)
 
@@ -507,17 +623,12 @@ def _matches_level(title: str, description: str, level: JobLevel) -> bool:
         return _looks_like_mid_role(title, description)
     if level == "senior":
         return _looks_like_senior_role(title, description)
-
     return True
 
 
 def _level_score_bonus(title: str, description: str, level: JobLevel) -> int:
-    if level == "any":
+    if level == "any" or not _matches_level(title, description, level):
         return 0
-
-    if not _matches_level(title, description, level):
-        return 0
-
     title_lower = title.lower()
     if level == "intern" and _contains_any(title_lower, INTERN_TERMS):
         return 10
@@ -527,14 +638,12 @@ def _level_score_bonus(title: str, description: str, level: JobLevel) -> int:
         return 8
     if level == "senior" and _title_has_senior_signal(title):
         return 8
-
     return 4
 
 
 def _has_non_us_location(job_location: str | None) -> bool:
     if not job_location:
         return False
-
     normalized_location = job_location.lower()
     return any(term in normalized_location for term in NON_US_LOCATION_TERMS)
 
@@ -542,14 +651,11 @@ def _has_non_us_location(job_location: str | None) -> bool:
 def _is_default_us_market_location(job_location: str | None) -> bool:
     if not job_location:
         return True
-
     normalized_location = job_location.lower()
     if _has_non_us_location(job_location):
         return False
-
     if "remote" in normalized_location or "worldwide" in normalized_location:
         return True
-
     return any(term in normalized_location for term in US_LOCATION_TERMS)
 
 
@@ -558,7 +664,6 @@ def _requested_location_terms(requested_location: str) -> set[str]:
     requested = re.sub(r"\s+", " ", requested)
     normalized_no_punctuation = requested.replace(",", "")
     words = [part for part in re.split(r"[\s,]+", requested) if len(part) > 2]
-
     terms = {requested, normalized_no_punctuation, *words}
     terms.update(LOCATION_ALIASES.get(requested, set()))
     terms.update(LOCATION_ALIASES.get(normalized_no_punctuation, set()))
@@ -568,7 +673,6 @@ def _requested_location_terms(requested_location: str) -> set[str]:
 def _is_us_remote_location(job_location: str | None) -> bool:
     if not job_location or _has_non_us_location(job_location):
         return False
-
     normalized = job_location.lower()
     return ("remote" in normalized or "worldwide" in normalized) and _is_default_us_market_location(job_location)
 
@@ -585,28 +689,21 @@ def _is_us_city_or_state_request(requested_location: str) -> bool:
 def _matches_location(job_location: str | None, requested_location: str | None) -> bool:
     if not requested_location:
         return _is_default_us_market_location(job_location)
-
     if not job_location:
         return False
-
     requested = requested_location.lower().strip()
     location = job_location.lower()
     if requested == "remote":
         return ("remote" in location or "worldwide" in location) and not _has_non_us_location(job_location)
-
     requested_terms = _requested_location_terms(requested_location)
     if _contains_any(location, requested_terms):
         return True
-
-    # When someone searches a U.S. city, U.S.-remote roles are still useful and
-    # avoid making city searches look empty when companies only label roles as Remote-US.
     return _is_us_city_or_state_request(requested_location) and _is_us_remote_location(job_location)
 
 
 def _location_score_bonus(job_location: str | None, requested_location: str | None) -> int:
     if not requested_location or not job_location:
         return 0
-
     requested = requested_location.lower().strip()
     location = job_location.lower()
     if requested == "remote" and ("remote" in location or "worldwide" in location):
@@ -620,19 +717,19 @@ def _location_score_bonus(job_location: str | None, requested_location: str | No
 
 def _score_job(title: str, description: str, query: str, level: str | None = None) -> int:
     resolved_level = resolve_job_level(query, level)
-
-    # Search should find jobs, not decide whether a candidate is qualified.
-    # For software queries, only block obvious non-software roles. Fit happens later.
-    if _is_software_role_query(query) and not _looks_like_software_role(title):
+    if not _matches_requested_role(title, description, query):
         return 0
-
     if not _matches_level(title, description, resolved_level):
         return 0
 
+    family = _query_role_family(query)
     terms = _query_terms(query)
     searchable_title = title.lower()
     searchable_description = description.lower()
     score = _level_score_bonus(title, description, resolved_level)
+
+    if family and _title_matches_role_family(title, family):
+        score += 8
 
     for term in terms:
         if term in searchable_title:
@@ -640,7 +737,6 @@ def _score_job(title: str, description: str, query: str, level: str | None = Non
         if term in searchable_description:
             score += 1
 
-    # Common shorthand: SWE should strongly favor software engineering and developer titles.
     if "swe" in query.lower() and _looks_like_software_role(title):
         score += 10
     if "swe" in query.lower() and "software" in searchable_title and "engineer" in searchable_title:
@@ -699,17 +795,12 @@ def _normalize_greenhouse_job(board_token: str, raw_job: dict[str, Any]) -> Exte
     apply_url = str(raw_job.get("absolute_url") or "").strip()
     if not job_id or not title or not apply_url:
         return None
-
     location_payload = raw_job.get("location")
     location = None
     if isinstance(location_payload, dict):
         raw_location = location_payload.get("name")
         location = str(raw_location).strip() if raw_location else None
-
-    description = clean_job_description(str(raw_job.get("content") or ""))
-    if not description:
-        description = title
-
+    description = clean_job_description(str(raw_job.get("content") or "")) or title
     return ExternalJobResult(
         id=f"greenhouse:{board_token}:{job_id}",
         source="greenhouse",
@@ -726,13 +817,11 @@ def _lever_location(raw_job: dict[str, Any]) -> str | None:
     categories = raw_job.get("categories")
     if not isinstance(categories, dict):
         return None
-
     all_locations = categories.get("allLocations")
     if isinstance(all_locations, list) and all_locations:
         values = [str(location).strip() for location in all_locations if str(location).strip()]
         if values:
             return "; ".join(values)
-
     raw_location = categories.get("location")
     return str(raw_location).strip() if raw_location else None
 
@@ -743,7 +832,6 @@ def _lever_description(raw_job: dict[str, Any], title: str) -> str:
         value = raw_job.get(key)
         if isinstance(value, str) and value.strip():
             parts.append(value)
-
     lists = raw_job.get("lists")
     if isinstance(lists, list):
         for item in lists:
@@ -755,9 +843,7 @@ def _lever_description(raw_job: dict[str, Any], title: str) -> str:
                 parts.append(text)
             if isinstance(content, str) and content.strip():
                 parts.append(content)
-
-    description = clean_job_description(" ".join(parts))
-    return description or title
+    return clean_job_description(" ".join(parts)) or title
 
 
 def _normalize_lever_job(site_name: str, raw_job: dict[str, Any]) -> ExternalJobResult | None:
@@ -766,7 +852,6 @@ def _normalize_lever_job(site_name: str, raw_job: dict[str, Any]) -> ExternalJob
     apply_url = str(raw_job.get("hostedUrl") or raw_job.get("applyUrl") or "").strip()
     if not job_id or not title or not apply_url:
         return None
-
     return ExternalJobResult(
         id=f"lever:{site_name}:{job_id}",
         source="lever",
@@ -786,11 +871,9 @@ def _normalize_remoteok_job(raw_job: dict[str, Any]) -> ExternalJobResult | None
     apply_url = str(raw_job.get("url") or raw_job.get("apply_url") or "").strip()
     if not job_id or not title or not company or not apply_url:
         return None
-
     raw_location = str(raw_job.get("location") or "").strip()
     location = f"Remote ({raw_location})" if raw_location else "Remote"
     description = clean_job_description(str(raw_job.get("description") or "")) or title
-
     return ExternalJobResult(
         id=f"remoteok:{job_id}",
         source="remoteok",
@@ -810,7 +893,6 @@ def _normalize_remotive_job(raw_job: dict[str, Any]) -> ExternalJobResult | None
     apply_url = str(raw_job.get("url") or "").strip()
     if not job_id or not title or not company or not apply_url:
         return None
-
     raw_location = str(raw_job.get("candidate_required_location") or "").strip()
     location = f"Remote ({raw_location})" if raw_location else "Remote"
     description_parts = [str(raw_job.get("description") or "")]
@@ -819,7 +901,6 @@ def _normalize_remotive_job(raw_job: dict[str, Any]) -> ExternalJobResult | None
         if value:
             description_parts.append(value)
     description = clean_job_description(" ".join(description_parts)) or title
-
     return ExternalJobResult(
         id=f"remotive:{job_id}",
         source="remotive",
@@ -832,46 +913,27 @@ def _normalize_remotive_job(raw_job: dict[str, Any]) -> ExternalJobResult | None
     )
 
 
-def _search_greenhouse_board(
-    client: httpx.Client,
-    board_token: str,
-    query: str,
-    location: str | None,
-    level: JobLevel,
-) -> list[tuple[int, ExternalJobResult]]:
-    response = client.get(
-        f"{GREENHOUSE_BASE_URL}/{board_token}/jobs",
-        params={"content": "true"},
-    )
+def _search_greenhouse_board(client: httpx.Client, board_token: str, query: str, location: str | None, level: JobLevel) -> list[tuple[int, ExternalJobResult]]:
+    response = client.get(f"{GREENHOUSE_BASE_URL}/{board_token}/jobs", params={"content": "true"})
     response.raise_for_status()
     payload = response.json()
     raw_jobs = payload.get("jobs", [])
     if not isinstance(raw_jobs, list):
         return []
-
     scored_jobs: list[tuple[int, ExternalJobResult]] = []
     for raw_job in raw_jobs[:MAX_PROVIDER_RESULTS_PER_BOARD]:
         if not isinstance(raw_job, dict):
             continue
-
         job = _normalize_greenhouse_job(board_token, raw_job)
         if job is None or not _matches_location(job.location, location):
             continue
-
         score = _score_job(job.title, job.description, query, level)
         if score > 0:
             scored_jobs.append((score + _location_score_bonus(job.location, location), job))
-
     return scored_jobs
 
 
-def _search_lever_site(
-    client: httpx.Client,
-    site_name: str,
-    query: str,
-    location: str | None,
-    level: JobLevel,
-) -> list[tuple[int, ExternalJobResult]]:
+def _search_lever_site(client: httpx.Client, site_name: str, query: str, location: str | None, level: JobLevel) -> list[tuple[int, ExternalJobResult]]:
     response = client.get(
         f"{LEVER_BASE_URL}/{site_name}",
         params={"mode": "json", "limit": str(MAX_PROVIDER_RESULTS_PER_BOARD)},
@@ -881,139 +943,105 @@ def _search_lever_site(
     raw_jobs = response.json()
     if not isinstance(raw_jobs, list):
         return []
-
     scored_jobs: list[tuple[int, ExternalJobResult]] = []
     for raw_job in raw_jobs[:MAX_PROVIDER_RESULTS_PER_BOARD]:
         if not isinstance(raw_job, dict):
             continue
-
         job = _normalize_lever_job(site_name, raw_job)
         if job is None or not _matches_location(job.location, location):
             continue
-
         score = _score_job(job.title, job.description, query, level)
         if score > 0:
             scored_jobs.append((score + _location_score_bonus(job.location, location), job))
-
     return scored_jobs
 
 
-def _remoteok_jobs(client: httpx.Client) -> list[dict[str, Any]]:
+def _remoteok_jobs(client: httpx.Client, query: str) -> list[dict[str, Any]]:
     now = time.monotonic()
-    cached_jobs = _REMOTEOK_CACHE.get("jobs")
-    if isinstance(cached_jobs, list) and now < float(_REMOTEOK_CACHE.get("expires_at", 0.0)):
+    family = _query_role_family(query)
+    cache_key = family or "all"
+    cached_jobs = _REMOTEOK_CACHE.get(f"jobs:{cache_key}")
+    if isinstance(cached_jobs, list) and now < float(_REMOTEOK_CACHE.get(f"expires_at:{cache_key}", 0.0)):
         return cached_jobs
-
-    response = client.get(
-        REMOTEOK_BASE_URL,
-        params={"tag": "dev"},
-        headers={"Accept": "application/json", "User-Agent": "MarketLens Career Intelligence"},
-    )
+    params: dict[str, str] = {}
+    if family == "software":
+        params["tag"] = "dev"
+    response = client.get(REMOTEOK_BASE_URL, params=params, headers={"Accept": "application/json", "User-Agent": "MarketLens Career Intelligence"})
     response.raise_for_status()
     payload = response.json()
     if not isinstance(payload, list):
         return []
-
     jobs = [item for item in payload if isinstance(item, dict) and item.get("id")]
-    _REMOTEOK_CACHE["jobs"] = jobs
-    _REMOTEOK_CACHE["expires_at"] = now + REMOTEOK_CACHE_SECONDS
+    _REMOTEOK_CACHE[f"jobs:{cache_key}"] = jobs
+    _REMOTEOK_CACHE[f"expires_at:{cache_key}"] = now + REMOTEOK_CACHE_SECONDS
     return jobs
 
 
-def _search_remoteok(
-    client: httpx.Client,
-    query: str,
-    location: str | None,
-    level: JobLevel,
-) -> list[tuple[int, ExternalJobResult]]:
+def _search_remoteok(client: httpx.Client, query: str, location: str | None, level: JobLevel) -> list[tuple[int, ExternalJobResult]]:
     scored_jobs: list[tuple[int, ExternalJobResult]] = []
-    for raw_job in _remoteok_jobs(client)[:MAX_PROVIDER_RESULTS_PER_BOARD]:
+    for raw_job in _remoteok_jobs(client, query)[:MAX_PROVIDER_RESULTS_PER_BOARD]:
         job = _normalize_remoteok_job(raw_job)
         if job is None or not _matches_location(job.location, location):
             continue
-
         score = _score_job(job.title, job.description, query, level)
         if score > 0:
             scored_jobs.append((score + _location_score_bonus(job.location, location), job))
-
     return scored_jobs
 
 
 def _remotive_search_term(query: str, level: JobLevel) -> str | None:
-    normalized = query.lower().strip()
+    family = _query_role_family(query)
+    core_terms = _core_query_terms(query)
+    if family and core_terms:
+        return " ".join(sorted(core_terms))
     if level == "intern":
         return "intern"
     if level == "entry":
         return "junior"
     if level == "senior":
         return "senior"
-    if "backend" in normalized:
-        return "backend"
-    if "frontend" in normalized or "front end" in normalized:
-        return "frontend"
-    if "full stack" in normalized or "full-stack" in normalized:
-        return "full stack"
-    if "developer" in normalized:
-        return "developer"
-    return None
+    return query.strip() or None
 
 
-def _remotive_jobs(client: httpx.Client, search_term: str | None) -> list[dict[str, Any]]:
-    cache_key = search_term or "software-dev"
+def _remotive_jobs(client: httpx.Client, query: str, level: JobLevel) -> list[dict[str, Any]]:
+    search_term = _remotive_search_term(query, level)
+    family = _query_role_family(query)
+    cache_key = f"{family or 'all'}:{search_term or 'all'}"
     now = time.monotonic()
     cached = _REMOTIVE_CACHE.get(cache_key)
     if cached and now < float(cached.get("expires_at", 0.0)):
         cached_jobs = cached.get("jobs")
         if isinstance(cached_jobs, list):
             return cached_jobs
-
-    params = {"category": "software-dev", "limit": str(MAX_PROVIDER_RESULTS_PER_BOARD)}
+    params: dict[str, str] = {"limit": str(MAX_PROVIDER_RESULTS_PER_BOARD)}
+    if family == "software":
+        params["category"] = "software-dev"
     if search_term:
         params["search"] = search_term
-
-    response = client.get(
-        REMOTIVE_BASE_URL,
-        params=params,
-        headers={"Accept": "application/json", "User-Agent": "MarketLens Career Intelligence"},
-    )
+    response = client.get(REMOTIVE_BASE_URL, params=params, headers={"Accept": "application/json", "User-Agent": "MarketLens Career Intelligence"})
     response.raise_for_status()
     payload = response.json()
     raw_jobs = payload.get("jobs", []) if isinstance(payload, dict) else []
     if not isinstance(raw_jobs, list):
         return []
-
     jobs = [item for item in raw_jobs if isinstance(item, dict) and item.get("id")]
     _REMOTIVE_CACHE[cache_key] = {"jobs": jobs, "expires_at": now + REMOTIVE_CACHE_SECONDS}
     return jobs
 
 
-def _search_remotive(
-    client: httpx.Client,
-    query: str,
-    location: str | None,
-    level: JobLevel,
-) -> list[tuple[int, ExternalJobResult]]:
+def _search_remotive(client: httpx.Client, query: str, location: str | None, level: JobLevel) -> list[tuple[int, ExternalJobResult]]:
     scored_jobs: list[tuple[int, ExternalJobResult]] = []
-    search_term = _remotive_search_term(query, level)
-    for raw_job in _remotive_jobs(client, search_term)[:MAX_PROVIDER_RESULTS_PER_BOARD]:
+    for raw_job in _remotive_jobs(client, query, level)[:MAX_PROVIDER_RESULTS_PER_BOARD]:
         job = _normalize_remotive_job(raw_job)
         if job is None or not _matches_location(job.location, location):
             continue
-
         score = _score_job(job.title, job.description, query, level)
         if score > 0:
-            # Make attribution visible in returned source; cards already link to Remotive URLs.
             scored_jobs.append((score + _location_score_bonus(job.location, location), job))
-
     return scored_jobs
 
 
-def search_external_jobs(
-    query: str,
-    location: str | None = None,
-    limit: int = 15,
-    level: str | None = None,
-) -> JobSearchResults:
+def search_external_jobs(query: str, location: str | None = None, limit: int = 15, level: str | None = None) -> JobSearchResults:
     cleaned_query = query.strip()
     cleaned_location = location.strip() if location and location.strip() else None
     resolved_level = resolve_job_level(cleaned_query, level)
@@ -1041,21 +1069,18 @@ def search_external_jobs(
                 successful_provider_count += 1
             except (httpx.HTTPError, ValueError) as exc:
                 provider_errors.append(f"greenhouse:{board}:{exc.__class__.__name__}")
-
         for site in lever_sites:
             try:
                 scored_results.extend(_search_lever_site(client, site, cleaned_query, cleaned_location, resolved_level))
                 successful_provider_count += 1
             except (httpx.HTTPError, ValueError) as exc:
                 provider_errors.append(f"lever:{site}:{exc.__class__.__name__}")
-
         if remoteok_enabled:
             try:
                 scored_results.extend(_search_remoteok(client, cleaned_query, cleaned_location, resolved_level))
                 successful_provider_count += 1
             except (httpx.HTTPError, ValueError) as exc:
                 provider_errors.append(f"remoteok:{exc.__class__.__name__}")
-
         if remotive_enabled:
             try:
                 scored_results.extend(_search_remotive(client, cleaned_query, cleaned_location, resolved_level))
@@ -1079,10 +1104,9 @@ def search_external_jobs(
         if cleaned_location and cleaned_location.lower() != "remote" and _is_us_city_or_state_request(cleaned_location):
             location_hint = " U.S.-remote roles are included for city searches, but no matching results were found."
         warnings.append(
-            f"No matching external jobs were found{level_hint} in the configured public Greenhouse/Lever/Remote OK/Remotive job sources."
+            f"No matching external jobs were found{level_hint} in the configured public job sources."
             f" Try a broader query, a different location, or manual pasted-job comparison.{location_hint}"
         )
-
     if successful_provider_count == 0 and provider_errors:
         warnings.append("All configured external job providers failed to respond. Check provider configuration or try again later.")
 
