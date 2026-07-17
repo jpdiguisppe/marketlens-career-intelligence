@@ -13,13 +13,20 @@ def clear_rate_limit_buckets() -> None:
 
 
 def test_external_job_search_returns_normalized_results(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_search_external_jobs(query: str, location: str | None, limit: int) -> JobSearchResults:
+    def fake_search_external_jobs(
+        query: str,
+        location: str | None,
+        limit: int,
+        level: str | None = None,
+    ) -> JobSearchResults:
         assert query == "SWE intern"
         assert location == "Remote"
+        assert level is None
         assert limit == 5
         return JobSearchResults(
             query=query,
             location=location,
+            level="intern",
             providers_searched=["greenhouse:testcompany"],
             results=[
                 ExternalJobResult(
@@ -47,6 +54,7 @@ def test_external_job_search_returns_normalized_results(monkeypatch: pytest.Monk
     body = response.json()
     assert body["query"] == "SWE intern"
     assert body["location"] == "Remote"
+    assert body["level"] == "intern"
     assert body["providers_searched"] == ["greenhouse:testcompany"]
     assert body["result_count"] == 1
     result = body["results"][0]
