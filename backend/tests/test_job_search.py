@@ -1,7 +1,6 @@
 from app.job_search import (
     _matches_location,
     _normalize_greenhouse_job,
-    _normalize_lever_job,
     _score_job,
     clean_job_description,
 )
@@ -63,32 +62,6 @@ def test_greenhouse_normalization_returns_plain_text_from_escaped_html() -> None
     assert "<" not in job.description
 
 
-def test_lever_normalization_returns_plain_text_description() -> None:
-    job = _normalize_lever_job(
-        "exampleco",
-        {
-            "id": "abc-123",
-            "text": "Software Engineer Intern",
-            "hostedUrl": "https://jobs.lever.co/exampleco/abc-123",
-            "categories": {"location": "Remote, USA", "commitment": "Intern"},
-            "description": "<p>Build <strong>Python</strong> services.</p>",
-            "lists": [
-                {"text": "Qualifications", "content": "<ul><li>0-1 years of experience.</li></ul>"},
-            ],
-            "additional": "<p>Apply with your resume.</p>",
-            "createdAt": 1780000000000,
-        },
-    )
-
-    assert job is not None
-    assert job.source == "lever"
-    assert job.title == "Software Engineer Intern"
-    assert job.location == "Remote, USA"
-    assert "Build Python services." in job.description
-    assert "Qualifications" in job.description
-    assert "<" not in job.description
-
-
 def test_swe_query_rejects_non_software_titles_even_when_description_mentions_software() -> None:
     assert _score_job(
         title="Business Development Representative",
@@ -103,64 +76,42 @@ def test_swe_query_rejects_non_software_titles_even_when_description_mentions_so
     ) > 0
 
 
-def test_swe_query_rejects_senior_level_roles_unless_requested() -> None:
+def test_swe_query_is_general_purpose_not_early_career_only() -> None:
     assert _score_job(
         title="Principal Software Engineer, Performance",
         description="Build high-scale infrastructure with Python.",
         query="SWE",
-    ) == 0
+    ) > 0
 
     assert _score_job(
         title="Senior Software Engineer, Backend",
         description="Build backend systems with Python.",
         query="SWE",
-    ) == 0
-
-    assert _score_job(
-        title="Senior Software Engineer, Backend",
-        description="Build backend systems with Python.",
-        query="senior SWE",
     ) > 0
-
-
-def test_swe_query_rejects_numbered_mid_level_roles_by_default() -> None:
-    assert _score_job(
-        title="Software Engineer II, Backend",
-        description="Build backend systems with Python and Java.",
-        query="SWE",
-    ) == 0
-
-    assert _score_job(
-        title="Software Engineer III, Backend",
-        description="Build backend systems with Python and Java.",
-        query="SWE",
-    ) == 0
 
     assert _score_job(
         title="Software Engineer II, Backend",
         description="Build backend systems with Python and Java.",
-        query="software engineer II",
-    ) > 0
-
-
-def test_swe_query_rejects_roles_requiring_too_many_years_by_default() -> None:
-    assert _score_job(
-        title="Forward Deployed Software Engineer",
-        description="Required: 5+ years of software engineering experience with Python.",
-        query="SWE",
-    ) == 0
-
-    assert _score_job(
-        title="Software Engineer I",
-        description="Required: 0-1 years of software engineering experience with Python.",
         query="SWE",
     ) > 0
 
     assert _score_job(
         title="Forward Deployed Software Engineer",
         description="Required: 5+ years of software engineering experience with Python.",
-        query="senior SWE",
+        query="SWE",
     ) > 0
+
+
+def test_specific_intern_query_scores_intern_roles_well() -> None:
+    assert _score_job(
+        title="Software Engineer Intern",
+        description="Build backend services with Python during a summer internship.",
+        query="software engineer intern",
+    ) > _score_job(
+        title="Software Engineer, Backend",
+        description="Build backend services with Python.",
+        query="software engineer intern",
+    )
 
 
 def test_default_search_market_excludes_obvious_non_us_locations() -> None:
