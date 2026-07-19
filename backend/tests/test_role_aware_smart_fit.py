@@ -58,6 +58,8 @@ def test_role_aware_smart_fit_prefers_data_role_over_cyber_role_for_cs_resume() 
     assert any("data role" in item.lower() or "data" in item.lower() for item in analytics.report_summary)
     assert any("cybersecurity/threat" in item.lower() for item in insider_threat.report_summary)
     assert "Role-aware scoring discounted" in insider_threat.fit_summary.headline
+    assert any("role-adjusted resume-proof score" in item.lower() for item in insider_threat.report_summary)
+    assert not any(item.startswith("Resume-proof score:") for item in insider_threat.report_summary)
 
 
 def test_role_aware_smart_fit_marks_boilerplate_descriptions_lower_confidence() -> None:
@@ -69,3 +71,4 @@ def test_role_aware_smart_fit_marks_boilerplate_descriptions_lower_confidence() 
     assert analysis.fit_summary.confidence <= 0.66
     assert any("boilerplate-heavy" in warning.lower() for warning in analysis.document_quality.warnings)
     assert any("low-signal" in analysis.fit_summary.headline.lower() or "boilerplate" in item.lower() for item in analysis.report_summary)
+    assert any("role-adjusted resume-proof score" in item.lower() for item in analysis.report_summary)
