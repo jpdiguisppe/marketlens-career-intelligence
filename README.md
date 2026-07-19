@@ -18,7 +18,17 @@ Career advice is often vague, and job descriptions are noisy. Students and caree
 
 MarketLens turns messy job postings into evidence. Instead of guessing what to learn next, users can compare their resume against real job descriptions, rank roles by fit, and see which missing skills matter most.
 
-## Current Milestone: Online Job Search + Smart Fit Comparison
+## Current Milestone: Role-Aware Smart Fit Comparison
+
+MarketLens now includes a role-aware Smart Fit comparison workflow. Users can compare multiple job postings against a resume, see why one role ranked above another, and review role-specific capability gaps rather than only matching surface-level keywords.
+
+This milestone added:
+
+- role-aware scoring for software, data, cybersecurity, finance, product, healthcare, operations, and admin-style roles
+- broader capability-gap detection beyond exact tool names
+- conservative fallback analysis for postings that do not expose enough exact technical requirements
+- clearer ranking explanations that show score gap, resume evidence, and runner-up gaps
+- cleaner resume evidence labels and priority-ordered coaching actions
 
 The active product workflow is:
 
@@ -30,7 +40,7 @@ Optionally filter by location
 Review source coverage and search notes
 Select one or more returned jobs
 Compare selected jobs against the resume
-Rank jobs with Smart Fit
+Rank jobs with role-aware Smart Fit
 Inspect each job's detailed Smart Fit report
 ```
 
@@ -70,6 +80,7 @@ Public visitors can:
 - run Smart Fit analysis against one job
 - run batch Smart Fit comparison against 2–10 jobs
 - view ranked jobs, top matches, top gaps, and detailed reports per job
+- review role-aware ranking explanations, capability gaps, and coaching actions
 - check whether model-assisted extraction is configured
 
 Admin-only actions require the `X-Admin-API-Key` header:
@@ -195,6 +206,7 @@ The React frontend currently supports:
 - ranking explanation summary
 - top matches and top gaps for each ranked job
 - detail switching between ranked job reports
+- role-aware report context, capability gaps, and prioritized coaching actions
 - disabled AI toggle when backend model-assisted extraction is not configured
 - dashboard summary cards for saved demo data
 - saved job posting table
@@ -229,6 +241,7 @@ Current checks include:
 
 - backend API tests for job posting creation, CSV import, admin API key protection, input validation, resume extraction, model status, and Smart Fit batch comparison
 - backend unit tests for skill extraction, job search normalization/filtering, role-family search, and Smart Fit analysis behavior
+- backend role-aware Smart Fit tests across software, data, cybersecurity, finance, product, healthcare, operations, and admin-style roles
 - backend evaluation cases for Smart Fit analysis
 - frontend production build validation
 - Docker image build validation for the backend and frontend
@@ -277,9 +290,7 @@ npm run dev
 - Smart Fit batch ranking
 - detailed per-job reports
 
-### Milestone 2 — Online Job Search + Smart Fit Comparison: active / stabilizing
-
-Completed:
+### Milestone 2 — Online Job Search + Smart Fit Comparison: complete
 
 - online job search endpoint
 - frontend search UI
@@ -292,23 +303,23 @@ Completed:
 - source coverage metadata
 - no-result explanations and fallback links
 
-Still being tuned:
+Ongoing source-quality tuning remains expected because public API-friendly job sources are thinner for some categories, especially campus internships and finance/accounting roles.
 
-- provider quality for non-software roles
-- internship coverage, especially finance/accounting internships
-- frontend display of the new source-coverage metadata
+### Milestone 3 — Role-Aware Smart Fit Intelligence: complete
 
-### Milestone 3 — AI-Assisted Intelligence: not started
+- role-aware scoring across multiple job families
+- capability-gap detection beyond exact keyword overlap
+- conservative capability-only fallback for postings with weak exact requirement structure
+- improved ranking explanations for compared jobs
+- cleaner evidence labels and priority-ordered coaching actions
+- cross-domain regression tests for role-aware behavior
 
-Planned direction:
+### Later Milestones
 
 - optional model-assisted extraction when safely configured
 - better job requirement parsing
 - better resume evidence matching
 - stronger coaching explanations
-
-### Later Milestones
-
 - accounts and saved reports
 - richer source integrations if a legitimate job aggregator API is selected
 - improved UI polish and demo packaging
