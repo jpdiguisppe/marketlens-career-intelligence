@@ -128,6 +128,26 @@ function includeFallbackSearchNotes(response: ExternalJobSearchResponse): Extern
   };
 }
 
+function includeJobTitleContext(request: SmartFitBatchAnalysisRequest): SmartFitBatchAnalysisRequest {
+  return {
+    ...request,
+    job_descriptions: request.job_descriptions.map((job) => {
+      const cleanedTitle = job.title?.trim();
+      if (!cleanedTitle) {
+        return job;
+      }
+
+      const alreadyStartsWithTitle = job.job_description.trim().startsWith(cleanedTitle);
+      return {
+        ...job,
+        job_description: alreadyStartsWithTitle
+          ? job.job_description
+          : `${cleanedTitle}\n\n${job.job_description}`,
+      };
+    }),
+  };
+}
+
 export async function getJobPostings(): Promise<JobPosting[]> {
   return fetchJson<JobPosting[]>("/job-postings");
 }
@@ -197,5 +217,8 @@ export async function analyzeSmartFit(
 export async function analyzeSmartFitBatch(
   request: SmartFitBatchAnalysisRequest,
 ): Promise<SmartFitBatchAnalysisResponse> {
-  return postJson<SmartFitBatchAnalysisResponse, SmartFitBatchAnalysisRequest>("/analysis/smart/batch", request);
+  return postJson<SmartFitBatchAnalysisResponse, SmartFitBatchAnalysisRequest>(
+    "/analysis/smart/batch",
+    includeJobTitleContext(request),
+  );
 }
