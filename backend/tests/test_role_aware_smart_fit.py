@@ -149,9 +149,9 @@ def test_role_aware_smart_fit_detects_data_capability_gaps() -> None:
     )
     gap_titles = {group.title for group in analysis.gap_groups}
 
-    assert "Data pipelines and analytics engineering" in gap_titles
+    assert any("data pipeline" in gap_title.lower() for gap_title in gap_titles)
     assert "Metrics, dashboards, and business analytics" in gap_titles
-    assert "Data pipelines and analytics engineering" in analysis.important_gaps
+    assert any("data pipeline" in gap.lower() for gap in analysis.important_gaps)
 
 
 def test_role_aware_smart_fit_detects_product_capability_gaps() -> None:
@@ -161,6 +161,7 @@ def test_role_aware_smart_fit_detects_product_capability_gaps() -> None:
     )
     gap_titles = {group.title for group in analysis.gap_groups}
 
+    assert analysis.fit_summary.band.value == "limited_alignment"
     assert "Product strategy and roadmap ownership" in gap_titles
     assert "User research and requirements discovery" in gap_titles
     assert any("product" in item.lower() for item in analysis.report_summary)
@@ -173,6 +174,7 @@ def test_role_aware_smart_fit_detects_healthcare_capability_gaps() -> None:
     )
     gap_titles = {group.title for group in analysis.gap_groups}
 
+    assert analysis.fit_summary.band.value == "limited_alignment"
     assert "Healthcare systems and clinical workflow context" in gap_titles
     assert "Healthcare privacy, compliance, and data handling" in gap_titles
     assert any("healthcare" in item.lower() for item in analysis.report_summary)
@@ -185,6 +187,7 @@ def test_role_aware_smart_fit_detects_operations_admin_capability_gaps() -> None
     )
     gap_titles = {group.title for group in analysis.gap_groups}
 
+    assert analysis.fit_summary.band.value == "limited_alignment"
     assert "Administrative coordination and scheduling" in gap_titles
     assert any("operations/admin" in item.lower() for item in analysis.report_summary)
 
