@@ -51,6 +51,36 @@ Build financial models, budgeting forecasts, variance analysis, executive report
 Support accounting close, audit schedules, controls, and compliance reporting in Excel.
 """
 
+FRONTEND_ENGINEER_JOB = """
+Frontend Engineer
+
+Required Qualifications
+Build React and TypeScript web applications with responsive UI patterns.
+Partner with designers to deliver frontend features, accessibility improvements, and user-facing workflows.
+"""
+
+PRODUCT_MANAGER_JOB = """
+Product Manager
+
+Required Qualifications
+Own product strategy, roadmap planning, backlog prioritization, and product requirements.
+Lead user research, customer research, discovery interviews, and stakeholder interviews.
+"""
+
+HEALTHCARE_SYSTEMS_JOB = """
+Healthcare Systems Analyst
+
+Required Qualifications
+Support clinical workflows, patient data, EHR systems, and electronic health record integrations.
+Partner with teams on HIPAA, privacy, protected health information, and healthcare compliance.
+"""
+
+ADMIN_COORDINATOR_JOB = """
+Administrative Coordinator
+
+Required Qualifications
+Manage scheduling, calendar coordination, office operations, documentation, and organizing daily workflows.
+"""
 
 
 def test_role_aware_smart_fit_prefers_data_role_over_cyber_role_for_cs_resume() -> None:
@@ -71,7 +101,6 @@ def test_role_aware_smart_fit_prefers_data_role_over_cyber_role_for_cs_resume() 
     assert not any(item.startswith("Resume-proof score:") for item in insider_threat.report_summary)
 
 
-
 def test_role_aware_smart_fit_surfaces_capability_gaps_beyond_exact_skills() -> None:
     analysis = analyze_smart_fit(
         resume_text=CS_RESUME,
@@ -88,7 +117,6 @@ def test_role_aware_smart_fit_surfaces_capability_gaps_beyond_exact_skills() -> 
     assert any("capability gap check" in item.lower() for item in analysis.report_summary)
 
 
-
 def test_role_aware_smart_fit_applies_capability_gaps_to_non_cyber_domains() -> None:
     analysis = analyze_smart_fit(
         resume_text=CS_RESUME,
@@ -102,6 +130,64 @@ def test_role_aware_smart_fit_applies_capability_gaps_to_non_cyber_domains() -> 
     assert any("finance" in item.lower() for item in analysis.report_summary)
 
 
+def test_role_aware_smart_fit_detects_software_capability_gaps() -> None:
+    analysis = analyze_smart_fit(
+        resume_text=CS_RESUME,
+        job_description=FRONTEND_ENGINEER_JOB,
+    )
+    gap_titles = {group.title for group in analysis.gap_groups}
+
+    assert "Frontend/web application delivery" in gap_titles
+    assert "Frontend/web application delivery" in analysis.important_gaps
+    assert any("software" in item.lower() for item in analysis.report_summary)
+
+
+def test_role_aware_smart_fit_detects_data_capability_gaps() -> None:
+    analysis = analyze_smart_fit(
+        resume_text=CS_RESUME,
+        job_description=ANALYTICS_ENGINEER_JOB,
+    )
+    gap_titles = {group.title for group in analysis.gap_groups}
+
+    assert "Data pipelines and analytics engineering" in gap_titles
+    assert "Metrics, dashboards, and business analytics" in gap_titles
+    assert "Data pipelines and analytics engineering" in analysis.important_gaps
+
+
+def test_role_aware_smart_fit_detects_product_capability_gaps() -> None:
+    analysis = analyze_smart_fit(
+        resume_text=CS_RESUME,
+        job_description=PRODUCT_MANAGER_JOB,
+    )
+    gap_titles = {group.title for group in analysis.gap_groups}
+
+    assert "Product strategy and roadmap ownership" in gap_titles
+    assert "User research and requirements discovery" in gap_titles
+    assert any("product" in item.lower() for item in analysis.report_summary)
+
+
+def test_role_aware_smart_fit_detects_healthcare_capability_gaps() -> None:
+    analysis = analyze_smart_fit(
+        resume_text=CS_RESUME,
+        job_description=HEALTHCARE_SYSTEMS_JOB,
+    )
+    gap_titles = {group.title for group in analysis.gap_groups}
+
+    assert "Healthcare systems and clinical workflow context" in gap_titles
+    assert "Healthcare privacy, compliance, and data handling" in gap_titles
+    assert any("healthcare" in item.lower() for item in analysis.report_summary)
+
+
+def test_role_aware_smart_fit_detects_operations_admin_capability_gaps() -> None:
+    analysis = analyze_smart_fit(
+        resume_text=CS_RESUME,
+        job_description=ADMIN_COORDINATOR_JOB,
+    )
+    gap_titles = {group.title for group in analysis.gap_groups}
+
+    assert "Administrative coordination and scheduling" in gap_titles
+    assert any("operations/admin" in item.lower() for item in analysis.report_summary)
+
 
 def test_role_aware_smart_fit_marks_boilerplate_descriptions_lower_confidence() -> None:
     analysis = analyze_smart_fit(
@@ -114,7 +200,6 @@ def test_role_aware_smart_fit_marks_boilerplate_descriptions_lower_confidence() 
     assert not any(warning.startswith("No standard") for warning in analysis.document_quality.warnings)
     assert any("low-signal" in analysis.fit_summary.headline.lower() or "boilerplate" in item.lower() for item in analysis.report_summary)
     assert any("role-adjusted resume-proof score" in item.lower() for item in analysis.report_summary)
-
 
 
 def test_role_aware_smart_fit_polishes_category_labels_for_ui() -> None:
