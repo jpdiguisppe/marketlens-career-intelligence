@@ -354,7 +354,7 @@ function SmartFitResults({
               <SkillPills skills={analysis.related_matches} emptyText="No related-but-mismatched evidence found." max={6} />
             </div>
             <div>
-              <h4>Detected, but not central here</h4>
+              <h4>General resume signal, not direct role proof</h4>
               <SkillPills skills={analysis.other_resume_skills} emptyText="No extra resume skills detected." max={8} />
             </div>
           </div>
