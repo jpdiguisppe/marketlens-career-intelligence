@@ -120,6 +120,31 @@ function modelStatusText(analysis: SmartFitAnalysisResponse): string {
   return "Deterministic analysis was used. Model-assisted extraction was not requested.";
 }
 
+function topEvidenceForJob(job: SmartFitBatchResult): string[] {
+  const evidence = job.analysis.strong_matches.length > 0
+    ? job.analysis.strong_matches
+    : job.analysis.job_relevant_resume_skills;
+
+  return evidence.slice(0, 4);
+}
+
+function topGapsForJob(job: SmartFitBatchResult): string[] {
+  const gaps = job.analysis.important_gaps.length > 0
+    ? job.analysis.important_gaps
+    : job.analysis.gap_groups.flatMap((group) => [group.title, ...group.skills]);
+
+  return Array.from(new Set(gaps)).slice(0, 4);
+}
+
+function roleContextForJob(job: SmartFitBatchResult): string | undefined {
+  return job.analysis.report_summary.find((summaryItem) => {
+    const normalized = summaryItem.toLowerCase();
+    return normalized.includes("role-aware check")
+      || normalized.includes("capability gap check")
+      || normalized.includes("exact requirement extraction");
+  });
+}
+
 function summarizeRanking(rankedJobs: SmartFitBatchResult[]): string[] {
   if (rankedJobs.length <= 1) {
     return ["Only one job was analyzed, so there is no ranking comparison yet."];
@@ -128,25 +153,34 @@ function summarizeRanking(rankedJobs: SmartFitBatchResult[]): string[] {
   const bestJob = rankedJobs[0];
   const runnerUp = rankedJobs[1];
   const scoreGap = bestJob.analysis.fit_summary.score - runnerUp.analysis.fit_summary.score;
+  const bestEvidence = topEvidenceForJob(bestJob);
+  const runnerUpGaps = topGapsForJob(runnerUp);
+  const bestContext = roleContextForJob(bestJob);
+  const runnerUpContext = roleContextForJob(runnerUp);
+
   const summary: string[] = [
-    `${bestJob.title} ranked first by ${scoreGap} percentage point${scoreGap === 1 ? "" : "s"} over ${runnerUp.title}.`,
+    `${bestJob.title} ranked first because its resume-backed fit score was stronger than ${runnerUp.title} (${bestJob.analysis.fit_summary.score}% vs. ${runnerUp.analysis.fit_summary.score}%, a ${scoreGap}-point gap).`,
   ];
 
-  const bestMatches = bestJob.analysis.strong_matches.length > 0
-    ? bestJob.analysis.strong_matches
-    : bestJob.analysis.job_relevant_resume_skills;
-  if (bestMatches.length > 0) {
-    summary.push(`Best-fit evidence: ${bestMatches.slice(0, 4).join(", ")}.`);
+  if (bestContext) {
+    summary.push(bestContext);
   }
 
-  const runnerUpGaps = runnerUp.analysis.important_gaps.length > 0
-    ? runnerUp.analysis.important_gaps
-    : runnerUp.analysis.gap_groups.flatMap((group) => group.skills);
+  if (bestEvidence.length > 0) {
+    summary.push(`Strongest resume proof for the top role: ${bestEvidence.join(", ")}.`);
+  } else {
+    summary.push("The top role still has limited direct resume proof, so treat the ranking as a starting point rather than a final answer.");
+  }
+
   if (runnerUpGaps.length > 0) {
-    summary.push(`${runnerUp.title} fell behind mostly because of missing proof for ${runnerUpGaps.slice(0, 4).join(", ")}.`);
+    summary.push(`${runnerUp.title} fell behind mostly because MarketLens did not find clear resume proof for ${runnerUpGaps.join(", ")}.`);
   }
 
-  summary.push("Use the Show details buttons to inspect each ranked job's full Smart Fit report.");
+  if (runnerUpContext && runnerUpContext !== bestContext) {
+    summary.push(`Runner-up context: ${runnerUpContext}`);
+  }
+
+  summary.push("Open each job's details to compare the evidence, gaps, and coaching actions behind the ranking.");
   return summary;
 }
 
