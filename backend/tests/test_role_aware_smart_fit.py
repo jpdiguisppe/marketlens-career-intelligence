@@ -52,6 +52,7 @@ Support accounting close, audit schedules, controls, and compliance reporting in
 """
 
 
+
 def test_role_aware_smart_fit_prefers_data_role_over_cyber_role_for_cs_resume() -> None:
     analytics = analyze_smart_fit(
         resume_text=CS_RESUME,
@@ -70,6 +71,7 @@ def test_role_aware_smart_fit_prefers_data_role_over_cyber_role_for_cs_resume() 
     assert not any(item.startswith("Resume-proof score:") for item in insider_threat.report_summary)
 
 
+
 def test_role_aware_smart_fit_surfaces_capability_gaps_beyond_exact_skills() -> None:
     analysis = analyze_smart_fit(
         resume_text=CS_RESUME,
@@ -81,7 +83,10 @@ def test_role_aware_smart_fit_surfaces_capability_gaps_beyond_exact_skills() -> 
     assert "Security operations and incident response" in gap_titles
     assert "Threat investigation and fraud analysis" in gap_titles
     assert "Security operations and incident response" in coaching_titles
+    assert "Security operations and incident response" in analysis.important_gaps
+    assert "Threat investigation and fraud analysis" in analysis.important_gaps
     assert any("capability gap check" in item.lower() for item in analysis.report_summary)
+
 
 
 def test_role_aware_smart_fit_applies_capability_gaps_to_non_cyber_domains() -> None:
@@ -97,6 +102,7 @@ def test_role_aware_smart_fit_applies_capability_gaps_to_non_cyber_domains() -> 
     assert any("finance" in item.lower() for item in analysis.report_summary)
 
 
+
 def test_role_aware_smart_fit_marks_boilerplate_descriptions_lower_confidence() -> None:
     analysis = analyze_smart_fit(
         resume_text=CS_RESUME,
@@ -105,5 +111,18 @@ def test_role_aware_smart_fit_marks_boilerplate_descriptions_lower_confidence() 
 
     assert analysis.fit_summary.confidence <= 0.66
     assert any("boilerplate-heavy" in warning.lower() for warning in analysis.document_quality.warnings)
+    assert not any(warning.startswith("No standard") for warning in analysis.document_quality.warnings)
     assert any("low-signal" in analysis.fit_summary.headline.lower() or "boilerplate" in item.lower() for item in analysis.report_summary)
     assert any("role-adjusted resume-proof score" in item.lower() for item in analysis.report_summary)
+
+
+
+def test_role_aware_smart_fit_polishes_category_labels_for_ui() -> None:
+    analysis = analyze_smart_fit(
+        resume_text=CS_RESUME,
+        job_description=INSIDER_THREAT_JOB,
+    )
+    category_labels = {coverage.category for coverage in analysis.category_coverage}
+
+    assert "AI / ML" in category_labels
+    assert "ai_ml" not in category_labels
