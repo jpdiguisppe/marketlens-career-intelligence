@@ -2,6 +2,7 @@ import re
 from dataclasses import dataclass
 
 from app.analysis.schemas import (
+    CategoryCoverage,
     CoachingAction,
     CoachingActionType,
     DocumentQuality,
@@ -175,6 +176,20 @@ _COMPATIBLE_ROLE_DOMAINS = {
 }
 
 _SCORE_SUMMARY_PATTERN = re.compile(r"^Resume-proof score: (?P<score>\d+)%\.\s*(?P<rest>.*)$")
+_NOISY_FORMAT_WARNING_PREFIXES = (
+    "No standard resume section headings were detected.",
+    "No standard job-posting headings were detected.",
+)
+_SOFT_FORMAT_WARNING = "Some resume/job-posting formatting was unclear, so requirement priorities may be approximate."
+_CATEGORY_LABELS = {
+    "ai_ml": "AI / ML",
+    "programming_language": "Programming Language",
+    "software_architecture": "Software Architecture",
+    "software_design": "Software Design",
+    "software_engineering": "Software Engineering",
+    "sales_marketing": "Sales / Marketing",
+    "operations_admin": "Operations / Admin",
+}
 
 
 @dataclass(frozen=True)
@@ -578,12 +593,22 @@ def _with_adjusted_summary(summary: FitSummary, score_adjustment: int, confidenc
     )
 
 
+def _is_noisy_format_warning(warning: str) -> bool:
+    return warning.startswith(_NOISY_FORMAT_WARNING_PREFIXES)
+
+
 def _with_quality_warning(document_quality: DocumentQuality, note: str | None) -> DocumentQuality:
-    if not note:
-        return document_quality
-    warnings = list(document_quality.warnings)
-    if note not in warnings:
+    base_warnings = list(document_quality.warnings)
+    substantive_warnings = [warning for warning in base_warnings if not _is_noisy_format_warning(warning)]
+    had_format_warning = len(substantive_warnings) != len(base_warnings)
+
+    warnings = substantive_warnings
+    if note and note not in warnings:
         warnings.append(note)
+
+    if not warnings and had_format_warning:
+        warnings = [_SOFT_FORMAT_WARNING]
+
     return document_quality.model_copy(update={"warnings": warnings})
 
 
@@ -669,6 +694,29 @@ def _capability_summary(capability_gaps: list[GapGroup]) -> str | None:
         return None
     titles = ", ".join(gap.title for gap in capability_gaps[:3])
     return f"Capability gap check: the posting also signals broader role capabilities not fully captured by exact skill matching: {titles}."
+
+
+def _with_capability_important_gaps(base_gaps: list[str], capability_gaps: list[GapGroup]) -> list[str]:
+    ordered_gaps = [gap.title for gap in capability_gaps]
+    ordered_gaps.extend(base_gaps)
+
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for gap in ordered_gaps:
+        key = gap.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(gap)
+
+    return deduped[:8]
+
+
+def _with_polished_category_labels(category_coverage: list[CategoryCoverage]) -> list[CategoryCoverage]:
+    return [
+        coverage.model_copy(update={"category": _CATEGORY_LABELS.get(coverage.category, coverage.category)})
+        for coverage in category_coverage
+    ]
 
 
 def _with_adjusted_report_score(
@@ -758,6 +806,8 @@ def analyze_smart_fit(
             "report_summary": report_summary[:8],
             "gap_groups": _with_capability_gap_groups(analysis.gap_groups, capability_gaps),
             "coaching_actions": _with_capability_actions(analysis.coaching_actions, capability_gaps),
+            "category_coverage": _with_polished_category_labels(analysis.category_coverage),
+            "important_gaps": _with_capability_important_gaps(analysis.important_gaps, capability_gaps),
             "limitations": limitations,
         }
     )
