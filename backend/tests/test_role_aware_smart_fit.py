@@ -43,6 +43,14 @@ Responsibilities
 You will build small Python services for internal teams.
 """
 
+FINANCE_ANALYST_JOB = """
+Financial Analyst
+
+Required Qualifications
+Build financial models, budgeting forecasts, variance analysis, executive reporting, and SQL dashboards.
+Support accounting close, audit schedules, controls, and compliance reporting in Excel.
+"""
+
 
 def test_role_aware_smart_fit_prefers_data_role_over_cyber_role_for_cs_resume() -> None:
     analytics = analyze_smart_fit(
@@ -60,6 +68,33 @@ def test_role_aware_smart_fit_prefers_data_role_over_cyber_role_for_cs_resume() 
     assert "Role-aware scoring discounted" in insider_threat.fit_summary.headline
     assert any("role-adjusted resume-proof score" in item.lower() for item in insider_threat.report_summary)
     assert not any(item.startswith("Resume-proof score:") for item in insider_threat.report_summary)
+
+
+def test_role_aware_smart_fit_surfaces_capability_gaps_beyond_exact_skills() -> None:
+    analysis = analyze_smart_fit(
+        resume_text=CS_RESUME,
+        job_description=INSIDER_THREAT_JOB,
+    )
+    gap_titles = {group.title for group in analysis.gap_groups}
+    coaching_titles = {action.title for action in analysis.coaching_actions}
+
+    assert "Security operations and incident response" in gap_titles
+    assert "Threat investigation and fraud analysis" in gap_titles
+    assert "Security operations and incident response" in coaching_titles
+    assert any("capability gap check" in item.lower() for item in analysis.report_summary)
+
+
+def test_role_aware_smart_fit_applies_capability_gaps_to_non_cyber_domains() -> None:
+    analysis = analyze_smart_fit(
+        resume_text=CS_RESUME,
+        job_description=FINANCE_ANALYST_JOB,
+    )
+    gap_titles = {group.title for group in analysis.gap_groups}
+
+    assert "Financial modeling and analysis" in gap_titles
+    assert "Accounting, audit, and tax workflows" in gap_titles
+    assert "Risk, controls, and compliance reporting" in gap_titles
+    assert any("finance" in item.lower() for item in analysis.report_summary)
 
 
 def test_role_aware_smart_fit_marks_boilerplate_descriptions_lower_confidence() -> None:
