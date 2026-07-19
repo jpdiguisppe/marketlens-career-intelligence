@@ -320,8 +320,14 @@ function SmartFitResults({
   const highSignalRequirements = analysis.requirement_assessments
     .filter((assessment) => assessment.weight >= 0.5)
     .slice(0, 8);
-  const topGapGroups = analysis.gap_groups.slice(0, 3);
-  const topActions = analysis.coaching_actions.slice(0, 3);
+  const priorityRank: Record<string, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+  const priorityValue = (priority: string) => priorityRank[priority] ?? 99;
+  const topGapGroups = [...analysis.gap_groups]
+    .sort((a, b) => priorityValue(a.priority) - priorityValue(b.priority))
+    .slice(0, 3);
+  const topActions = [...analysis.coaching_actions]
+    .sort((a, b) => priorityValue(a.priority) - priorityValue(b.priority))
+    .slice(0, 3);
 
   return (
     <div className="analysis-results smart-fit-results">
@@ -461,7 +467,9 @@ function SmartFitResults({
                 <div className="bar-track">
                   <div className="bar-fill" style={{ width: `${Math.max(coverage.score, 6)}%` }} />
                 </div>
-                <p>{coverage.summary}</p>
+                <p>{coverage.summary
+                    .replace(/\bai ml\b/gi, "AI / ML")
+                    .replace(/\bai\/ml\b/gi, "AI / ML")}</p>
               </div>
             ))}
           </div>
