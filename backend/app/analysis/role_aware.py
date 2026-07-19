@@ -103,6 +103,8 @@ _COMPATIBLE_ROLE_DOMAINS = {
     ("data", "software"),
 }
 
+_SCORE_SUMMARY_PATTERN = re.compile(r"^Resume-proof score: (?P<score>\d+)%\.\s*(?P<rest>.*)$")
+
 
 @dataclass(frozen=True)
 class RoleContext:
@@ -288,6 +290,33 @@ def _with_quality_warning(document_quality: DocumentQuality, note: str | None) -
     return document_quality.model_copy(update={"warnings": warnings})
 
 
+def _with_adjusted_report_score(
+    items: list[str],
+    original_score: int,
+    adjusted_score: int,
+) -> list[str]:
+    if original_score == adjusted_score:
+        return items
+
+    updated_items: list[str] = []
+    for item in items:
+        match = _SCORE_SUMMARY_PATTERN.match(item)
+        if not match:
+            updated_items.append(item)
+            continue
+
+        rest = match.group("rest").strip()
+        adjusted_item = (
+            f"Role-adjusted resume-proof score: {adjusted_score}% "
+            f"(base skill-evidence score before role/context adjustments was {original_score}%)."
+        )
+        if rest:
+            adjusted_item += f" {rest}"
+        updated_items.append(adjusted_item)
+
+    return updated_items
+
+
 def analyze_smart_fit(
     resume_text: str,
     job_description: str,
@@ -316,7 +345,13 @@ def analyze_smart_fit(
     report_summary = [role_context.note]
     if quality_note:
         report_summary.append(quality_note)
-    report_summary.extend(analysis.report_summary)
+    report_summary.extend(
+        _with_adjusted_report_score(
+            analysis.report_summary,
+            analysis.fit_summary.score,
+            adjusted_summary.score,
+        )
+    )
 
     limitations = list(analysis.limitations)
     limitations.append(
