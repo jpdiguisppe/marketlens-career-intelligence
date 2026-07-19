@@ -38,7 +38,9 @@ Software Engineer
 About us
 Our mission is to change the world. We value curiosity, ownership, and teamwork.
 Benefits include health insurance, flexible time off, and career growth.
-The role may involve Python.
+
+Responsibilities
+You will build small Python services for internal teams.
 """
 
 
