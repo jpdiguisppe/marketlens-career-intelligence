@@ -7,6 +7,7 @@ MarketLens is a full-stack career intelligence platform that compares resume evi
 - **Frontend app:** [MarketLens live demo](https://marketlens-career-intelligence-production-8a34.up.railway.app)
 - **Backend API docs:** [FastAPI Swagger UI](https://marketlens-career-intelligence-production.up.railway.app/docs)
 - **Backend health check:** [API health endpoint](https://marketlens-career-intelligence-production.up.railway.app/health)
+- **Portfolio demo walkthrough:** [How to demo MarketLens](docs/portfolio-demo-walkthrough.md)
 
 The deployed version is a secured portfolio/demo app. Public visitors can view the saved demo dataset, explore skill dashboards, upload or paste non-sensitive resume text, search configured public job sources, paste job descriptions manually, and run non-saved Smart Fit comparisons. Creating postings, importing CSV files, and deleting saved postings are admin-only actions protected by an `X-Admin-API-Key` header.
 
@@ -56,8 +57,9 @@ Explain why the ranking happened
 Inspect each job's detailed Smart Fit report
 ```
 
-Smoke-test checklists:
+Demo and smoke-test docs:
 
+- [`docs/portfolio-demo-walkthrough.md`](docs/portfolio-demo-walkthrough.md)
 - [`docs/milestone-1-manual-comparison-smoke-test.md`](docs/milestone-1-manual-comparison-smoke-test.md)
 - [`docs/milestone-2-online-job-search-smoke-test.md`](docs/milestone-2-online-job-search-smoke-test.md)
 
@@ -314,12 +316,20 @@ Ongoing source-quality tuning remains expected because public API-friendly job s
 - cleaner evidence labels and priority-ordered coaching actions
 - cross-domain regression tests for role-aware behavior
 
+### Milestone 4 — Portfolio/Demo Packaging: active
+
+- demo walkthrough documentation
+- clearer recruiter/interviewer demo path
+- resume-ready project summary
+- screenshots or short visual demo materials
+- README and repository presentation polish
+
 ### Later Milestones
 
+- accounts and saved reports with user-owned private data
+- saved jobs and saved searches
+- richer source integrations if a legitimate job aggregator API is selected
 - optional model-assisted extraction when safely configured
 - better job requirement parsing
 - better resume evidence matching
 - stronger coaching explanations
-- accounts and saved reports
-- richer source integrations if a legitimate job aggregator API is selected
-- improved UI polish and demo packaging
