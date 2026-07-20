@@ -2,6 +2,36 @@
 
 MarketLens is a full-stack career intelligence platform that compares resume evidence against real job descriptions, ranks role fit, and turns noisy postings into clearer skill gaps and learning priorities.
 
+## Project Highlights
+
+- **Deployed full-stack app:** React + TypeScript frontend, FastAPI backend, SQLAlchemy persistence, and Railway deployment.
+- **Resume-to-job comparison:** Users can upload or paste a resume, search configured public job sources, select jobs, and compare fit.
+- **Role-aware Smart Fit:** The app ranks jobs using resume-backed evidence, role-family context, capability gaps, and coaching actions.
+- **Online + manual workflows:** Users can search public Greenhouse, Lever, Remote OK, and Remotive sources or paste outside postings manually.
+- **Security-conscious demo design:** Public users can analyze non-sensitive text without saving reports, while write/delete endpoints remain admin-protected.
+- **Quality coverage:** Backend tests cover API behavior, job search filtering, Smart Fit analysis, role-aware behavior, and evaluation cases.
+
+## Tech Stack
+
+| Area | Tools |
+| --- | --- |
+| Frontend | React, TypeScript, Vite, CSS |
+| Backend | Python, FastAPI, Pydantic, SQLAlchemy |
+| Database | SQLite locally, PostgreSQL-ready deployment through `DATABASE_URL` |
+| Job sources | Greenhouse Job Board API, Lever Postings API, Remote OK, Remotive |
+| Testing / Quality | pytest, frontend production build, GitHub Actions, Dependabot |
+| Deployment | Railway frontend, Railway backend, Railway/PostgreSQL-ready backend configuration |
+
+## Resume / Interview Summary
+
+MarketLens is a deployed full-stack career-intelligence app that compares resume evidence against real job postings, ranks job fit, and explains role-specific gaps. I built the React frontend, FastAPI backend, job-search normalization layer, Smart Fit analysis workflow, role-aware scoring logic, security controls, tests, and deployment pipeline.
+
+Resume bullet version:
+
+```text
+Built and deployed MarketLens, a full-stack React/FastAPI career-intelligence app that searches public job APIs, compares resumes against multiple postings, ranks role fit, identifies role-specific capability gaps, and explains recommendations with tested backend analysis logic.
+```
+
 ## Live Demo
 
 - **Frontend app:** [MarketLens live demo](https://marketlens-career-intelligence-production-8a34.up.railway.app)
