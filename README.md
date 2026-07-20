@@ -1,6 +1,6 @@
 # MarketLens Career Intelligence
 
-MarketLens is a full-stack career intelligence platform that compares resume evidence against real job descriptions, ranks role fit, and turns noisy postings into clearer skill gaps and learning priorities.
+MarketLens is a deployed full-stack career-intelligence platform that compares resume evidence against real job descriptions, ranks role fit, and turns noisy postings into clearer skill gaps, capability gaps, and learning priorities.
 
 ## Project Highlights
 
@@ -9,6 +9,7 @@ MarketLens is a full-stack career intelligence platform that compares resume evi
 - **Role-aware Smart Fit:** The app ranks jobs using resume-backed evidence, role-family context, capability gaps, and coaching actions.
 - **Online + manual workflows:** Users can search public Greenhouse, Lever, Remote OK, and Remotive sources or paste outside postings manually.
 - **Security-conscious demo design:** Public users can analyze non-sensitive text without saving reports, while write/delete endpoints remain admin-protected.
+- **Portfolio-ready packaging:** The repo now includes screenshots, a guided demo walkthrough, README highlights, and a resume/interview summary.
 - **Quality coverage:** Backend tests cover API behavior, job search filtering, Smart Fit analysis, role-aware behavior, and evaluation cases.
 
 ## Tech Stack
@@ -24,7 +25,7 @@ MarketLens is a full-stack career intelligence platform that compares resume evi
 
 ## Resume / Interview Summary
 
-MarketLens is a deployed full-stack career-intelligence app that compares resume evidence against real job postings, ranks job fit, and explains role-specific gaps. I built the React frontend, FastAPI backend, job-search normalization layer, Smart Fit analysis workflow, role-aware scoring logic, security controls, tests, and deployment pipeline.
+MarketLens is a deployed full-stack career-intelligence app that compares resume evidence against real job postings, ranks job fit, and explains role-specific gaps. I built the React frontend, FastAPI backend, job-search normalization layer, Smart Fit analysis workflow, role-aware scoring logic, security controls, tests, deployment pipeline, and portfolio-ready documentation.
 
 Resume bullet version:
 
@@ -75,19 +76,7 @@ Career advice is often vague, and job descriptions are noisy. Students and caree
 
 MarketLens turns messy job postings into evidence. Instead of guessing what to learn next, users can compare their resume against real job descriptions, rank roles by fit, and see which missing skills matter most.
 
-## Current Milestone: Role-Aware Smart Fit Comparison
-
-MarketLens now includes a role-aware Smart Fit comparison workflow. Users can compare multiple job postings against a resume, see why one role ranked above another, and review role-specific capability gaps rather than only matching surface-level keywords.
-
-This milestone added:
-
-- role-aware scoring for software, data, cybersecurity, finance, product, healthcare, operations, and admin-style roles
-- broader capability-gap detection beyond exact tool names
-- conservative fallback analysis for postings that do not expose enough exact technical requirements
-- clearer ranking explanations that show score gap, resume evidence, and runner-up gaps
-- cleaner resume evidence labels and priority-ordered coaching actions
-
-The active product workflow is:
+## Current Product Workflow
 
 ```text
 Upload or paste resume
@@ -183,7 +172,7 @@ Configured source types:
 - **Remote OK public JSON feed** — remote-first job feed
 - **Remotive public API** — remote-first job feed with search/category support
 
-MarketLens does **not** claim to search all of LinkedIn, Indeed, Handshake, Workday, company career pages, or school career portals. When no results are found, the API now returns source-coverage metadata, human-readable search notes, and fallback search links so the user can continue outside the configured API-friendly sources and paste those jobs back into Smart Fit.
+MarketLens does **not** claim to search all of LinkedIn, Indeed, Handshake, Workday, company career pages, or school career portals. When no results are found, the API returns source-coverage metadata, human-readable search notes, and fallback search links so the user can continue outside the configured API-friendly sources and paste those jobs back into Smart Fit.
 
 ### Role-family search behavior
 
@@ -373,20 +362,57 @@ Ongoing source-quality tuning remains expected because public API-friendly job s
 - cleaner evidence labels and priority-ordered coaching actions
 - cross-domain regression tests for role-aware behavior
 
-### Milestone 4 — Portfolio/Demo Packaging: active
+### Milestone 4 — Portfolio/Demo Packaging: complete
 
 - demo walkthrough documentation
 - clearer recruiter/interviewer demo path
 - resume-ready project summary
-- screenshots or short visual demo materials
+- README project highlights and tech stack summary
+- portfolio screenshots and screenshot guide
 - README and repository presentation polish
 
-### Later Milestones
+### Milestone 5 — Auth + Private Data Foundation: next
 
-- accounts and saved reports with user-owned private data
-- saved jobs and saved searches
-- richer source integrations if a legitimate job aggregator API is selected
-- optional model-assisted extraction when safely configured
-- better job requirement parsing
-- better resume evidence matching
-- stronger coaching explanations
+Before MarketLens stores personal saved jobs, reports, resumes, or user history, the next milestone will establish a privacy-safe account foundation:
+
+- choose an authentication provider instead of building password auth from scratch
+- add login/logout UI
+- verify authenticated users in the FastAPI backend
+- add user-owned database tables
+- require server-side authorization checks on every private endpoint
+- keep analyze-without-saving as the default workflow
+- avoid saving raw resume files by default
+- add delete/export controls for user-owned data
+- add tests proving one user cannot access another user's saved data
+
+### Milestone 6 — Saved Jobs, Saved Reports, and User Dashboard
+
+After the private-data foundation is in place:
+
+- save searched jobs to a user account
+- save pasted jobs when the user explicitly chooses to save them
+- save Smart Fit reports and comparison history
+- view saved jobs and saved reports in a private dashboard
+- delete saved jobs and reports
+- support saved searches or collections
+
+### Milestone 7 — Better Job Source Coverage
+
+- improve configured public source coverage
+- evaluate legitimate job aggregator APIs or source partnerships
+- improve source coverage display in the frontend
+- support better fallback workflows for LinkedIn, Indeed, Handshake, Workday-backed pages, and school portals without scraping closed sites
+- improve non-software and internship coverage where API-friendly sources are thin
+
+### Milestone 8 — Optional AI-Assisted Analysis
+
+Optional model-assisted analysis remains later-stage until the core app is more complete and the privacy model is stronger.
+
+Potential future work:
+
+- model-assisted requirement parsing
+- stronger resume evidence matching
+- improved coaching explanations
+- stricter provider safety checks before enabling live model calls
+- backend-only provider keys and model-status transparency
+
