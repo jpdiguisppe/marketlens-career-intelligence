@@ -18,6 +18,7 @@ from app.analysis import (
     analyze_smart_fit,
 )
 from app.analysis.model_extractor import is_model_assisted_configured
+from app.auth import AuthenticatedUser, get_current_user
 from app.database import Base, engine, get_db
 from app.job_search import ExternalJobResult, JobSearchResults, search_external_jobs
 from app.models import JobPostingDB
@@ -233,6 +234,11 @@ class ModelAssistedStatusResponse(BaseModel):
     status: str
     required_backend_settings: list[str]
     safety_notes: list[str]
+
+
+class CurrentUserResponse(BaseModel):
+    user_id: str
+    auth_provider: str
 
 
 class ExternalJobPostingResponse(BaseModel):
@@ -512,6 +518,16 @@ def _analyze_smart_fit_request(request: SmartFitAnalysisRequest) -> SmartFitAnal
 @app.get("/health")
 def health_check() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/me", response_model=CurrentUserResponse)
+def current_user_profile(
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> CurrentUserResponse:
+    return CurrentUserResponse(
+        user_id=current_user.user_id,
+        auth_provider=current_user.auth_provider,
+    )
 
 
 @app.get("/analysis/model-status", response_model=ModelAssistedStatusResponse)

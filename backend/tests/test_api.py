@@ -10,12 +10,16 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 os.environ["ADMIN_API_KEY"] = "test-admin-key"
+os.environ["AUTH_DEV_MODE"] = "true"
+os.environ["AUTH_DEV_BEARER_TOKEN"] = "test-user-token"
+os.environ["AUTH_DEV_USER_ID"] = "test-clerk-user-1"
 
 from app.database import Base, get_db
 from app.main import _rate_limit_buckets, app
 
 TEST_DATABASE_URL = "sqlite://"
 ADMIN_HEADERS = {"X-Admin-API-Key": "test-admin-key"}
+AUTH_HEADERS = {"Authorization": "Bearer test-user-token"}
 
 engine = create_engine(
     TEST_DATABASE_URL,
@@ -67,6 +71,44 @@ def _sample_docx_resume_bytes() -> bytes:
     buffer = BytesIO()
     document.save(buffer)
     return buffer.getvalue()
+
+
+def test_me_requires_bearer_token() -> None:
+    response = client.get("/me")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Missing bearer token."
+
+
+def test_me_rejects_invalid_dev_token() -> None:
+    response = client.get("/me", headers={"Authorization": "Bearer wrong-token"})
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid bearer token."
+
+
+def test_me_returns_current_user_with_valid_dev_token() -> None:
+    response = client.get("/me", headers=AUTH_HEADERS)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body == {
+        "user_id": "test-clerk-user-1",
+        "auth_provider": "dev",
+    }
+
+
+def test_public_smart_fit_still_works_without_login() -> None:
+    response = client.post(
+        "/analysis/smart",
+        json={
+            "resume_text": "PROJECTS\nBuilt Python FastAPI services with Docker, SQL, Git, and REST APIs.",
+            "job_description": "Required Qualifications\nBuild Python REST APIs with SQL, Docker, Git, and FastAPI.",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["fit_summary"]["score"] >= 1
 
 
 def test_create_job_posting_requires_admin_api_key() -> None:
