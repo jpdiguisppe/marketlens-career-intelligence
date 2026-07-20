@@ -23,24 +23,12 @@ jobs:
       - name: Install backend dependencies
         working-directory: backend
         run: |
-          python -m pip install --quiet --upgrade pip
-          python -m pip install --quiet -r requirements.txt
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
 
       - name: Run backend tests
         working-directory: backend
-        run: |
-          set +e
-          python -m pytest -q --tb=short > pytest-output.txt 2>&1
-          status=$?
-          cat pytest-output.txt
-          exit $status
-
-      - name: Upload backend test output
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-test-output
-          path: backend/pytest-output.txt
+        run: python -m pytest
 
   frontend-build:
     name: Frontend build
