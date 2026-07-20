@@ -39,6 +39,7 @@ Built and deployed MarketLens, a full-stack React/FastAPI career-intelligence ap
 - **Backend API docs:** [FastAPI Swagger UI](https://marketlens-career-intelligence-production.up.railway.app/docs)
 - **Backend health check:** [API health endpoint](https://marketlens-career-intelligence-production.up.railway.app/health)
 - **Portfolio demo walkthrough:** [How to demo MarketLens](docs/portfolio-demo-walkthrough.md)
+- **Auth/private-data plan:** [Milestone 5 planning doc](docs/milestone-5-auth-private-data-plan.md)
 
 The deployed version is a secured portfolio/demo app. Public visitors can view the saved demo dataset, explore skill dashboards, upload or paste non-sensitive resume text, search configured public job sources, paste job descriptions manually, and run non-saved Smart Fit comparisons. Creating postings, importing CSV files, and deleting saved postings are admin-only actions protected by an `X-Admin-API-Key` header.
 
@@ -108,6 +109,7 @@ Demo and smoke-test docs:
 - [`docs/portfolio-screenshot-guide.md`](docs/portfolio-screenshot-guide.md)
 - [`docs/milestone-1-manual-comparison-smoke-test.md`](docs/milestone-1-manual-comparison-smoke-test.md)
 - [`docs/milestone-2-online-job-search-smoke-test.md`](docs/milestone-2-online-job-search-smoke-test.md)
+- [`docs/milestone-5-auth-private-data-plan.md`](docs/milestone-5-auth-private-data-plan.md)
 
 ## Current Demo Capabilities
 
@@ -373,6 +375,8 @@ Ongoing source-quality tuning remains expected because public API-friendly job s
 
 ### Milestone 5 — Auth + Private Data Foundation: next
 
+See [`docs/milestone-5-auth-private-data-plan.md`](docs/milestone-5-auth-private-data-plan.md) for the security/privacy plan.
+
 Before MarketLens stores personal saved jobs, reports, resumes, or user history, the next milestone will establish a privacy-safe account foundation:
 
 - choose an authentication provider instead of building password auth from scratch
@@ -415,4 +419,3 @@ Potential future work:
 - improved coaching explanations
 - stricter provider safety checks before enabling live model calls
 - backend-only provider keys and model-status transparency
-
