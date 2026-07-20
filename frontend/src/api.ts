@@ -38,8 +38,8 @@ const API_BASE_URL =
   normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL) ??
   "http://127.0.0.1:8000";
 
-async function fetchJson<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`);
+async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, init);
 
   if (!response.ok) {
     let detail = `${response.status} ${response.statusText}`;
@@ -166,6 +166,20 @@ export async function getTopSkillsByRole(): Promise<GroupedSkillCounts> {
 
 export async function getModelAssistedStatus(): Promise<ModelAssistedStatusResponse> {
   return fetchJson<ModelAssistedStatusResponse>("/analysis/model-status");
+}
+
+
+export type CurrentUserResponse = {
+  user_id: string;
+  auth_provider: string;
+};
+
+export async function getCurrentUser(token: string): Promise<CurrentUserResponse> {
+  return fetchJson<CurrentUserResponse>("/me", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
 }
 
 export async function searchExternalJobs({
