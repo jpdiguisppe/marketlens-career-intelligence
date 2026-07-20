@@ -43,6 +43,32 @@ The deployed version is a secured portfolio/demo app. Public visitors can view t
 
 Do not upload sensitive personal information, secrets, API keys, database URLs, or confidential employer/customer data.
 
+## Screenshots
+
+### Online job search
+
+MarketLens searches configured public job sources and normalizes postings into selectable cards.
+
+![Online job search results](docs/screenshots/online-job-search.png)
+
+### Ranked Smart Fit comparison
+
+Users can select multiple jobs and compare them against the same resume. The ranking explains score gaps, resume evidence, and runner-up gaps.
+
+![Ranked Smart Fit comparison](docs/screenshots/job-fit-ranking.png)
+
+### Role-aware gap report
+
+Detailed reports separate direct role evidence from general resume signals and surface capability gaps that exact keyword matching would miss.
+
+![Role-aware gap report](docs/screenshots/role-aware-gap-report.png)
+
+### Coaching actions and requirement breakdown
+
+The report prioritizes next actions and keeps hard requirements separate from broader coaching guidance.
+
+![Coaching actions and requirement breakdown](docs/screenshots/coaching-actions-breakdown.png)
+
 ## Problem
 
 Career advice is often vague, and job descriptions are noisy. Students and career-switchers are told to “learn cloud,” “build projects,” or “get better at AI,” but it is hard to know which skills are actually showing up in the roles they want or which roles fit their current resume best.
@@ -90,6 +116,7 @@ Inspect each job's detailed Smart Fit report
 Demo and smoke-test docs:
 
 - [`docs/portfolio-demo-walkthrough.md`](docs/portfolio-demo-walkthrough.md)
+- [`docs/portfolio-screenshot-guide.md`](docs/portfolio-screenshot-guide.md)
 - [`docs/milestone-1-manual-comparison-smoke-test.md`](docs/milestone-1-manual-comparison-smoke-test.md)
 - [`docs/milestone-2-online-job-search-smoke-test.md`](docs/milestone-2-online-job-search-smoke-test.md)
 
