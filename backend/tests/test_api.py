@@ -413,3 +413,141 @@ def test_model_assisted_status_never_exposes_backend_secret(monkeypatch: pytest.
     assert body["enabled"] is True
     assert body["status"] == "configured"
     assert "super-secret-test-key" not in str(body)
+
+
+def _sample_saved_job_payload() -> dict[str, str]:
+    return {
+        "source": "greenhouse",
+        "source_job_id": "job-123",
+        "company": "Example Health",
+        "title": "Software Engineer",
+        "location": "Philadelphia, PA",
+        "description": "Build Python REST APIs using SQL, Docker, Git, and Agile practices.",
+        "apply_url": "https://example.com/jobs/123",
+    }
+
+
+def test_saved_jobs_require_authentication() -> None:
+    list_response = client.get("/saved-jobs")
+    create_response = client.post(
+        "/saved-jobs",
+        json=_sample_saved_job_payload(),
+    )
+
+    assert list_response.status_code == 401
+    assert create_response.status_code == 401
+
+
+def test_authenticated_user_can_create_and_list_saved_jobs() -> None:
+    create_response = client.post(
+        "/saved-jobs",
+        json=_sample_saved_job_payload(),
+        headers=AUTH_HEADERS,
+    )
+
+    assert create_response.status_code == 201
+    created_job = create_response.json()
+    assert created_job["company"] == "Example Health"
+    assert created_job["source_job_id"] == "job-123"
+    assert created_job["extracted_skills"] == [
+        "Agile",
+        "Docker",
+        "Git",
+        "Python",
+        "REST APIs",
+        "SQL",
+    ]
+    assert "user_id" not in created_job
+
+    list_response = client.get("/saved-jobs", headers=AUTH_HEADERS)
+
+    assert list_response.status_code == 200
+    assert list_response.json() == [created_job]
+
+
+def test_saved_jobs_are_isolated_by_authenticated_user(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    first_user_response = client.post(
+        "/saved-jobs",
+        json=_sample_saved_job_payload(),
+        headers=AUTH_HEADERS,
+    )
+    first_user_job_id = first_user_response.json()["id"]
+
+    monkeypatch.setenv("AUTH_DEV_USER_ID", "test-clerk-user-2")
+
+    second_user_payload = {
+        **_sample_saved_job_payload(),
+        "source_job_id": "job-456",
+        "company": "Second User Company",
+        "title": "Data Engineer",
+    }
+    second_user_response = client.post(
+        "/saved-jobs",
+        json=second_user_payload,
+        headers=AUTH_HEADERS,
+    )
+
+    assert second_user_response.status_code == 201
+
+    second_user_list = client.get("/saved-jobs", headers=AUTH_HEADERS)
+    assert second_user_list.status_code == 200
+    assert len(second_user_list.json()) == 1
+    assert second_user_list.json()[0]["company"] == "Second User Company"
+
+    hidden_job_response = client.get(
+        f"/saved-jobs/{first_user_job_id}",
+        headers=AUTH_HEADERS,
+    )
+    hidden_delete_response = client.delete(
+        f"/saved-jobs/{first_user_job_id}",
+        headers=AUTH_HEADERS,
+    )
+
+    assert hidden_job_response.status_code == 404
+    assert hidden_delete_response.status_code == 404
+
+
+def test_authenticated_user_can_delete_own_saved_job() -> None:
+    create_response = client.post(
+        "/saved-jobs",
+        json=_sample_saved_job_payload(),
+        headers=AUTH_HEADERS,
+    )
+    saved_job_id = create_response.json()["id"]
+
+    delete_response = client.delete(
+        f"/saved-jobs/{saved_job_id}",
+        headers=AUTH_HEADERS,
+    )
+    get_response = client.get(
+        f"/saved-jobs/{saved_job_id}",
+        headers=AUTH_HEADERS,
+    )
+
+    assert delete_response.status_code == 200
+    assert delete_response.json() == {"status": "deleted"}
+    assert get_response.status_code == 404
+
+
+def test_saving_same_external_job_twice_is_idempotent() -> None:
+    first_response = client.post(
+        "/saved-jobs",
+        json=_sample_saved_job_payload(),
+        headers=AUTH_HEADERS,
+    )
+    second_response = client.post(
+        "/saved-jobs",
+        json=_sample_saved_job_payload(),
+        headers=AUTH_HEADERS,
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 201
+    assert first_response.json()["id"] == second_response.json()["id"]
+
+    list_response = client.get("/saved-jobs", headers=AUTH_HEADERS)
+
+    assert list_response.status_code == 200
+    assert len(list_response.json()) == 1
