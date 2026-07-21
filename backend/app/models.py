@@ -54,3 +54,30 @@ class SavedJobDB(Base):
     @extracted_skills.setter
     def extracted_skills(self, skills: list[str]) -> None:
         self.extracted_skills_json = json.dumps(skills)
+
+class SavedReportDB(Base):
+    __tablename__ = "saved_reports"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    source: Mapped[str] = mapped_column(String(100), nullable=False, default="manual")
+    source_job_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    company: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    location: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    apply_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    summary_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    @property
+    def summary(self) -> dict[str, object]:
+        return json.loads(self.summary_json)
+
+    @summary.setter
+    def summary(self, value: dict[str, object]) -> None:
+        self.summary_json = json.dumps(value)
+

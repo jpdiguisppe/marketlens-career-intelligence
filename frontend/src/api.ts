@@ -10,6 +10,8 @@ import type {
   ResumeFileExtractionResponse,
   SavedJob,
   SavedJobCreate,
+  SavedReport,
+  SavedReportCreate,
   SkillCounts,
   SmartFitAnalysisRequest,
   SmartFitAnalysisResponse,
@@ -216,6 +218,33 @@ export async function deleteSavedJob(
     headers: {
       Authorization: `Bearer ${token}`,
     },
+  });
+}
+
+export async function getSavedReports(token: string): Promise<SavedReport[]> {
+  return fetchJson<SavedReport[]>("/saved-reports", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function createSavedReport(
+  token: string,
+  report: SavedReportCreate,
+): Promise<SavedReport> {
+  return fetchJson<SavedReport>("/saved-reports", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(report),
+  });
+}
+
+export async function deleteSavedReport(token: string, savedReportId: number): Promise<void> {
+  await fetchJson<{ status: string }>(`/saved-reports/${savedReportId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
   });
 }
 

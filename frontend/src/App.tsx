@@ -5,6 +5,10 @@ import {
   SaveExternalJobButton,
   SavedJobsPanel,
 } from "./SavedJobs";
+import {
+  SaveSmartFitReportButton,
+  SavedReportsPanel,
+} from "./SavedReports";
 
 import {
   analyzeResume,
@@ -24,6 +28,7 @@ import type {
   JobSearchLevel,
   ModelAssistedStatusResponse,
   ResumeAnalysisResponse,
+  SavedReportJobContext,
   SkillCounts,
   SmartFitAnalysisResponse,
   SmartFitBatchResult,
@@ -37,6 +42,12 @@ type DashboardData = {
 };
 
 type SkillEntry = [string, number];
+
+type SmartFitInputJob = SavedReportJobContext & {
+  analysisTitle: string;
+  description: string;
+};
+
 
 const emptyDashboardData: DashboardData = {
   jobs: [],
@@ -502,7 +513,13 @@ function SmartFitResults({
   );
 }
 
-function SmartFitComparisonResults({ rankedJobs }: { rankedJobs: SmartFitBatchResult[] }) {
+function SmartFitComparisonResults({
+  rankedJobs,
+  jobContexts,
+}: {
+  rankedJobs: SmartFitBatchResult[];
+  jobContexts: SavedReportJobContext[];
+}) {
   const bestJob = rankedJobs[0];
   const [selectedJobIndex, setSelectedJobIndex] = useState(bestJob?.job_index ?? 0);
 
@@ -517,11 +534,19 @@ function SmartFitComparisonResults({ rankedJobs }: { rankedJobs: SmartFitBatchRe
   }
 
   const selectedJob = rankedJobs.find((job) => job.job_index === selectedJobIndex) ?? bestJob;
+  const selectedJobContext = jobContexts[selectedJob.job_index] ?? {
+    source: "manual",
+    source_job_id: null,
+    company: null,
+    title: selectedJob.title,
+    location: null,
+    apply_url: null,
+  };
   const rankingSummary = summarizeRanking(rankedJobs);
   const comparisonText =
     rankedJobs.length === 1
-      ? "Nothing was saved to the shared database."
-      : `Showing ranked job #${selectedJob.rank}: ${selectedJob.title}. ${rankedJobs.length} jobs were analyzed separately. Nothing was saved to the shared database.`;
+      ? "This analysis was not saved automatically."
+      : `Showing ranked job #${selectedJob.rank}: ${selectedJob.title}. ${rankedJobs.length} jobs were analyzed separately. Reports are saved only when you choose to save one.`;
 
   return (
     <>
@@ -585,6 +610,9 @@ function SmartFitComparisonResults({ rankedJobs }: { rankedJobs: SmartFitBatchRe
         </section>
       )}
 
+      <div className="saved-job-toolbar saved-report-toolbar">
+        <SaveSmartFitReportButton analysis={selectedJob.analysis} job={selectedJobContext} />
+      </div>
       <SmartFitResults analysis={selectedJob.analysis} comparisonText={comparisonText} />
     </>
   );
@@ -628,6 +656,7 @@ function CustomAnalysisPanel() {
   const [modelStatusError, setModelStatusError] = useState<string | null>(null);
   const [resumeUploadMessage, setResumeUploadMessage] = useState<string | null>(null);
   const [rankedAnalyses, setRankedAnalyses] = useState<SmartFitBatchResult[]>([]);
+  const [analyzedJobContexts, setAnalyzedJobContexts] = useState<SavedReportJobContext[]>([]);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isUploadingResume, setIsUploadingResume] = useState(false);
@@ -701,7 +730,7 @@ function CustomAnalysisPanel() {
     }
   }
 
-  async function runSmartFitBatch(jobs: { title: string; description: string }[], emptyError: string) {
+  async function runSmartFitBatch(jobs: SmartFitInputJob[], emptyError: string) {
     if (!resumeText.trim()) {
       setAnalysisError("Paste or upload resume text before running the analysis.");
       return;
@@ -728,8 +757,10 @@ function CustomAnalysisPanel() {
       });
 
       setRankedAnalyses(result.results);
+      setAnalyzedJobContexts(jobs.map(({ analysisTitle: _analysisTitle, description: _description, ...context }) => context));
     } catch (error) {
       setRankedAnalyses([]);
+      setAnalyzedJobContexts([]);
       setAnalysisError(
         error instanceof Error
           ? error.message
@@ -743,10 +774,19 @@ function CustomAnalysisPanel() {
   async function handleManualSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await runSmartFitBatch(
-      splitPastedJobDescriptions(jobDescriptionsText).map((description, index) => ({
-        title: inferJobTitle(description, index),
-        description,
-      })),
+      splitPastedJobDescriptions(jobDescriptionsText).map((description, index) => {
+        const title = inferJobTitle(description, index);
+        return {
+analysisTitle: title,
+source: "manual",
+source_job_id: null,
+company: null,
+title,
+location: null,
+apply_url: null,
+description,
+        };
+      }),
       "Paste at least one job description before running the analysis.",
     );
   }
@@ -800,7 +840,13 @@ function CustomAnalysisPanel() {
   async function handleCompareSelectedExternalJobs() {
     await runSmartFitBatch(
       selectedExternalJobs.map((job) => ({
-        title: `${job.company} — ${job.title}`,
+        analysisTitle: `${job.company} — ${job.title}`,
+        source: job.source,
+        source_job_id: job.id,
+        company: job.company,
+        title: job.title,
+        location: job.location,
+        apply_url: job.apply_url,
         description: job.description,
       })),
       "Select at least one searched job before comparing.",
@@ -820,7 +866,10 @@ function CustomAnalysisPanel() {
         </div>
       </div>
 
-      <SavedJobsPanel />
+      <div className="private-workspace-grid">
+        <SavedJobsPanel />
+        <SavedReportsPanel />
+      </div>
 
       <div className="form-control">
         <label className="form-label" htmlFor="custom-resume-text">Resume text</label>
@@ -1003,7 +1052,9 @@ function CustomAnalysisPanel() {
         </div>
       )}
 
-      {rankedAnalyses.length > 0 && <SmartFitComparisonResults rankedJobs={rankedAnalyses} />}
+      {rankedAnalyses.length > 0 && (
+        <SmartFitComparisonResults rankedJobs={rankedAnalyses} jobContexts={analyzedJobContexts} />
+      )}
     </section>
   );
 }
