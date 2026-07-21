@@ -1,0 +1,359 @@
+.......FFF.FFFFF...FFFF                                                  [100%]
+=================================== FAILURES ===================================
+_ test_swe_query_rejects_non_software_titles_even_when_description_mentions_software _
+
+    def test_swe_query_rejects_non_software_titles_even_when_description_mentions_software() -> None:
+>       assert _score_job(
+            title="Business Development Representative",
+            description="Sell technical software products to engineering teams.",
+            query="SWE",
+        ) == 0
+
+tests/test_job_search.py:152: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+title = 'Business Development Representative'
+description = 'Sell technical software products to engineering teams.'
+query = 'SWE', level = None, company = None
+
+    def _score_job(
+        title: str,
+        description: str,
+        query: str,
+        level: str | None = None,
+        company: str | None = None,
+    ) -> int:
+        resolved_level = resolve_job_level(query, level)
+>       if not _matches_requested_role(title, description, query, resolved_level, company=company):
+E       TypeError: apply_job_search_occupation_overrides.<locals>._matches_requested_role() got an unexpected keyword argument 'company'
+
+app/job_search.py:979: TypeError
+_____ test_swe_query_accepts_developer_titles_from_non_greenhouse_sources ______
+
+    def test_swe_query_accepts_developer_titles_from_non_greenhouse_sources() -> None:
+>       assert _score_job(
+            title="Backend Developer",
+            description="Build APIs with Python and PostgreSQL.",
+            query="SWE",
+        ) > 0
+
+tests/test_job_search.py:166: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+title = 'Backend Developer'
+description = 'Build APIs with Python and PostgreSQL.', query = 'SWE'
+level = None, company = None
+
+    def _score_job(
+        title: str,
+        description: str,
+        query: str,
+        level: str | None = None,
+        company: str | None = None,
+    ) -> int:
+        resolved_level = resolve_job_level(query, level)
+>       if not _matches_requested_role(title, description, query, resolved_level, company=company):
+E       TypeError: apply_job_search_occupation_overrides.<locals>._matches_requested_role() got an unexpected keyword argument 'company'
+
+app/job_search.py:979: TypeError
+___________ test_swe_query_is_general_purpose_not_early_career_only ____________
+
+    def test_swe_query_is_general_purpose_not_early_career_only() -> None:
+>       assert _score_job(
+            title="Principal Software Engineer, Performance",
+            description="Build high-scale infrastructure with Python.",
+            query="SWE",
+        ) > 0
+
+tests/test_job_search.py:187: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+title = 'Principal Software Engineer, Performance'
+description = 'Build high-scale infrastructure with Python.', query = 'SWE'
+level = None, company = None
+
+    def _score_job(
+        title: str,
+        description: str,
+        query: str,
+        level: str | None = None,
+        company: str | None = None,
+    ) -> int:
+        resolved_level = resolve_job_level(query, level)
+>       if not _matches_requested_role(title, description, query, resolved_level, company=company):
+E       TypeError: apply_job_search_occupation_overrides.<locals>._matches_requested_role() got an unexpected keyword argument 'company'
+
+app/job_search.py:979: TypeError
+________________ test_intern_level_filters_to_internship_roles _________________
+
+    def test_intern_level_filters_to_internship_roles() -> None:
+>       assert _score_job(
+            title="Software Engineer Intern",
+            description="Build backend services with Python during a summer internship.",
+            query="SWE",
+            level="intern",
+        ) > 0
+
+tests/test_job_search.py:221: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+title = 'Software Engineer Intern'
+description = 'Build backend services with Python during a summer internship.'
+query = 'SWE', level = 'intern', company = None
+
+    def _score_job(
+        title: str,
+        description: str,
+        query: str,
+        level: str | None = None,
+        company: str | None = None,
+    ) -> int:
+        resolved_level = resolve_job_level(query, level)
+>       if not _matches_requested_role(title, description, query, resolved_level, company=company):
+E       TypeError: apply_job_search_occupation_overrides.<locals>._matches_requested_role() got an unexpected keyword argument 'company'
+
+app/job_search.py:979: TypeError
+___________ test_intern_level_does_not_match_internal_or_internally ____________
+
+    def test_intern_level_does_not_match_internal_or_internally() -> None:
+>       assert _score_job(
+            title="Software Engineer II, Backend",
+            description="Collaborate with internal teams and improve internal developer platforms.",
+            query="SWE",
+            level="intern",
+        ) == 0
+
+tests/test_job_search.py:249: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+title = 'Software Engineer II, Backend'
+description = 'Collaborate with internal teams and improve internal developer platforms.'
+query = 'SWE', level = 'intern', company = None
+
+    def _score_job(
+        title: str,
+        description: str,
+        query: str,
+        level: str | None = None,
+        company: str | None = None,
+    ) -> int:
+        resolved_level = resolve_job_level(query, level)
+>       if not _matches_requested_role(title, description, query, resolved_level, company=company):
+E       TypeError: apply_job_search_occupation_overrides.<locals>._matches_requested_role() got an unexpected keyword argument 'company'
+
+app/job_search.py:979: TypeError
+_______________ test_entry_level_filters_to_entry_friendly_roles _______________
+
+    def test_entry_level_filters_to_entry_friendly_roles() -> None:
+>       assert _score_job(
+            title="Software Engineer I",
+            description="Required: 0-1 years of software engineering experience with Python.",
+            query="SWE",
+            level="entry",
+        ) > 0
+
+tests/test_job_search.py:264: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+title = 'Software Engineer I'
+description = 'Required: 0-1 years of software engineering experience with Python.'
+query = 'SWE', level = 'entry', company = None
+
+    def _score_job(
+        title: str,
+        description: str,
+        query: str,
+        level: str | None = None,
+        company: str | None = None,
+    ) -> int:
+        resolved_level = resolve_job_level(query, level)
+>       if not _matches_requested_role(title, description, query, resolved_level, company=company):
+E       TypeError: apply_job_search_occupation_overrides.<locals>._matches_requested_role() got an unexpected keyword argument 'company'
+
+app/job_search.py:979: TypeError
+__________ test_entry_level_does_not_return_mid_senior_or_staff_roles __________
+
+    def test_entry_level_does_not_return_mid_senior_or_staff_roles() -> None:
+>       assert _score_job(
+            title="Software Engineer II, Android",
+            description="Our mission is to build education products. You will grow your career with us.",
+            query="SWE",
+            level="entry",
+        ) == 0
+
+tests/test_job_search.py:300: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+title = 'Software Engineer II, Android'
+description = 'Our mission is to build education products. You will grow your career with us.'
+query = 'SWE', level = 'entry', company = None
+
+    def _score_job(
+        title: str,
+        description: str,
+        query: str,
+        level: str | None = None,
+        company: str | None = None,
+    ) -> int:
+        resolved_level = resolve_job_level(query, level)
+>       if not _matches_requested_role(title, description, query, resolved_level, company=company):
+E       TypeError: apply_job_search_occupation_overrides.<locals>._matches_requested_role() got an unexpected keyword argument 'company'
+
+app/job_search.py:979: TypeError
+_________________ test_mid_and_senior_levels_filter_separately _________________
+
+    def test_mid_and_senior_levels_filter_separately() -> None:
+>       assert _score_job(
+            title="Software Engineer II, Backend",
+            description="Build backend systems with Python and Java.",
+            query="SWE",
+            level="mid",
+        ) > 0
+
+tests/test_job_search.py:323: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+title = 'Software Engineer II, Backend'
+description = 'Build backend systems with Python and Java.', query = 'SWE'
+level = 'mid', company = None
+
+    def _score_job(
+        title: str,
+        description: str,
+        query: str,
+        level: str | None = None,
+        company: str | None = None,
+    ) -> int:
+        resolved_level = resolve_job_level(query, level)
+>       if not _matches_requested_role(title, description, query, resolved_level, company=company):
+E       TypeError: apply_job_search_occupation_overrides.<locals>._matches_requested_role() got an unexpected keyword argument 'company'
+
+app/job_search.py:979: TypeError
+___________ test_sports_marketing_requires_sports_industry_evidence ____________
+
+    def test_sports_marketing_requires_sports_industry_evidence() -> None:
+>       assert _score_job(
+            title="Marketing Intern",
+            description="Support fan engagement, ticket sales, and sponsorship activations for a professional sports league.",
+            query="sports marketing internship",
+        ) > 0
+
+tests/test_job_search.py:377: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+title = 'Marketing Intern'
+description = 'Support fan engagement, ticket sales, and sponsorship activations for a professional sports league.'
+query = 'sports marketing internship', level = None, company = None
+
+    def _score_job(
+        title: str,
+        description: str,
+        query: str,
+        level: str | None = None,
+        company: str | None = None,
+    ) -> int:
+        resolved_level = resolve_job_level(query, level)
+>       if not _matches_requested_role(title, description, query, resolved_level, company=company):
+E       TypeError: apply_job_search_occupation_overrides.<locals>._matches_requested_role() got an unexpected keyword argument 'company'
+
+app/job_search.py:979: TypeError
+_____ test_sports_social_media_and_media_queries_stay_in_the_sports_domain _____
+
+    def test_sports_social_media_and_media_queries_stay_in_the_sports_domain() -> None:
+>       assert _score_job(
+            title="Social Media Coordinator",
+            description="Create game-day content for a collegiate athletics program.",
+            query="sports social media",
+        ) > 0
+
+tests/test_job_search.py:391: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+title = 'Social Media Coordinator'
+description = 'Create game-day content for a collegiate athletics program.'
+query = 'sports social media', level = None, company = None
+
+    def _score_job(
+        title: str,
+        description: str,
+        query: str,
+        level: str | None = None,
+        company: str | None = None,
+    ) -> int:
+        resolved_level = resolve_job_level(query, level)
+>       if not _matches_requested_role(title, description, query, resolved_level, company=company):
+E       TypeError: apply_job_search_occupation_overrides.<locals>._matches_requested_role() got an unexpected keyword argument 'company'
+
+app/job_search.py:979: TypeError
+_____ test_sports_data_queries_require_both_function_and_industry_evidence _____
+
+    def test_sports_data_queries_require_both_function_and_industry_evidence() -> None:
+>       assert _score_job(
+            title="Data Analyst",
+            description="Analyze ticketing and fan engagement trends for a professional sports organization.",
+            query="sports data analyst",
+        ) > 0
+
+tests/test_job_search.py:417: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+title = 'Data Analyst'
+description = 'Analyze ticketing and fan engagement trends for a professional sports organization.'
+query = 'sports data analyst', level = None, company = None
+
+    def _score_job(
+        title: str,
+        description: str,
+        query: str,
+        level: str | None = None,
+        company: str | None = None,
+    ) -> int:
+        resolved_level = resolve_job_level(query, level)
+>       if not _matches_requested_role(title, description, query, resolved_level, company=company):
+E       TypeError: apply_job_search_occupation_overrides.<locals>._matches_requested_role() got an unexpected keyword argument 'company'
+
+app/job_search.py:979: TypeError
+____________ test_sports_industry_can_be_confirmed_by_company_name _____________
+
+    def test_sports_industry_can_be_confirmed_by_company_name() -> None:
+>       assert _score_job(
+            title="Marketing Coordinator",
+            description="Build campaigns and partnerships.",
+            query="sports marketing",
+            company="Example Sports League",
+        ) > 0
+
+tests/test_job_search.py:437: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+title = 'Marketing Coordinator'
+description = 'Build campaigns and partnerships.', query = 'sports marketing'
+level = None, company = 'Example Sports League'
+
+    def _score_job(
+        title: str,
+        description: str,
+        query: str,
+        level: str | None = None,
+        company: str | None = None,
+    ) -> int:
+        resolved_level = resolve_job_level(query, level)
+>       if not _matches_requested_role(title, description, query, resolved_level, company=company):
+E       TypeError: apply_job_search_occupation_overrides.<locals>._matches_requested_role() got an unexpected keyword argument 'company'
+
+app/job_search.py:979: TypeError
+=========================== short test summary info ============================
+FAILED tests/test_job_search.py::test_swe_query_rejects_non_software_titles_even_when_description_mentions_software - TypeError: apply_job_search_occupation_overrides.<locals>._matches_requested_role() got an unexpected keyword argument 'company'
+FAILED tests/test_job_search.py::test_swe_query_accepts_developer_titles_from_non_greenhouse_sources - TypeError: apply_job_search_occupation_overrides.<locals>._matches_requested_role() got an unexpected keyword argument 'company'
+FAILED tests/test_job_search.py::test_swe_query_is_general_purpose_not_early_career_only - TypeError: apply_job_search_occupation_overrides.<locals>._matches_requested_role() got an unexpected keyword argument 'company'
+FAILED tests/test_job_search.py::test_intern_level_filters_to_internship_roles - TypeError: apply_job_search_occupation_overrides.<locals>._matches_requested_role() got an unexpected keyword argument 'company'
+FAILED tests/test_job_search.py::test_intern_level_does_not_match_internal_or_internally - TypeError: apply_job_search_occupation_overrides.<locals>._matches_requested_role() got an unexpected keyword argument 'company'
+FAILED tests/test_job_search.py::test_entry_level_filters_to_entry_friendly_roles - TypeError: apply_job_search_occupation_overrides.<locals>._matches_requested_role() got an unexpected keyword argument 'company'
+FAILED tests/test_job_search.py::test_entry_level_does_not_return_mid_senior_or_staff_roles - TypeError: apply_job_search_occupation_overrides.<locals>._matches_requested_role() got an unexpected keyword argument 'company'
+FAILED tests/test_job_search.py::test_mid_and_senior_levels_filter_separately - TypeError: apply_job_search_occupation_overrides.<locals>._matches_requested_role() got an unexpected keyword argument 'company'
+FAILED tests/test_job_search.py::test_sports_marketing_requires_sports_industry_evidence - TypeError: apply_job_search_occupation_overrides.<locals>._matches_requested_role() got an unexpected keyword argument 'company'
+FAILED tests/test_job_search.py::test_sports_social_media_and_media_queries_stay_in_the_sports_domain - TypeError: apply_job_search_occupation_overrides.<locals>._matches_requested_role() got an unexpected keyword argument 'company'
+FAILED tests/test_job_search.py::test_sports_data_queries_require_both_function_and_industry_evidence - TypeError: apply_job_search_occupation_overrides.<locals>._matches_requested_role() got an unexpected keyword argument 'company'
+FAILED tests/test_job_search.py::test_sports_industry_can_be_confirmed_by_company_name - TypeError: apply_job_search_occupation_overrides.<locals>._matches_requested_role() got an unexpected keyword argument 'company'
+12 failed, 11 passed in 0.65s
+exit_status=1
