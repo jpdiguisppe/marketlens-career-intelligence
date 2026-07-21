@@ -1,0 +1,334 @@
+name: Apply sports industry search patch
+
+on:
+  push:
+    branches:
+      - feature/sports-industry-search
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/sports-industry-search
+          fetch-depth: 0
+
+      - name: Apply sports-aware search changes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          job_search_path = Path("backend/app/job_search.py")
+          text = job_search_path.read_text()
+
+          old_marketing_terms = '''MARKETING_TITLE_TERMS = {
+              "marketing",
+              "growth",
+              "content marketing",
+              "seo",
+              "social media",
+              "brand",
+              "communications",
+          }
+          '''
+          new_marketing_terms = '''MARKETING_TITLE_TERMS = {
+              "marketing",
+              "growth",
+              "content marketing",
+              "seo",
+              "social media",
+              "brand",
+              "communications",
+              "media",
+              "digital media",
+              "partnership",
+              "partnerships",
+              "sponsorship",
+              "fan engagement",
+          }
+          '''
+          assert old_marketing_terms in text, "marketing title terms block changed"
+          text = text.replace(old_marketing_terms, new_marketing_terms, 1)
+
+          old_marketing_query = '    "marketing": {"marketing", "growth", "seo", "social media", "brand", "communications"},\n'
+          new_marketing_query = '    "marketing": {"marketing", "growth", "seo", "social media", "brand", "communications", "media", "digital media", "partnership", "partnerships", "sponsorship", "fan engagement"},\n'
+          assert old_marketing_query in text, "marketing query terms changed"
+          text = text.replace(old_marketing_query, new_marketing_query, 1)
+
+          industry_constants = '''SPORTS_QUERY_TERMS = {
+              "sport",
+              "sports",
+              "athletic",
+              "athletics",
+              "esports",
+              "e-sports",
+          }
+          SPORTS_TITLE_OR_COMPANY_TERMS = {
+              "sport",
+              "sports",
+              "athletic",
+              "athletics",
+              "esports",
+              "e-sports",
+              "league",
+              "stadium",
+              "arena",
+              "sportsbook",
+              "collegiate athletics",
+              "sports media",
+          }
+          SPORTS_DESCRIPTION_TERMS = {
+              "sport",
+              "sports",
+              "athletic department",
+              "athletics program",
+              "collegiate athletics",
+              "professional league",
+              "professional team",
+              "fan engagement",
+              "game day",
+              "gameday",
+              "ticket sales",
+              "ticketing",
+              "sponsorship activation",
+              "sponsorships",
+              "sports media",
+              "sports marketing",
+              "sports broadcast",
+              "sports broadcasting",
+              "stadium",
+              "arena",
+              "athlete",
+              "athletes",
+              "esports",
+              "e-sports",
+              "sportsbook",
+          }
+
+          '''
+          marker = "LEVEL_QUERY_TERMS = {\n"
+          assert marker in text, "level query marker changed"
+          text = text.replace(marker, industry_constants + marker, 1)
+
+          old_family_helper = '''def _query_role_family(query: str) -> RoleFamily | None:
+              normalized = query.lower()
+              for family, terms in ROLE_FAMILY_QUERY_TERMS.items():
+                  if _contains_any(normalized, terms):
+                      return family
+              return None
+
+
+          def _is_software_role_query(query: str) -> bool:
+          '''
+          new_family_helper = '''def _query_role_family(query: str) -> RoleFamily | None:
+              normalized = query.lower()
+              for family, terms in ROLE_FAMILY_QUERY_TERMS.items():
+                  if _contains_any(normalized, terms):
+                      return family
+              return None
+
+
+          def _query_industry(query: str) -> str | None:
+              normalized = query.lower()
+              if _contains_any(normalized, SPORTS_QUERY_TERMS):
+                  return "sports"
+              return None
+
+
+          def _matches_requested_industry(
+              title: str,
+              description: str,
+              query: str,
+              company: str | None = None,
+          ) -> bool:
+              industry = _query_industry(query)
+              if industry is None:
+                  return True
+
+              if industry == "sports":
+                  title_and_company = f"{title} {company or ''}".lower()
+                  if _contains_any(title_and_company, SPORTS_TITLE_OR_COMPANY_TERMS):
+                      return True
+                  return _contains_any(description.lower(), SPORTS_DESCRIPTION_TERMS)
+
+              return True
+
+
+          def _is_software_role_query(query: str) -> bool:
+          '''
+          assert old_family_helper in text, "role family helper block changed"
+          text = text.replace(old_family_helper, new_family_helper, 1)
+
+          old_role_signature = '''def _matches_requested_role(title: str, description: str, query: str, level: JobLevel | None = None) -> bool:
+              family = _query_role_family(query)
+          '''
+          new_role_signature = '''def _matches_requested_role(
+              title: str,
+              description: str,
+              query: str,
+              level: JobLevel | None = None,
+              company: str | None = None,
+          ) -> bool:
+              if not _matches_requested_industry(title, description, query, company=company):
+                  return False
+
+              family = _query_role_family(query)
+          '''
+          assert old_role_signature in text, "requested role signature changed"
+          text = text.replace(old_role_signature, new_role_signature, 1)
+
+          old_score_signature = '''def _score_job(title: str, description: str, query: str, level: str | None = None) -> int:
+              resolved_level = resolve_job_level(query, level)
+              if not _matches_requested_role(title, description, query, resolved_level):
+                  return 0
+          '''
+          new_score_signature = '''def _score_job(
+              title: str,
+              description: str,
+              query: str,
+              level: str | None = None,
+              company: str | None = None,
+          ) -> int:
+              resolved_level = resolve_job_level(query, level)
+              if not _matches_requested_role(title, description, query, resolved_level, company=company):
+                  return 0
+          '''
+          assert old_score_signature in text, "score signature changed"
+          text = text.replace(old_score_signature, new_score_signature, 1)
+
+          old_score_setup = '''    family = _query_role_family(query)
+              terms = _query_terms(query)
+              searchable_title = title.lower()
+              searchable_description = description.lower()
+              score = _level_score_bonus(title, description, resolved_level)
+
+              if family and _title_matches_role_family(title, family):
+                  score += 8
+          '''
+          new_score_setup = '''    family = _query_role_family(query)
+              industry = _query_industry(query)
+              terms = _query_terms(query)
+              searchable_title = title.lower()
+              searchable_description = description.lower()
+              score = _level_score_bonus(title, description, resolved_level)
+
+              if family and _title_matches_role_family(title, family):
+                  score += 8
+
+              if industry == "sports":
+                  title_and_company = f"{title} {company or ''}".lower()
+                  score += 10 if _contains_any(title_and_company, SPORTS_TITLE_OR_COMPANY_TERMS) else 6
+          '''
+          assert old_score_setup in text, "score setup block changed"
+          text = text.replace(old_score_setup, new_score_setup, 1)
+
+          old_provider_call = "score = _score_job(job.title, job.description, query, level)"
+          provider_call_count = text.count(old_provider_call)
+          assert provider_call_count >= 4, f"expected provider score calls, found {provider_call_count}"
+          text = text.replace(
+              old_provider_call,
+              "score = _score_job(job.title, job.description, query, level, company=job.company)",
+          )
+
+          job_search_path.write_text(text)
+
+          tests_path = Path("backend/tests/test_job_search.py")
+          tests = tests_path.read_text()
+          test_block = r'''
+
+          def test_sports_marketing_requires_sports_industry_evidence() -> None:
+              assert _score_job(
+                  title="Marketing Intern",
+                  description="Support fan engagement, ticket sales, and sponsorship activations for a professional sports league.",
+                  query="sports marketing internship",
+              ) > 0
+
+              assert _score_job(
+                  title="Marketing Intern",
+                  description="Create B2B campaigns for a software company.",
+                  query="sports marketing internship",
+              ) == 0
+
+
+          def test_sports_social_media_and_media_queries_stay_in_the_sports_domain() -> None:
+              assert _score_job(
+                  title="Social Media Coordinator",
+                  description="Create game-day content for a collegiate athletics program.",
+                  query="sports social media",
+              ) > 0
+
+              assert _score_job(
+                  title="Social Media Coordinator",
+                  description="Manage social campaigns for accounting software.",
+                  query="sports social media",
+              ) == 0
+
+              assert _score_job(
+                  title="Digital Media Producer",
+                  description="Produce video and broadcast content for a professional sports league.",
+                  query="sports media",
+              ) > 0
+
+              assert _score_job(
+                  title="Digital Media Producer",
+                  description="Produce campaign assets for consumer retail brands.",
+                  query="sports media",
+              ) == 0
+
+
+          def test_sports_data_queries_require_both_function_and_industry_evidence() -> None:
+              assert _score_job(
+                  title="Data Analyst",
+                  description="Analyze ticketing and fan engagement trends for a professional sports organization.",
+                  query="sports data analyst",
+              ) > 0
+
+              assert _score_job(
+                  title="Data Analyst",
+                  description="Analyze payment data for a financial technology company.",
+                  query="sports data analyst",
+              ) == 0
+
+              assert _score_job(
+                  title="Marketing Coordinator",
+                  description="Support sponsorship activation for a professional sports league.",
+                  query="sports data analyst",
+              ) == 0
+
+
+          def test_sports_industry_can_be_confirmed_by_company_name() -> None:
+              assert _score_job(
+                  title="Marketing Coordinator",
+                  description="Build campaigns and partnerships.",
+                  query="sports marketing",
+                  company="Example Sports League",
+              ) > 0
+          '''
+          assert "def test_sports_marketing_requires_sports_industry_evidence" not in tests
+          tests_path.write_text(tests.rstrip() + "\n" + test_block.lstrip())
+
+          workflow_path = Path(".github/workflows/apply-sports-industry-search.yml")
+          workflow_path.unlink()
+          PY
+
+      - name: Run backend tests
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pytest
+
+      - name: Commit sports-aware search patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/app/job_search.py backend/tests/test_job_search.py .github/workflows/apply-sports-industry-search.yml
+          git commit -m "Add sports-aware job search filtering"
+          git push origin feature/sports-industry-search
