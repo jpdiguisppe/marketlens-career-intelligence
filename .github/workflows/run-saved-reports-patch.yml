@@ -25,12 +25,30 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           from textwrap import dedent
+          import traceback
 
-          workflow = Path('.github/workflows/apply-saved-smart-fit-reports.yml').read_text()
-          marker = "          python - <<'PY'\n"
-          script = workflow.split(marker, 1)[1].split("\n          PY\n", 1)[0]
-          exec(compile(dedent(script), 'saved-reports-patch', 'exec'))
+          error_path = Path('.github/saved-reports-patch-error.txt')
+          if error_path.exists():
+              raise SystemExit('Patch error already captured.')
+
+          try:
+              workflow = Path('.github/workflows/apply-saved-smart-fit-reports.yml').read_text()
+              marker = "          python - <<'PY'\n"
+              script = workflow.split(marker, 1)[1].split("\n          PY\n", 1)[0]
+              exec(compile(dedent(script), 'saved-reports-patch', 'exec'))
+          except Exception:
+              error_path.write_text(traceback.format_exc())
           PY
+
+          if [ -f .github/saved-reports-patch-error.txt ]; then
+            git reset --hard HEAD
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .github/saved-reports-patch-error.txt
+            git commit -m "Capture saved reports patch error"
+            git push origin milestone-6-saved-smart-fit-reports
+            exit 1
+          fi
 
       - name: Run backend tests
         working-directory: backend
