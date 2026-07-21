@@ -288,6 +288,12 @@ MARKETING_TITLE_TERMS = {
     "social media",
     "brand",
     "communications",
+    "media",
+    "digital media",
+    "partnership",
+    "partnerships",
+    "sponsorship",
+    "fan engagement",
 }
 OPERATIONS_TITLE_TERMS = {
     "operations",
@@ -337,11 +343,61 @@ ROLE_FAMILY_QUERY_TERMS: dict[RoleFamily, set[str]] = {
     "data": {"data", "analytics", "analytics engineer", "business intelligence", "bi", "data analyst", "data scientist", "data engineer", "machine learning", "ml", "reporting"},
     "cybersecurity": {"cybersecurity", "cyber security", "security analyst", "soc", "infosec", "information security"},
     "product": {"product manager", "product management", "product analyst", "project manager", "program manager", "scrum"},
-    "marketing": {"marketing", "growth", "seo", "social media", "brand", "communications"},
+    "marketing": {"marketing", "growth", "seo", "social media", "brand", "communications", "media", "digital media", "partnership", "partnerships", "sponsorship", "fan engagement"},
     "operations": {"operations", "strategy", "supply chain", "logistics", "procurement", "human resources", "hr"},
     "healthcare": {"healthcare", "health care", "clinical", "patient", "medical", "hospital"},
     "design": {"design", "designer", "ux", "ui", "visual design", "graphic design"},
 }
+SPORTS_QUERY_TERMS = {
+    "sport",
+    "sports",
+    "athletic",
+    "athletics",
+    "esports",
+    "e-sports",
+}
+SPORTS_TITLE_OR_COMPANY_TERMS = {
+    "sport",
+    "sports",
+    "athletic",
+    "athletics",
+    "esports",
+    "e-sports",
+    "league",
+    "stadium",
+    "arena",
+    "sportsbook",
+    "collegiate athletics",
+    "sports media",
+}
+SPORTS_DESCRIPTION_TERMS = {
+    "sport",
+    "sports",
+    "athletic department",
+    "athletics program",
+    "collegiate athletics",
+    "professional league",
+    "professional team",
+    "fan engagement",
+    "game day",
+    "gameday",
+    "ticket sales",
+    "ticketing",
+    "sponsorship activation",
+    "sponsorships",
+    "sports media",
+    "sports marketing",
+    "sports broadcast",
+    "sports broadcasting",
+    "stadium",
+    "arena",
+    "athlete",
+    "athletes",
+    "esports",
+    "e-sports",
+    "sportsbook",
+}
+
 LEVEL_QUERY_TERMS = {
     "intern",
     "internship",
@@ -633,6 +689,32 @@ def _query_role_family(query: str) -> RoleFamily | None:
     return None
 
 
+def _query_industry(query: str) -> str | None:
+    normalized = query.lower()
+    if _contains_any(normalized, SPORTS_QUERY_TERMS):
+        return "sports"
+    return None
+
+
+def _matches_requested_industry(
+    title: str,
+    description: str,
+    query: str,
+    company: str | None = None,
+) -> bool:
+    industry = _query_industry(query)
+    if industry is None:
+        return True
+
+    if industry == "sports":
+        title_and_company = f"{title} {company or ''}".lower()
+        if _contains_any(title_and_company, SPORTS_TITLE_OR_COMPANY_TERMS):
+            return True
+        return _contains_any(description.lower(), SPORTS_DESCRIPTION_TERMS)
+
+    return True
+
+
 def _is_software_role_query(query: str) -> bool:
     return _query_role_family(query) == "software"
 
@@ -877,8 +959,16 @@ def _location_score_bonus(job_location: str | None, requested_location: str | No
     return 0
 
 
-def _score_job(title: str, description: str, query: str, level: str | None = None) -> int:
+def _score_job(
+    title: str,
+    description: str,
+    query: str,
+    level: str | None = None,
+    company: str | None = None,
+) -> int:
     resolved_level = resolve_job_level(query, level)
+    if not _matches_requested_industry(title, description, query, company=company):
+        return 0
     if not _matches_requested_role(title, description, query, resolved_level):
         return 0
 
@@ -886,6 +976,7 @@ def _score_job(title: str, description: str, query: str, level: str | None = Non
         return 0
 
     family = _query_role_family(query)
+    industry = _query_industry(query)
     terms = _query_terms(query)
     searchable_title = title.lower()
     searchable_description = description.lower()
@@ -893,6 +984,10 @@ def _score_job(title: str, description: str, query: str, level: str | None = Non
 
     if family and _title_matches_role_family(title, family):
         score += 8
+
+    if industry == "sports":
+        title_and_company = f"{title} {company or ''}".lower()
+        score += 10 if _contains_any(title_and_company, SPORTS_TITLE_OR_COMPANY_TERMS) else 6
 
     for term in terms:
         if term in searchable_title:
@@ -1116,7 +1211,7 @@ def _search_greenhouse_boards(
             job = _normalize_greenhouse_job(board_token, raw_job)
             if job is None or not _matches_location(job.location, location):
                 continue
-            score = _score_job(job.title, job.description, query, level)
+            score = _score_job(job.title, job.description, query, level, company=job.company)
             if score > 0:
                 scored_jobs.append((score + _location_score_bonus(job.location, location), job))
 
@@ -1160,7 +1255,7 @@ def _search_lever_sites(
             job = _normalize_lever_job(site_name, raw_job)
             if job is None or not _matches_location(job.location, location):
                 continue
-            score = _score_job(job.title, job.description, query, level)
+            score = _score_job(job.title, job.description, query, level, company=job.company)
             if score > 0:
                 scored_jobs.append((score + _location_score_bonus(job.location, location), job))
 
@@ -1216,7 +1311,7 @@ def _search_remoteok(client: httpx.Client, query: str, location: str | None, lev
         job = _normalize_remoteok_job(raw_job)
         if job is None or not _matches_location(job.location, location):
             continue
-        score = _score_job(job.title, job.description, query, level)
+        score = _score_job(job.title, job.description, query, level, company=job.company)
         if score > 0:
             scored_jobs.append((score + _location_score_bonus(job.location, location), job))
 
@@ -1357,7 +1452,7 @@ def _search_remotive(client: httpx.Client, query: str, location: str | None, lev
         job = _normalize_remotive_job(raw_job)
         if job is None or not _matches_location(job.location, location):
             continue
-        score = _score_job(job.title, job.description, query, level)
+        score = _score_job(job.title, job.description, query, level, company=job.company)
         if score > 0:
             scored_jobs.append((score + _location_score_bonus(job.location, location), job))
 
