@@ -1,1 +1,0 @@
-Trigger saved Smart Fit report implementation workflow.

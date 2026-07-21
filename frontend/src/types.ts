@@ -44,6 +44,44 @@ export type SavedJob = SavedJobCreate & {
   created_at: string;
 };
 
+export type SavedReportCoachingAction = Pick<
+  CoachingAction,
+  "action_type" | "priority" | "title" | "skill" | "category" | "advice"
+>;
+
+export type SavedReportSummary = {
+  fit_summary: FitSummary;
+  report_summary: string[];
+  category_coverage: CategoryCoverage[];
+  coaching_actions: SavedReportCoachingAction[];
+  gap_groups: GapGroup[];
+  strong_matches: string[];
+  related_matches: string[];
+  important_gaps: string[];
+  recommendations: string[];
+  limitations: string[];
+  analysis_engine: AnalysisEngine;
+  model_assisted_status: string;
+};
+
+export type SavedReportJobContext = {
+  source: string;
+  source_job_id: string | null;
+  company: string | null;
+  title: string;
+  location: string | null;
+  apply_url: string | null;
+};
+
+export type SavedReportCreate = SavedReportJobContext & {
+  summary: SavedReportSummary;
+};
+
+export type SavedReport = SavedReportCreate & {
+  id: number;
+  created_at: string;
+};
+
 export type SourceCoverage = {
   provider: string;
   label: string;

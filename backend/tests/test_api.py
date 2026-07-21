@@ -551,3 +551,136 @@ def test_saving_same_external_job_twice_is_idempotent() -> None:
 
     assert list_response.status_code == 200
     assert len(list_response.json()) == 1
+
+
+def _sample_saved_report_payload() -> dict[str, object]:
+    return {
+        "source": "greenhouse",
+        "source_job_id": "job-123",
+        "company": "Example Health",
+        "title": "Backend Software Engineer",
+        "location": "Philadelphia, PA",
+        "apply_url": "https://example.com/jobs/123",
+        "summary": {
+  "fit_summary": {
+      "score": 82,
+      "band": "credible_alignment",
+      "confidence": 0.86,
+      "headline": "Strong backend evidence with a few cloud gaps.",
+  },
+  "report_summary": [
+      "Python, SQL, REST API, and Docker experience align well.",
+      "AWS evidence is still limited.",
+  ],
+  "category_coverage": [
+      {
+          "category": "backend_engineering",
+          "score": 84,
+          "priority_weight": 0.6,
+          "strong_skills": ["Python", "REST APIs"],
+          "weak_or_missing_skills": ["AWS"],
+          "summary": "Strong backend foundation with a cloud gap.",
+      }
+  ],
+  "coaching_actions": [
+      {
+          "action_type": "learning_focus",
+          "priority": "HIGH",
+          "title": "Build AWS deployment evidence",
+          "skill": "AWS",
+          "category": "cloud",
+          "advice": "Deploy one backend service to AWS and document the architecture.",
+      }
+  ],
+  "gap_groups": [
+      {
+          "title": "Cloud deployment",
+          "category": "cloud",
+          "priority": "HIGH",
+          "skills": ["AWS"],
+          "summary": "The role expects cloud deployment evidence.",
+      }
+  ],
+  "strong_matches": ["Python", "SQL", "REST APIs", "Docker"],
+  "related_matches": ["Linux"],
+  "important_gaps": ["AWS"],
+  "recommendations": ["Deploy a FastAPI service to AWS."],
+  "limitations": ["The analysis only evaluates evidence present in the supplied documents."],
+  "analysis_engine": "deterministic",
+  "model_assisted_status": "not_requested",
+        },
+    }
+
+
+def test_saved_reports_require_authentication() -> None:
+    list_response = client.get("/saved-reports")
+    create_response = client.post("/saved-reports", json=_sample_saved_report_payload())
+    assert list_response.status_code == 401
+    assert create_response.status_code == 401
+
+
+def test_authenticated_user_can_create_and_list_saved_reports() -> None:
+    create_response = client.post(
+        "/saved-reports",
+        json=_sample_saved_report_payload(),
+        headers=AUTH_HEADERS,
+    )
+    assert create_response.status_code == 201
+    created_report = create_response.json()
+    assert created_report["title"] == "Backend Software Engineer"
+    assert created_report["summary"]["fit_summary"]["score"] == 82
+    assert created_report["summary"]["important_gaps"] == ["AWS"]
+    assert "user_id" not in created_report
+    assert "resume_text" not in str(created_report)
+    assert "job_description" not in str(created_report)
+    list_response = client.get("/saved-reports", headers=AUTH_HEADERS)
+    assert list_response.status_code == 200
+    assert list_response.json() == [created_report]
+
+
+def test_saved_reports_reject_raw_resume_and_job_description_fields() -> None:
+    payload = {
+        **_sample_saved_report_payload(),
+        "resume_text": "This raw resume must not be stored.",
+        "job_description": "This raw posting must not be stored.",
+    }
+    response = client.post("/saved-reports", json=payload, headers=AUTH_HEADERS)
+    assert response.status_code == 422
+
+
+def test_saved_reports_are_isolated_by_authenticated_user(monkeypatch: pytest.MonkeyPatch) -> None:
+    first_response = client.post(
+        "/saved-reports",
+        json=_sample_saved_report_payload(),
+        headers=AUTH_HEADERS,
+    )
+    first_report_id = first_response.json()["id"]
+    monkeypatch.setenv("AUTH_DEV_USER_ID", "test-clerk-user-2")
+    second_payload = {
+        **_sample_saved_report_payload(),
+        "source_job_id": "job-456",
+        "company": "Second User Company",
+        "title": "Data Engineer",
+    }
+    second_response = client.post("/saved-reports", json=second_payload, headers=AUTH_HEADERS)
+    assert second_response.status_code == 201
+    second_user_list = client.get("/saved-reports", headers=AUTH_HEADERS)
+    assert len(second_user_list.json()) == 1
+    assert second_user_list.json()[0]["company"] == "Second User Company"
+    assert client.get(f"/saved-reports/{first_report_id}", headers=AUTH_HEADERS).status_code == 404
+    assert client.delete(f"/saved-reports/{first_report_id}", headers=AUTH_HEADERS).status_code == 404
+
+
+def test_authenticated_user_can_delete_own_saved_report() -> None:
+    create_response = client.post(
+        "/saved-reports",
+        json=_sample_saved_report_payload(),
+        headers=AUTH_HEADERS,
+    )
+    saved_report_id = create_response.json()["id"]
+    delete_response = client.delete(f"/saved-reports/{saved_report_id}", headers=AUTH_HEADERS)
+    get_response = client.get(f"/saved-reports/{saved_report_id}", headers=AUTH_HEADERS)
+    assert delete_response.status_code == 200
+    assert delete_response.json() == {"status": "deleted"}
+    assert get_response.status_code == 404
+

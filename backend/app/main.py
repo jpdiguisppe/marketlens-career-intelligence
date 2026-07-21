@@ -24,6 +24,7 @@ from app.job_search import ExternalJobResult, JobSearchResults, search_external_
 from app.models import JobPostingDB
 from app.resume_files import ResumeFileExtractionError, extract_resume_text_from_upload
 from app.saved_jobs import router as saved_jobs_router
+from app.saved_reports import router as saved_reports_router
 from app.skill_extractor import count_skills, extract_skills
 
 Base.metadata.create_all(bind=engine)
@@ -137,6 +138,7 @@ app.add_middleware(
 )
 
 app.include_router(saved_jobs_router)
+app.include_router(saved_reports_router)
 
 
 class JobPostingCreate(BaseModel):
