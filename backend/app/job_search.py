@@ -363,40 +363,55 @@ SPORTS_TITLE_OR_COMPANY_TERMS = {
     "athletics",
     "esports",
     "e-sports",
-    "league",
-    "stadium",
-    "arena",
     "sportsbook",
-    "collegiate athletics",
     "sports media",
+    "major league",
+    "minor league",
+    "football club",
+    "soccer club",
+    "basketball club",
+    "baseball club",
+    "hockey club",
 }
-SPORTS_DESCRIPTION_TERMS = {
-    "sport",
-    "sports",
+SPORTS_DESCRIPTION_STRONG_PHRASES = {
+    "sports organization",
+    "sports organisation",
+    "professional sports organization",
+    "professional sports organisation",
+    "professional sports team",
+    "professional sports league",
+    "sports team",
+    "sports league",
+    "sports club",
     "athletic department",
     "athletics program",
     "collegiate athletics",
-    "professional league",
-    "professional team",
-    "fan engagement",
-    "game day",
-    "gameday",
-    "ticket sales",
-    "ticketing",
-    "sponsorship activation",
-    "sponsorships",
-    "sports media",
-    "sports marketing",
-    "sports broadcast",
-    "sports broadcasting",
-    "stadium",
-    "arena",
-    "athlete",
-    "athletes",
+    "college athletics",
+    "sports media company",
+    "sports network",
+    "sports broadcaster",
+    "sports marketing agency",
+    "sports agency",
+    "stadium operations",
+    "arena operations",
+}
+SPORTS_DESCRIPTION_ANCHOR_TERMS = {
+    "sport",
+    "sports",
+    "athletic",
+    "athletics",
     "esports",
     "e-sports",
-    "sportsbook",
 }
+SPORTS_DESCRIPTION_SIGNAL_GROUPS = (
+    {"fan engagement", "fan experience", "fan growth", "fan base"},
+    {"game day", "gameday", "match day", "matchday"},
+    {"ticket sales", "ticketing", "season tickets"},
+    {"stadium", "arena", "ballpark", "venue operations"},
+    {"athlete", "athletes", "player relations", "player marketing"},
+    {"sports media", "sports broadcast", "sports broadcasting", "live sports"},
+    {"sponsorship activation", "sports partnerships", "partnership activation"},
+)
 
 LEVEL_QUERY_TERMS = {
     "intern",
@@ -696,6 +711,25 @@ def _query_industry(query: str) -> str | None:
     return None
 
 
+def _sports_title_or_company_matches(title: str, company: str | None = None) -> bool:
+    title_and_company = f"{title} {company or ''}".lower()
+    return _contains_any(title_and_company, SPORTS_TITLE_OR_COMPANY_TERMS)
+
+
+def _sports_description_evidence_score(description: str) -> int:
+    normalized = description.lower()
+    if _contains_any(normalized, SPORTS_DESCRIPTION_STRONG_PHRASES):
+        return 3
+
+    if not _contains_any(normalized, SPORTS_DESCRIPTION_ANCHOR_TERMS):
+        return 0
+
+    signal_groups = sum(
+        1 for terms in SPORTS_DESCRIPTION_SIGNAL_GROUPS if _contains_any(normalized, terms)
+    )
+    return 3 if signal_groups >= 3 else signal_groups
+
+
 def _matches_requested_industry(
     title: str,
     description: str,
@@ -707,10 +741,9 @@ def _matches_requested_industry(
         return True
 
     if industry == "sports":
-        title_and_company = f"{title} {company or ''}".lower()
-        if _contains_any(title_and_company, SPORTS_TITLE_OR_COMPANY_TERMS):
+        if _sports_title_or_company_matches(title, company=company):
             return True
-        return _contains_any(description.lower(), SPORTS_DESCRIPTION_TERMS)
+        return _sports_description_evidence_score(description) >= 3
 
     return True
 
@@ -986,8 +1019,7 @@ def _score_job(
         score += 8
 
     if industry == "sports":
-        title_and_company = f"{title} {company or ''}".lower()
-        score += 10 if _contains_any(title_and_company, SPORTS_TITLE_OR_COMPANY_TERMS) else 6
+        score += 10 if _sports_title_or_company_matches(title, company=company) else 6
 
     for term in terms:
         if term in searchable_title:

@@ -440,3 +440,25 @@ def test_sports_industry_can_be_confirmed_by_company_name() -> None:
         query="sports marketing",
         company="Example Sports League",
     ) > 0
+def test_sports_search_rejects_incidental_sports_mentions() -> None:
+    assert _score_job(
+        title="Product Marketing Manager, Prediction Markets",
+        description="Own prediction-market campaigns spanning sports, politics, crypto, and culture.",
+        query="sports marketing",
+        company="Coinbase",
+    ) == 0
+
+    assert _score_job(
+        title="Brand Manager",
+        description="Grow an ultra-premium tequila brand through sports sponsorships and athlete ambassadors.",
+        query="sports marketing",
+        company="Cazcanes Tequila",
+    ) == 0
+
+
+def test_sports_description_requires_multiple_operational_signals_without_org_phrase() -> None:
+    assert _score_job(
+        title="Social Media Coordinator",
+        description="Create live sports game-day content, grow fan engagement, and support ticketing campaigns.",
+        query="sports social media",
+    ) > 0
