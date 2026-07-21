@@ -27,6 +27,23 @@ export type ExternalJobPosting = {
   extracted_skills: string[];
 };
 
+
+export type SavedJobCreate = {
+  source: string;
+  source_job_id: string | null;
+  company: string;
+  title: string;
+  location: string | null;
+  description: string;
+  apply_url: string | null;
+};
+
+export type SavedJob = SavedJobCreate & {
+  id: number;
+  extracted_skills: string[];
+  created_at: string;
+};
+
 export type SourceCoverage = {
   provider: string;
   label: string;

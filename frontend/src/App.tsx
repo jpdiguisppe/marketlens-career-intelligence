@@ -2,6 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 
 import {
+  SaveExternalJobButton,
+  SavedJobsPanel,
+} from "./SavedJobs";
+
+import {
   analyzeResume,
   analyzeSmartFitBatch,
   extractResumeFileText,
@@ -605,6 +610,9 @@ function ExternalJobCard({
         <p>
           {job.location ?? "Location not listed"} · <a href={job.apply_url} target="_blank" rel="noreferrer">Open posting</a>
         </p>
+        <div className="saved-job-toolbar">
+          <SaveExternalJobButton job={job} />
+        </div>
         <p>{job.description.slice(0, 260)}{job.description.length > 260 ? "..." : ""}</p>
         <SkillPills skills={job.extracted_skills} emptyText="No known skills extracted yet." max={6} />
       </div>
@@ -811,6 +819,8 @@ function CustomAnalysisPanel() {
           </p>
         </div>
       </div>
+
+      <SavedJobsPanel />
 
       <div className="form-control">
         <label className="form-label" htmlFor="custom-resume-text">Resume text</label>

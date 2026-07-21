@@ -8,6 +8,8 @@ import type {
   ResumeAnalysisRequest,
   ResumeAnalysisResponse,
   ResumeFileExtractionResponse,
+  SavedJob,
+  SavedJobCreate,
   SkillCounts,
   SmartFitAnalysisRequest,
   SmartFitAnalysisResponse,
@@ -176,6 +178,41 @@ export type CurrentUserResponse = {
 
 export async function getCurrentUser(token: string): Promise<CurrentUserResponse> {
   return fetchJson<CurrentUserResponse>("/me", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+
+export async function getSavedJobs(token: string): Promise<SavedJob[]> {
+  return fetchJson<SavedJob[]>("/saved-jobs", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function createSavedJob(
+  token: string,
+  job: SavedJobCreate,
+): Promise<SavedJob> {
+  return fetchJson<SavedJob>("/saved-jobs", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(job),
+  });
+}
+
+export async function deleteSavedJob(
+  token: string,
+  savedJobId: number,
+): Promise<void> {
+  await fetchJson<{ status: string }>(`/saved-jobs/${savedJobId}`, {
+    method: "DELETE",
     headers: {
       Authorization: `Bearer ${token}`,
     },
