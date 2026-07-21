@@ -373,3 +373,70 @@ def test_us_city_search_includes_exact_aliases_and_us_remote_roles() -> None:
     assert _matches_location("Remote, Brazil", "Philadelphia") is False
     assert _matches_location("New York, NY", "Philadelphia") is False
     assert _matches_location("Pittsburgh, PA", "Philadelphia") is False
+def test_sports_marketing_requires_sports_industry_evidence() -> None:
+    assert _score_job(
+        title="Marketing Intern",
+        description="Support fan engagement, ticket sales, and sponsorship activations for a professional sports league.",
+        query="sports marketing internship",
+    ) > 0
+
+    assert _score_job(
+        title="Marketing Intern",
+        description="Create B2B campaigns for a software company.",
+        query="sports marketing internship",
+    ) == 0
+
+
+def test_sports_social_media_and_media_queries_stay_in_the_sports_domain() -> None:
+    assert _score_job(
+        title="Social Media Coordinator",
+        description="Create game-day content for a collegiate athletics program.",
+        query="sports social media",
+    ) > 0
+
+    assert _score_job(
+        title="Social Media Coordinator",
+        description="Manage social campaigns for accounting software.",
+        query="sports social media",
+    ) == 0
+
+    assert _score_job(
+        title="Digital Media Producer",
+        description="Produce video and broadcast content for a professional sports league.",
+        query="sports media",
+    ) > 0
+
+    assert _score_job(
+        title="Digital Media Producer",
+        description="Produce campaign assets for consumer retail brands.",
+        query="sports media",
+    ) == 0
+
+
+def test_sports_data_queries_require_both_function_and_industry_evidence() -> None:
+    assert _score_job(
+        title="Data Analyst",
+        description="Analyze ticketing and fan engagement trends for a professional sports organization.",
+        query="sports data analyst",
+    ) > 0
+
+    assert _score_job(
+        title="Data Analyst",
+        description="Analyze payment data for a financial technology company.",
+        query="sports data analyst",
+    ) == 0
+
+    assert _score_job(
+        title="Marketing Coordinator",
+        description="Support sponsorship activation for a professional sports league.",
+        query="sports data analyst",
+    ) == 0
+
+
+def test_sports_industry_can_be_confirmed_by_company_name() -> None:
+    assert _score_job(
+        title="Marketing Coordinator",
+        description="Build campaigns and partnerships.",
+        query="sports marketing",
+        company="Example Sports League",
+    ) > 0
