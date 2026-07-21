@@ -1,9 +1,10 @@
 name: Apply sports industry search patch
 
 on:
-  push:
+  pull_request:
     branches:
-      - feature/sports-industry-search
+      - main
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
