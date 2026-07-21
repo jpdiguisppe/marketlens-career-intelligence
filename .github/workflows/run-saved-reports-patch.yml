@@ -27,8 +27,7 @@ jobs:
           import traceback
 
           error_path = Path('.github/saved-reports-patch-error.txt')
-          if error_path.exists():
-              raise SystemExit('Patch error already captured.')
+          error_path.unlink(missing_ok=True)
 
           try:
               workflow = Path('.github/workflows/apply-saved-smart-fit-reports.yml').read_text()
@@ -69,6 +68,7 @@ jobs:
       - name: Commit saved reports
         run: |
           rm -f .github/saved-reports-trigger.txt
+          rm -f .github/saved-reports-patch-error.txt
           rm -f .github/workflows/run-saved-reports-patch.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
