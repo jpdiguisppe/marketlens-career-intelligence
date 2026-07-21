@@ -43,6 +43,8 @@ type DashboardData = {
 
 type SkillEntry = [string, number];
 
+type AppSection = "smart-fit" | "saved-jobs" | "saved-reports" | "market-data";
+
 type SmartFitInputJob = SavedReportJobContext & {
   analysisTitle: string;
   description: string;
@@ -866,11 +868,6 @@ description,
         </div>
       </div>
 
-      <div className="private-workspace-grid">
-        <SavedJobsPanel />
-        <SavedReportsPanel />
-      </div>
-
       <div className="form-control">
         <label className="form-label" htmlFor="custom-resume-text">Resume text</label>
         <label className="form-control" htmlFor="resume-file-upload">
@@ -1278,6 +1275,7 @@ function JobTable({ jobs }: { jobs: JobPosting[] }) {
 }
 
 function App() {
+  const [activeSection, setActiveSection] = useState<AppSection>("smart-fit");
   const [dashboardData, setDashboardData] = useState<DashboardData>(emptyDashboardData);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -1343,20 +1341,122 @@ function App() {
         </section>
       )}
 
-      <section className="dashboard-grid">
-        <CustomAnalysisPanel />
-        <SampleDatasetSummary
-          jobs={dashboardData.jobs}
-          uniqueSkillCount={uniqueSkillCount}
-          topSkillName={getTopSkillName(dashboardData.topSkills)}
-          isLoading={isLoading}
-          onRefresh={loadDashboardData}
-        />
-        <ResumeAnalyzer hasJobs={dashboardData.jobs.length > 0} roleCategories={roleCategories} />
-        <SkillList title="Sample Top Skills Overall" skills={dashboardData.topSkills} />
-        <GroupedSkillPanel title="Sample Skills by Company" groups={dashboardData.skillsByCompany} />
-        <GroupedSkillPanel title="Sample Skills by Role Category" groups={dashboardData.skillsByRole} />
-        <JobTable jobs={dashboardData.jobs} />
+      <nav className="app-tabs" aria-label="MarketLens sections">
+        <button
+          className={`app-tab ${activeSection === "smart-fit" ? "active" : ""}`}
+          type="button"
+          aria-current={activeSection === "smart-fit" ? "page" : undefined}
+          onClick={() => setActiveSection("smart-fit")}
+        >
+          <span>Smart Fit</span>
+          <small>Search and analyze</small>
+        </button>
+        <button
+          className={`app-tab ${activeSection === "saved-jobs" ? "active" : ""}`}
+          type="button"
+          aria-current={activeSection === "saved-jobs" ? "page" : undefined}
+          onClick={() => setActiveSection("saved-jobs")}
+        >
+          <span>Saved Jobs</span>
+          <small>Your bookmarks</small>
+        </button>
+        <button
+          className={`app-tab ${activeSection === "saved-reports" ? "active" : ""}`}
+          type="button"
+          aria-current={activeSection === "saved-reports" ? "page" : undefined}
+          onClick={() => setActiveSection("saved-reports")}
+        >
+          <span>Saved Reports</span>
+          <small>Your fit history</small>
+        </button>
+        <button
+          className={`app-tab ${activeSection === "market-data" ? "active" : ""}`}
+          type="button"
+          aria-current={activeSection === "market-data" ? "page" : undefined}
+          onClick={() => setActiveSection("market-data")}
+        >
+          <span>Market Data</span>
+          <small>Sample trends</small>
+        </button>
+      </nav>
+
+      <section
+        className="app-tab-panel"
+        aria-label="Smart Fit workspace"
+        hidden={activeSection !== "smart-fit"}
+      >
+        <div className="tab-panel-header">
+          <div>
+            <p className="eyebrow inline-eyebrow">Analyze</p>
+            <h2>Search, compare, and improve your fit</h2>
+            <p>Upload one résumé, then analyze searched jobs or pasted descriptions without losing your work when you switch sections.</p>
+          </div>
+        </div>
+        <section className="dashboard-grid">
+          <CustomAnalysisPanel />
+        </section>
+      </section>
+
+      <section
+        className="app-tab-panel"
+        aria-label="Saved jobs workspace"
+        hidden={activeSection !== "saved-jobs"}
+      >
+        <div className="tab-panel-header">
+          <div>
+            <p className="eyebrow inline-eyebrow">Private workspace</p>
+            <h2>Saved jobs</h2>
+            <p>Keep the roles you may apply to in one focused list instead of mixing them into the analysis form.</p>
+          </div>
+        </div>
+        <div className="saved-workspace-page">
+          <SavedJobsPanel />
+        </div>
+      </section>
+
+      <section
+        className="app-tab-panel"
+        aria-label="Saved Smart Fit reports workspace"
+        hidden={activeSection !== "saved-reports"}
+      >
+        <div className="tab-panel-header">
+          <div>
+            <p className="eyebrow inline-eyebrow">Private workspace</p>
+            <h2>Saved Smart Fit reports</h2>
+            <p>Revisit fit scores, evidence, gaps, and coaching actions without storing your raw résumé text.</p>
+          </div>
+        </div>
+        <div className="saved-workspace-page">
+          <SavedReportsPanel />
+        </div>
+      </section>
+
+      <section
+        className="app-tab-panel"
+        aria-label="Sample market data"
+        hidden={activeSection !== "market-data"}
+      >
+        <div className="tab-panel-header">
+          <div>
+            <p className="eyebrow inline-eyebrow">Explore</p>
+            <h2>Sample market data</h2>
+            <p>Review the demonstration dataset, skill frequencies, and the secondary sample-dataset comparison tool.</p>
+          </div>
+        </div>
+        <section className="dashboard-grid">
+          <SampleDatasetSummary
+            jobs={dashboardData.jobs}
+            uniqueSkillCount={uniqueSkillCount}
+            topSkillName={getTopSkillName(dashboardData.topSkills)}
+            isLoading={isLoading}
+            onRefresh={loadDashboardData}
+          />
+          <ResumeAnalyzer hasJobs={dashboardData.jobs.length > 0} roleCategories={roleCategories} />
+          <SkillList title="Sample Top Skills Overall" skills={dashboardData.topSkills} />
+          <GroupedSkillPanel title="Sample Skills by Company" groups={dashboardData.skillsByCompany} />
+          <GroupedSkillPanel title="Sample Skills by Role Category" groups={dashboardData.skillsByRole} />
+          <JobTable jobs={dashboardData.jobs} />
+        </section>
       </section>
     </main>
   );

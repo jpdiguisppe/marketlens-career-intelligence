@@ -650,7 +650,7 @@ td {
   }
 }
 
-/* Clerk authentication controls — temporary placement until navigation tabs are added. */
+/* Clerk authentication controls. */
 .marketlens-auth-controls {
   position: fixed;
   top: 18px;
@@ -756,11 +756,103 @@ td {
   font-size: 0.82rem;
 }
 
-.private-workspace-grid {
+.app-tabs {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-  margin-bottom: 1rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 22px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 24px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 16px 44px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(14px);
+}
+
+.app-tab {
+  border: 1px solid transparent;
+  border-radius: 18px;
+  padding: 13px 15px;
+  color: #475569;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.app-tab:hover {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  transform: translateY(-1px);
+}
+
+.app-tab.active {
+  border-color: #0f172a;
+  color: white;
+  background: #0f172a;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.2);
+}
+
+.app-tab span,
+.app-tab small {
+  display: block;
+}
+
+.app-tab span {
+  font-weight: 850;
+}
+
+.app-tab small {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.app-tab.active small {
+  color: #cbd5e1;
+}
+
+.app-tab-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.app-tab-panel[hidden] {
+  display: none;
+}
+
+.tab-panel-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 22px;
+  padding: 20px 22px;
+  background: rgba(248, 250, 252, 0.82);
+}
+
+.tab-panel-header h2 {
+  margin-bottom: 7px;
+  color: #0f172a;
+  font-size: clamp(1.35rem, 2vw, 1.8rem);
+}
+
+.tab-panel-header p:last-child {
+  max-width: 760px;
+  margin-bottom: 0;
+  color: #64748b;
+  line-height: 1.55;
+}
+
+.saved-workspace-page {
+  display: grid;
+}
+
+.saved-workspace-page .saved-jobs-panel,
+.saved-workspace-page .saved-reports-panel {
+  margin-bottom: 0;
 }
 
 .saved-report-toolbar {
@@ -773,8 +865,22 @@ td {
 }
 
 @media (max-width: 900px) {
-  .private-workspace-grid {
+  .app-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .app-tabs {
     grid-template-columns: 1fr;
+  }
+
+  .app-tab {
+    text-align: center;
+  }
+
+  .tab-panel-header {
+    padding: 18px;
   }
 }
 
