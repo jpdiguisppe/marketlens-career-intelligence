@@ -2,8 +2,7 @@ name: Apply sports industry search patch
 
 on:
   pull_request:
-    branches:
-      - main
+    branches: [main]
     types: [opened, synchronize, reopened]
 
 permissions:
@@ -167,24 +166,6 @@ jobs:
           assert old_family_helper in text, "role family helper block changed"
           text = text.replace(old_family_helper, new_family_helper, 1)
 
-          old_role_signature = '''def _matches_requested_role(title: str, description: str, query: str, level: JobLevel | None = None) -> bool:
-              family = _query_role_family(query)
-          '''
-          new_role_signature = '''def _matches_requested_role(
-              title: str,
-              description: str,
-              query: str,
-              level: JobLevel | None = None,
-              company: str | None = None,
-          ) -> bool:
-              if not _matches_requested_industry(title, description, query, company=company):
-                  return False
-
-              family = _query_role_family(query)
-          '''
-          assert old_role_signature in text, "requested role signature changed"
-          text = text.replace(old_role_signature, new_role_signature, 1)
-
           old_score_signature = '''def _score_job(title: str, description: str, query: str, level: str | None = None) -> int:
               resolved_level = resolve_job_level(query, level)
               if not _matches_requested_role(title, description, query, resolved_level):
@@ -198,7 +179,9 @@ jobs:
               company: str | None = None,
           ) -> int:
               resolved_level = resolve_job_level(query, level)
-              if not _matches_requested_role(title, description, query, resolved_level, company=company):
+              if not _matches_requested_industry(title, description, query, company=company):
+                  return 0
+              if not _matches_requested_role(title, description, query, resolved_level):
                   return 0
           '''
           assert old_score_signature in text, "score signature changed"
@@ -315,8 +298,7 @@ jobs:
           assert "def test_sports_marketing_requires_sports_industry_evidence" not in tests
           tests_path.write_text(tests.rstrip() + "\n" + test_block.lstrip())
 
-          workflow_path = Path(".github/workflows/apply-sports-industry-search.yml")
-          workflow_path.unlink()
+          Path(".github/workflows/apply-sports-industry-search.yml").unlink()
           PY
 
       - name: Run backend tests
@@ -330,6 +312,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add backend/app/job_search.py backend/tests/test_job_search.py .github/workflows/apply-sports-industry-search.yml
+          git add -A
           git commit -m "Add sports-aware job search filtering"
           git push origin feature/sports-industry-search
