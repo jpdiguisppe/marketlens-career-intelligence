@@ -6,6 +6,7 @@ import {
   deleteSavedJob,
   getSavedJobs,
 } from "./api";
+import { SafeExternalLink } from "./SafeExternalLink";
 import type {
   ExternalJobPosting,
   SavedJob,
@@ -510,13 +511,9 @@ export function SavedJobsPanel() {
                   {job.apply_url && (
                     <>
                       {" · "}
-                      <a
-                        href={job.apply_url}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
+                      <SafeExternalLink url={job.apply_url}>
                         Open posting
-                      </a>
+                      </SafeExternalLink>
                     </>
                   )}
                 </p>

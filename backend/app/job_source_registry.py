@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Literal
 
 Provider = Literal["greenhouse", "lever"]
@@ -9,6 +10,14 @@ EarlyCareerRelevance = Literal["general", "strong", "limited", "unknown"]
 DEFAULT_COVERAGE_NOTE = (
     "Official public ATS board. Available roles and locations change with the organization's current postings."
 )
+SOURCE_IDENTIFIER_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
+
+
+def normalize_source_identifier(identifier: str) -> str | None:
+    normalized = identifier.strip().lower()
+    if not SOURCE_IDENTIFIER_PATTERN.fullmatch(normalized):
+        return None
+    return normalized
 
 
 @dataclass(frozen=True)
@@ -47,9 +56,13 @@ def _source(
     geographic_focus: tuple[str, ...] = ("varies_by_posting",),
     coverage_note: str | None = None,
 ) -> JobSourceRegistryEntry:
+    normalized_identifier = normalize_source_identifier(identifier)
+    if normalized_identifier is None:
+        raise ValueError(f"Invalid {provider} source identifier: {identifier!r}")
+
     return JobSourceRegistryEntry(
         provider=provider,
-        identifier=identifier,
+        identifier=normalized_identifier,
         organization=organization,
         industries=industries,
         role_families=role_families,
@@ -126,13 +139,43 @@ def find_source(
     identifier: str,
     provider: Provider | None = None,
 ) -> JobSourceRegistryEntry | None:
-    normalized_identifier = identifier.strip().lower()
+    normalized_identifier = normalize_source_identifier(identifier)
+    if normalized_identifier is None:
+        return None
+
     for entry in SOURCE_REGISTRY:
         if entry.identifier == normalized_identifier and (
             provider is None or entry.provider == provider
         ):
             return entry
     return None
+
+
+def configured_source_identifiers(
+    provider: Provider,
+    raw_identifiers: str | None,
+) -> tuple[str, ...]:
+    """Resolve environment configuration through the registry allowlist.
+
+    Invalid, disabled, duplicate, and unregistered identifiers are ignored.
+    An empty or fully rejected configuration safely falls back to the enabled
+    registry defaults rather than creating arbitrary outbound request targets.
+    """
+
+    defaults = default_source_identifiers(provider)
+    if not raw_identifiers:
+        return defaults
+
+    selected: list[str] = []
+    for raw_identifier in raw_identifiers.split(","):
+        normalized = normalize_source_identifier(raw_identifier)
+        if normalized is None or normalized in selected:
+            continue
+        entry = find_source(normalized, provider)
+        if entry is not None and entry.enabled:
+            selected.append(normalized)
+
+    return tuple(selected) or defaults
 
 
 def organization_name(identifier: str, provider: Provider | None = None) -> str:

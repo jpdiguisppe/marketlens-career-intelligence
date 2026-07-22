@@ -1,11 +1,12 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app.auth import AuthenticatedUser, get_current_user
 from app.database import get_db
+from app.external_urls import require_external_https_url, sanitize_external_https_url
 from app.models import SavedJobDB
 from app.skill_extractor import extract_skills
 
@@ -27,6 +28,11 @@ class SavedJobCreate(BaseModel):
     )
     apply_url: str | None = Field(default=None, max_length=2048)
 
+    @field_validator("apply_url")
+    @classmethod
+    def validate_apply_url(cls, value: str | None) -> str | None:
+        return require_external_https_url(value)
+
 
 class SavedJob(SavedJobCreate):
     model_config = ConfigDict(from_attributes=True)
@@ -37,7 +43,18 @@ class SavedJob(SavedJobCreate):
 
 
 def _to_saved_job_response(saved_job: SavedJobDB) -> SavedJob:
-    return SavedJob.model_validate(saved_job)
+    return SavedJob(
+        source=saved_job.source,
+        source_job_id=saved_job.source_job_id,
+        company=saved_job.company,
+        title=saved_job.title,
+        location=saved_job.location,
+        description=saved_job.description,
+        apply_url=sanitize_external_https_url(saved_job.apply_url),
+        id=saved_job.id,
+        extracted_skills=saved_job.extracted_skills,
+        created_at=saved_job.created_at,
+    )
 
 
 def _get_owned_saved_job(

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@clerk/react";
 
 import { createSavedReport, deleteSavedReport, getSavedReports } from "./api";
+import { SafeExternalLink } from "./SafeExternalLink";
 import type {
   SavedReport,
   SavedReportCreate,
@@ -293,13 +294,9 @@ export function SavedReportsPanel() {
                   {report.apply_url && (
                     <>
                       {" · "}
-                      <a
-                        href={report.apply_url}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
+                      <SafeExternalLink url={report.apply_url}>
                         Open posting
-                      </a>
+                      </SafeExternalLink>
                     </>
                   )}
                 </p>

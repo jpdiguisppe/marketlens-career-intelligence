@@ -1,5 +1,6 @@
 import csv
 import io
+import ipaddress
 import os
 import secrets
 import time
@@ -41,6 +42,8 @@ MAX_RESUME_UPLOAD_BYTES = 1_500_000
 MAX_EXTRACTED_RESUME_TEXT_LENGTH = 25_000
 RATE_LIMIT_WINDOW_SECONDS = 60
 RATE_LIMIT_MAX_REQUESTS = 30
+RATE_LIMIT_GLOBAL_MAX_REQUESTS = 300
+RATE_LIMIT_MAX_TRACKED_CLIENTS = 5_000
 
 REQUIRED_CSV_COLUMNS = {"company", "title", "description"}
 OPTIONAL_CSV_COLUMNS = {"location", "role_category", "experience_level"}
@@ -58,6 +61,7 @@ SmartJobDescription = Annotated[
 ]
 
 _rate_limit_buckets: dict[str, list[float]] = {}
+_global_rate_limit_timestamps: list[float] = []
 
 
 def _get_allowed_origins() -> list[str]:
@@ -92,22 +96,75 @@ def require_admin_api_key(
         raise HTTPException(status_code=401, detail="Invalid or missing admin API key.")
 
 
+def _validated_ip(value: str | None) -> str | None:
+    if not value:
+        return None
+    candidate = value.strip()
+    try:
+        return str(ipaddress.ip_address(candidate))
+    except ValueError:
+        return None
+
+
 def _get_rate_limit_identifier(request: Request) -> str:
     forwarded_for = request.headers.get("x-forwarded-for")
     if forwarded_for:
-        return forwarded_for.split(",", maxsplit=1)[0].strip()
+        forwarded_ip = _validated_ip(forwarded_for.split(",", maxsplit=1)[0])
+        if forwarded_ip:
+            return forwarded_ip
 
     if request.client and request.client.host:
-        return request.client.host
+        return _validated_ip(request.client.host) or request.client.host[:120]
 
     return "unknown-client"
 
 
+def _prune_rate_limit_state(window_start: float) -> None:
+    global _global_rate_limit_timestamps
+    _global_rate_limit_timestamps = [
+        timestamp
+        for timestamp in _global_rate_limit_timestamps
+        if timestamp >= window_start
+    ]
+
+    stale_identifiers = [
+        identifier
+        for identifier, timestamps in _rate_limit_buckets.items()
+        if not timestamps or timestamps[-1] < window_start
+    ]
+    for identifier in stale_identifiers:
+        _rate_limit_buckets.pop(identifier, None)
+
+    if len(_rate_limit_buckets) > RATE_LIMIT_MAX_TRACKED_CLIENTS:
+        oldest = sorted(
+            _rate_limit_buckets,
+            key=lambda identifier: _rate_limit_buckets[identifier][-1]
+            if _rate_limit_buckets[identifier]
+            else 0.0,
+        )
+        for identifier in oldest[: len(_rate_limit_buckets) - RATE_LIMIT_MAX_TRACKED_CLIENTS]:
+            _rate_limit_buckets.pop(identifier, None)
+
+
 def enforce_public_rate_limit(request: Request) -> None:
-    """Small in-memory fixed-window rate limit for public analysis endpoints."""
+    """Bounded instance-level abuse protection for public endpoints.
+
+    Railway or another edge proxy should still provide platform-level rate
+    limiting for high-volume production traffic. This guard prevents one client
+    or a burst across many clients from fan-out triggering unlimited providers.
+    """
+
     identifier = _get_rate_limit_identifier(request)
     now = time.monotonic()
     window_start = now - RATE_LIMIT_WINDOW_SECONDS
+    _prune_rate_limit_state(window_start)
+
+    if len(_global_rate_limit_timestamps) >= RATE_LIMIT_GLOBAL_MAX_REQUESTS:
+        raise HTTPException(
+            status_code=429,
+            detail="Service-wide rate limit exceeded. Please wait before trying again.",
+            headers={"Retry-After": str(RATE_LIMIT_WINDOW_SECONDS)},
+        )
 
     request_timestamps = _rate_limit_buckets.setdefault(identifier, [])
     request_timestamps[:] = [
@@ -118,9 +175,11 @@ def enforce_public_rate_limit(request: Request) -> None:
         raise HTTPException(
             status_code=429,
             detail="Rate limit exceeded. Please wait before trying again.",
+            headers={"Retry-After": str(RATE_LIMIT_WINDOW_SECONDS)},
         )
 
     request_timestamps.append(now)
+    _global_rate_limit_timestamps.append(now)
 
 
 app = FastAPI(

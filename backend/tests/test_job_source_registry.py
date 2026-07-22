@@ -5,8 +5,10 @@ from app.job_search import (
 )
 from app.job_source_registry import (
     SOURCE_REGISTRY,
+    configured_source_identifiers,
     default_source_identifiers,
     find_source,
+    normalize_source_identifier,
     organization_name,
     source_registry_entries,
 )
@@ -111,3 +113,23 @@ def test_registry_can_filter_by_provider() -> None:
     assert len(lever_entries) == len(EXPECTED_LEVER_SITES)
     assert all(entry.provider == "greenhouse" for entry in greenhouse_entries)
     assert all(entry.provider == "lever" for entry in lever_entries)
+
+
+
+def test_registry_rejects_malformed_and_unregistered_identifiers() -> None:
+    assert normalize_source_identifier("github") == "github"
+    assert normalize_source_identifier("../internal") is None
+    assert normalize_source_identifier("https://evil.example") is None
+    assert normalize_source_identifier("name with spaces") is None
+    assert find_source("../internal", "lever") is None
+
+
+def test_environment_source_configuration_is_registry_allowlisted() -> None:
+    assert configured_source_identifiers(
+        "lever",
+        " github,../internal,unknown-company,github, twitch ",
+    ) == ("github", "twitch")
+    assert configured_source_identifiers(
+        "greenhouse",
+        "https://evil.example,unknown-company",
+    ) == EXPECTED_GREENHOUSE_BOARDS
