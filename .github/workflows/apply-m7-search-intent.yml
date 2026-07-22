@@ -1,0 +1,47 @@
+name: Apply Milestone 7 search intent foundation
+
+on:
+  push:
+    branches:
+      - milestone-7-search-intent-foundation
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: milestone-7-search-intent-foundation
+          fetch-depth: 0
+
+      - name: Apply search intent changes
+        run: python .github/scripts/apply_m7_search_intent.py
+
+      - name: Run backend tests
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pytest
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Commit search intent foundation
+        run: |
+          rm -f .github/scripts/apply_m7_search_intent.py
+          rm -f .github/workflows/apply-m7-search-intent.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Add multidimensional job search intent"
+          git push origin milestone-7-search-intent-foundation
