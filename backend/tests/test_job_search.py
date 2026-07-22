@@ -4,8 +4,11 @@ from app.job_search import (
     _normalize_lever_job,
     _normalize_remoteok_job,
     _normalize_remotive_job,
+    _query_industry,
+    _query_role_family,
     _score_job,
     clean_job_description,
+    parse_job_search_intent,
     resolve_job_level,
 )
 
@@ -215,6 +218,40 @@ def test_query_terms_can_infer_level_when_specific() -> None:
     assert resolve_job_level("entry level SWE") == "entry"
     assert resolve_job_level("senior SWE") == "senior"
     assert resolve_job_level("SWE", "intern") == "intern"
+
+
+
+def test_search_intent_separates_job_function_from_industry() -> None:
+    sports_marketing = parse_job_search_intent(
+        "sports marketing internship",
+        location=" Philadelphia ",
+    )
+    assert sports_marketing.job_function == "marketing"
+    assert sports_marketing.industry == "sports"
+    assert sports_marketing.level == "intern"
+    assert sports_marketing.location == "Philadelphia"
+
+    healthcare_data = parse_job_search_intent("healthcare data analyst")
+    assert healthcare_data.job_function == "data"
+    assert healthcare_data.industry == "healthcare"
+
+    finance_marketing = parse_job_search_intent("financial services marketing")
+    assert finance_marketing.job_function == "marketing"
+    assert finance_marketing.industry == "financial_services"
+
+
+def test_industry_taxonomy_detects_initial_milestone_seven_domains() -> None:
+    assert _query_industry("entertainment partnerships") == "entertainment"
+    assert _query_industry("university communications") == "education"
+    assert _query_industry("nonprofit operations") == "nonprofit"
+    assert _query_industry("news media analyst") == "media"
+    assert _query_industry("backend software engineer") is None
+
+
+def test_single_dimension_queries_keep_existing_role_family_behavior() -> None:
+    assert _query_role_family("finance internship") == "finance"
+    assert _query_role_family("healthcare jobs") == "healthcare"
+    assert _query_role_family("software engineer") == "software"
 
 
 def test_intern_level_filters_to_internship_roles() -> None:

@@ -278,6 +278,7 @@ class ExternalJobSearchResponse(BaseModel):
     location: str | None
     level: JobSearchLevel
     role_family: str | None
+    industry: str | None
     providers_searched: list[str]
     result_count: int
     results: list[ExternalJobPostingResponse]
@@ -759,6 +760,7 @@ def search_external_job_postings(
         location=search_results.location,
         level=search_results.level,
         role_family=search_results.role_family,
+        industry=search_results.industry,
         providers_searched=search_results.providers_searched,
         result_count=len(api_results),
         results=api_results,
