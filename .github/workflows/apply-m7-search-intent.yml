@@ -28,6 +28,12 @@ jobs:
           python .github/scripts/apply_m7_search_intent.py
           python .github/scripts/fix_m7_function_priority.py
 
+      - name: Upload patched search source
+        uses: actions/upload-artifact@v4
+        with:
+          name: m7-patched-job-search
+          path: backend/app/job_search.py
+
       - name: Install backend dependencies
         working-directory: backend
         run: |
@@ -38,6 +44,7 @@ jobs:
         working-directory: backend
         run: |
           python - <<'PY' > ../m7-intent-debug.txt
+          import inspect
           from app.job_search import (
               CROSS_INDUSTRY_FUNCTION_QUERY_TERMS,
               ROLE_FAMILY_QUERY_TERMS,
@@ -47,6 +54,8 @@ jobs:
 
           query = "financial services marketing"
           normalized = query.lower()
+          print("function source:")
+          print(inspect.getsource(_query_role_family))
           print("marketing terms:", sorted(ROLE_FAMILY_QUERY_TERMS["marketing"]))
           print("cross-function keys:", list(CROSS_INDUSTRY_FUNCTION_QUERY_TERMS))
           print("marketing matches:", _contains_any(normalized, ROLE_FAMILY_QUERY_TERMS["marketing"]))
