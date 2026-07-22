@@ -61,10 +61,10 @@ def test_education_search_keeps_direct_sources_and_provider_diversity() -> None:
     assert "coursera" in plan.lever_identifiers
     assert len(plan.greenhouse_identifiers) >= 2
     assert len(plan.lever_identifiers) >= 2
-    assert plan.direct_industry_matches == 2
+    assert plan.direct_industry_matches >= 2
 
 
-def test_sports_search_uses_adjacent_sources_until_exact_boards_are_added() -> None:
+def test_sports_search_prioritizes_exact_registered_sources() -> None:
     plan = _plan(
         industry="sports",
         job_function="marketing",
@@ -72,10 +72,23 @@ def test_sports_search_uses_adjacent_sources_until_exact_boards_are_added() -> N
     )
 
     selected = set(plan.greenhouse_identifiers) | set(plan.lever_identifiers)
-    assert plan.direct_industry_matches == 0
-    assert {"roblox", "twitch"}.issubset(selected)
-    assert "No exact-industry registry match" in plan.greenhouse_note
-    assert "No exact-industry registry match" in plan.lever_note
+    assert plan.direct_industry_matches == 2
+    assert {"theathletic", "feldinc"}.issubset(selected)
+    assert "theathletic" in plan.lever_identifiers[:4]
+    assert "feldinc" in plan.lever_identifiers[:4]
+    assert "No exact-industry registry match" not in plan.lever_note
+
+
+def test_nonprofit_search_prioritizes_mission_driven_source() -> None:
+    plan = _plan(
+        industry="nonprofit",
+        job_function="marketing",
+        level="intern",
+    )
+
+    assert plan.direct_industry_matches == 1
+    assert "standtogether" in plan.lever_identifiers[:4]
+    assert "level=intern" in plan.lever_note
 
 
 def test_unregistered_identifiers_are_never_routed() -> None:

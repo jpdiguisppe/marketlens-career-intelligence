@@ -1,6 +1,7 @@
 from app.job_search import (
     DEFAULT_GREENHOUSE_BOARDS,
     DEFAULT_LEVER_SITES,
+    DEFAULT_MAX_PROVIDER_REQUESTS_PER_SEARCH,
     _provider_company_name,
 )
 from app.job_source_registry import (
@@ -59,6 +60,9 @@ EXPECTED_LEVER_SITES = (
     "fivetran",
     "algolia",
     "addepar",
+    "theathletic",
+    "feldinc",
+    "standtogether",
 )
 
 
@@ -80,10 +84,13 @@ def test_registry_preserves_existing_default_provider_order() -> None:
     assert DEFAULT_LEVER_SITES == EXPECTED_LEVER_SITES
 
 
-def test_registry_exposes_industry_and_function_metadata_for_future_routing() -> None:
+def test_registry_exposes_industry_and_function_metadata_for_routing() -> None:
     duolingo = find_source("duolingo", "greenhouse")
     twitch = find_source("twitch", "lever")
     addepar = find_source("addepar", "lever")
+    the_athletic = find_source("theathletic", "lever")
+    feld = find_source("feldinc", "lever")
+    stand_together = find_source("standtogether", "lever")
 
     assert duolingo is not None
     assert "education" in duolingo.industries
@@ -97,9 +104,22 @@ def test_registry_exposes_industry_and_function_metadata_for_future_routing() ->
     assert "financial_services" in addepar.industries
     assert "finance" in addepar.role_families
 
+    assert the_athletic is not None
+    assert {"sports", "media"}.issubset(the_athletic.industries)
+    assert "marketing" in the_athletic.role_families
+
+    assert feld is not None
+    assert {"sports", "entertainment"}.issubset(feld.industries)
+    assert "operations" in feld.role_families
+
+    assert stand_together is not None
+    assert {"nonprofit", "education"}.issubset(stand_together.industries)
+    assert stand_together.early_career_relevance == "strong"
+
 
 def test_registry_lookup_and_company_name_fallbacks_are_stable() -> None:
     assert organization_name("github", "lever") == "GitHub"
+    assert organization_name("theathletic", "lever") == "The Athletic"
     assert _provider_company_name("doordash") == "DoorDash"
     assert organization_name("example-company") == "Example Company"
     assert find_source("missing-source", "greenhouse") is None
@@ -115,6 +135,11 @@ def test_registry_can_filter_by_provider() -> None:
     assert all(entry.provider == "lever" for entry in lever_entries)
 
 
+def test_uncached_broad_search_keeps_remote_feed_request_headroom() -> None:
+    ats_source_count = len(EXPECTED_GREENHOUSE_BOARDS) + len(EXPECTED_LEVER_SITES)
+
+    assert ats_source_count <= DEFAULT_MAX_PROVIDER_REQUESTS_PER_SEARCH - 3
+
 
 def test_registry_rejects_malformed_and_unregistered_identifiers() -> None:
     assert normalize_source_identifier("github") == "github"
@@ -127,8 +152,8 @@ def test_registry_rejects_malformed_and_unregistered_identifiers() -> None:
 def test_environment_source_configuration_is_registry_allowlisted() -> None:
     assert configured_source_identifiers(
         "lever",
-        " github,../internal,unknown-company,github, twitch ",
-    ) == ("github", "twitch")
+        " github,../internal,unknown-company,github, theathletic ",
+    ) == ("github", "theathletic")
     assert configured_source_identifiers(
         "greenhouse",
         "https://evil.example,unknown-company",

@@ -44,6 +44,20 @@ TECH_ROLE_FAMILIES = (
 )
 FINTECH_ROLE_FAMILIES = TECH_ROLE_FAMILIES + ("finance",)
 HEALTH_ROLE_FAMILIES = TECH_ROLE_FAMILIES + ("healthcare",)
+MISSION_ROLE_FAMILIES = (
+    "data",
+    "product",
+    "design",
+    "marketing",
+    "operations",
+)
+ENTERTAINMENT_ROLE_FAMILIES = (
+    "data",
+    "product",
+    "design",
+    "marketing",
+    "operations",
+)
 
 
 def _source(
@@ -115,6 +129,31 @@ SOURCE_REGISTRY: tuple[JobSourceRegistryEntry, ...] = (
     _source("lever", "fivetran", "Fivetran", ("technology", "data")),
     _source("lever", "algolia", "Algolia", ("technology", "search")),
     _source("lever", "addepar", "Addepar", ("financial_services", "fintech", "technology"), FINTECH_ROLE_FAMILIES),
+    _source(
+        "lever",
+        "theathletic",
+        "The Athletic",
+        ("sports", "media", "entertainment"),
+        TECH_ROLE_FAMILIES,
+        coverage_note="Official public Lever board for a sports-media organization.",
+    ),
+    _source(
+        "lever",
+        "feldinc",
+        "Feld Entertainment",
+        ("sports", "entertainment", "media", "events"),
+        ENTERTAINMENT_ROLE_FAMILIES,
+        coverage_note="Official public Lever board covering live entertainment and motorsports operations.",
+    ),
+    _source(
+        "lever",
+        "standtogether",
+        "Stand Together",
+        ("nonprofit", "education", "social_impact", "media"),
+        MISSION_ROLE_FAMILIES,
+        early_career_relevance="strong",
+        coverage_note="Official public Lever board with mission-driven roles and fellowship pathways.",
+    ),
 )
 
 
