@@ -9,6 +9,7 @@ import {
   SaveSmartFitReportButton,
   SavedReportsPanel,
 } from "./SavedReports";
+import { SafeExternalLink } from "./SafeExternalLink";
 
 import {
   analyzeResume,
@@ -638,7 +639,7 @@ function ExternalJobCard({
           <span className="status-badge status-mentioned">{job.source}</span>
         </div>
         <p>
-          {job.location ?? "Location not listed"} · <a href={job.apply_url} target="_blank" rel="noreferrer">Open posting</a>
+          {job.location ?? "Location not listed"} · <SafeExternalLink url={job.apply_url}>Open posting</SafeExternalLink>
         </p>
         <div className="saved-job-toolbar">
           <SaveExternalJobButton job={job} />

@@ -1,6 +1,7 @@
 import os
 import re
 import time
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from html import unescape
 from typing import Any, Literal
@@ -8,60 +9,27 @@ from urllib.parse import quote_plus
 
 import httpx
 
+from app.external_urls import sanitize_external_https_url
+from app.job_source_registry import (
+    configured_source_identifiers,
+    default_source_identifiers,
+    organization_name,
+)
+
 GREENHOUSE_BASE_URL = "https://boards-api.greenhouse.io/v1/boards"
 LEVER_BASE_URL = "https://api.lever.co/v0/postings"
 REMOTEOK_BASE_URL = "https://remoteok.com/api"
 REMOTIVE_BASE_URL = "https://remotive.com/api/remote-jobs"
 
-DEFAULT_GREENHOUSE_BOARDS = (
-    "datadog",
-    "airbnb",
-    "figma",
-    "duolingo",
-    "roblox",
-    "scaleai",
-    "hubspot",
-    "cloudflare",
-    "verkada",
-    "doordash",
-    "okta",
-    "mongodb",
-    "asana",
-    "plaid",
-    "brex",
-    "coinbase",
-    "ramp",
-    "gusto",
-    "rippling",
-    "affirm",
-)
-DEFAULT_LEVER_SITES = (
-    "github",
-    "postman",
-    "benchling",
-    "box",
-    "coursera",
-    "lyft",
-    "pinterest",
-    "reddit",
-    "snap",
-    "twitch",
-    "zapier",
-    "affirm",
-    "robinhood",
-    "rippling",
-    "webflow",
-    "notion",
-    "loom",
-    "intercom",
-    "mixpanel",
-    "fivetran",
-    "algolia",
-    "addepar",
-)
+DEFAULT_GREENHOUSE_BOARDS = default_source_identifiers("greenhouse")
+DEFAULT_LEVER_SITES = default_source_identifiers("lever")
 MAX_PROVIDER_RESULTS_PER_BOARD = 100
 REMOTEOK_CACHE_SECONDS = 15 * 60
 REMOTIVE_CACHE_SECONDS = 6 * 60 * 60
+DEFAULT_PROVIDER_CACHE_SECONDS = 5 * 60
+DEFAULT_MAX_PROVIDER_REQUESTS_PER_SEARCH = 48
+MIN_PROVIDER_REQUESTS_PER_SEARCH = 4
+MAX_PROVIDER_REQUESTS_PER_SEARCH = 50
 
 JobLevel = Literal["any", "intern", "entry", "mid", "senior"]
 VALID_JOB_LEVELS: set[str] = {"any", "intern", "entry", "mid", "senior"}
@@ -509,6 +477,29 @@ SENIOR_TERMS = {
 
 _REMOTEOK_CACHE: dict[str, Any] = {"expires_at": 0.0, "jobs": []}
 _REMOTIVE_CACHE: dict[str, dict[str, Any]] = {}
+_ATS_PROVIDER_CACHE: dict[str, dict[str, Any]] = {}
+
+
+class ProviderRequestBudgetExceeded(RuntimeError):
+    pass
+
+
+@dataclass
+class _ProviderRequestBudget:
+    remaining: int
+    consumed: int = 0
+
+    def consume(self) -> None:
+        if self.remaining <= 0:
+            raise ProviderRequestBudgetExceeded("Provider request budget exhausted.")
+        self.remaining -= 1
+        self.consumed += 1
+
+
+_ACTIVE_PROVIDER_REQUEST_BUDGET: ContextVar[_ProviderRequestBudget | None] = ContextVar(
+    "marketlens_provider_request_budget",
+    default=None,
+)
 
 
 @dataclass(frozen=True)
@@ -579,19 +570,21 @@ class _ProviderOutcome:
 
 
 def _configured_greenhouse_boards() -> list[str]:
-    raw_boards = os.getenv("JOB_SEARCH_GREENHOUSE_BOARDS")
-    if raw_boards:
-        boards = [board.strip() for board in raw_boards.split(",") if board.strip()]
-        return boards or list(DEFAULT_GREENHOUSE_BOARDS)
-    return list(DEFAULT_GREENHOUSE_BOARDS)
+    return list(
+        configured_source_identifiers(
+            "greenhouse",
+            os.getenv("JOB_SEARCH_GREENHOUSE_BOARDS"),
+        )
+    )
 
 
 def _configured_lever_sites() -> list[str]:
-    raw_sites = os.getenv("JOB_SEARCH_LEVER_SITES")
-    if raw_sites:
-        sites = [site.strip() for site in raw_sites.split(",") if site.strip()]
-        return sites or list(DEFAULT_LEVER_SITES)
-    return list(DEFAULT_LEVER_SITES)
+    return list(
+        configured_source_identifiers(
+            "lever",
+            os.getenv("JOB_SEARCH_LEVER_SITES"),
+        )
+    )
 
 
 def _remoteok_enabled() -> bool:
@@ -600,6 +593,66 @@ def _remoteok_enabled() -> bool:
 
 def _remotive_enabled() -> bool:
     return os.getenv("JOB_SEARCH_REMOTIVE_ENABLED", "true").strip().lower() not in {"0", "false", "no", "off"}
+
+
+
+
+def _bounded_env_int(name: str, default: int, minimum: int, maximum: int) -> int:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+    try:
+        parsed = int(raw_value)
+    except ValueError:
+        return default
+    return max(minimum, min(parsed, maximum))
+
+
+def _provider_request_limit() -> int:
+    return _bounded_env_int(
+        "JOB_SEARCH_MAX_PROVIDER_REQUESTS",
+        DEFAULT_MAX_PROVIDER_REQUESTS_PER_SEARCH,
+        MIN_PROVIDER_REQUESTS_PER_SEARCH,
+        MAX_PROVIDER_REQUESTS_PER_SEARCH,
+    )
+
+
+def _provider_cache_seconds() -> int:
+    return _bounded_env_int(
+        "JOB_SEARCH_PROVIDER_CACHE_SECONDS",
+        DEFAULT_PROVIDER_CACHE_SECONDS,
+        60,
+        3_600,
+    )
+
+
+def _consume_provider_request() -> None:
+    budget = _ACTIVE_PROVIDER_REQUEST_BUDGET.get()
+    if budget is not None:
+        budget.consume()
+
+
+def _cached_ats_jobs(cache_key: str) -> list[dict[str, Any]] | None:
+    cached = _ATS_PROVIDER_CACHE.get(cache_key)
+    if not cached or time.monotonic() >= float(cached.get("expires_at", 0.0)):
+        return None
+    jobs = cached.get("jobs")
+    if not isinstance(jobs, list):
+        return None
+    return jobs
+
+
+def _store_ats_jobs(cache_key: str, jobs: list[dict[str, Any]]) -> None:
+    _ATS_PROVIDER_CACHE[cache_key] = {
+        "expires_at": time.monotonic() + _provider_cache_seconds(),
+        "jobs": jobs,
+    }
+
+
+def _build_provider_client() -> httpx.Client:
+    # Provider APIs are already HTTPS. Do not follow an unexpected redirect to
+    # a different host; a 3xx response is treated as a failed provider request.
+    return httpx.Client(timeout=8.0, follow_redirects=False)
 
 
 def clean_job_description(value: str | None) -> str:
@@ -1095,53 +1148,14 @@ def _score_job(
 
 
 def _provider_company_name(provider_token: str) -> str:
-    special_names = {
-        "addepar": "Addepar",
-        "affirm": "Affirm",
-        "algolia": "Algolia",
-        "asana": "Asana",
-        "benchling": "Benchling",
-        "box": "Box",
-        "brex": "Brex",
-        "cloudflare": "Cloudflare",
-        "coinbase": "Coinbase",
-        "coursera": "Coursera",
-        "datadog": "Datadog",
-        "doordash": "DoorDash",
-        "duolingo": "Duolingo",
-        "figma": "Figma",
-        "fivetran": "Fivetran",
-        "github": "GitHub",
-        "gusto": "Gusto",
-        "hubspot": "HubSpot",
-        "intercom": "Intercom",
-        "lyft": "Lyft",
-        "mixpanel": "Mixpanel",
-        "mongodb": "MongoDB",
-        "notion": "Notion",
-        "okta": "Okta",
-        "pinterest": "Pinterest",
-        "plaid": "Plaid",
-        "postman": "Postman",
-        "ramp": "Ramp",
-        "reddit": "Reddit",
-        "rippling": "Rippling",
-        "roblox": "Roblox",
-        "scaleai": "Scale AI",
-        "snap": "Snap",
-        "twitch": "Twitch",
-        "verkada": "Verkada",
-        "webflow": "Webflow",
-        "zapier": "Zapier",
-    }
-    return special_names.get(provider_token, provider_token.replace("-", " ").replace("_", " ").title())
+    return organization_name(provider_token)
 
 
 def _normalize_greenhouse_job(board_token: str, raw_job: dict[str, Any]) -> ExternalJobResult | None:
     job_id = raw_job.get("id")
     title = str(raw_job.get("title") or "").strip()
-    apply_url = str(raw_job.get("absolute_url") or "").strip()
-    if not job_id or not title or not apply_url:
+    apply_url = sanitize_external_https_url(str(raw_job.get("absolute_url") or ""))
+    if not job_id or not title or apply_url is None:
         return None
 
     location_payload = raw_job.get("location")
@@ -1203,8 +1217,10 @@ def _lever_description(raw_job: dict[str, Any], title: str) -> str:
 def _normalize_lever_job(site_name: str, raw_job: dict[str, Any]) -> ExternalJobResult | None:
     job_id = str(raw_job.get("id") or "").strip()
     title = str(raw_job.get("text") or "").strip()
-    apply_url = str(raw_job.get("hostedUrl") or raw_job.get("applyUrl") or "").strip()
-    if not job_id or not title or not apply_url:
+    apply_url = sanitize_external_https_url(
+        str(raw_job.get("hostedUrl") or raw_job.get("applyUrl") or "")
+    )
+    if not job_id or not title or apply_url is None:
         return None
 
     return ExternalJobResult(
@@ -1223,8 +1239,10 @@ def _normalize_remoteok_job(raw_job: dict[str, Any]) -> ExternalJobResult | None
     job_id = str(raw_job.get("id") or raw_job.get("slug") or "").strip()
     title = str(raw_job.get("position") or raw_job.get("title") or "").strip()
     company = str(raw_job.get("company") or "").strip()
-    apply_url = str(raw_job.get("url") or raw_job.get("apply_url") or "").strip()
-    if not job_id or not title or not company or not apply_url:
+    apply_url = sanitize_external_https_url(
+        str(raw_job.get("url") or raw_job.get("apply_url") or "")
+    )
+    if not job_id or not title or not company or apply_url is None:
         return None
 
     raw_location = str(raw_job.get("location") or "").strip()
@@ -1246,8 +1264,8 @@ def _normalize_remotive_job(raw_job: dict[str, Any]) -> ExternalJobResult | None
     job_id = str(raw_job.get("id") or "").strip()
     title = str(raw_job.get("title") or "").strip()
     company = str(raw_job.get("company_name") or "").strip()
-    apply_url = str(raw_job.get("url") or "").strip()
-    if not job_id or not title or not company or not apply_url:
+    apply_url = sanitize_external_https_url(str(raw_job.get("url") or ""))
+    if not job_id or not title or not company or apply_url is None:
         return None
 
     raw_location = str(raw_job.get("candidate_required_location") or "").strip()
@@ -1271,6 +1289,52 @@ def _normalize_remotive_job(raw_job: dict[str, Any]) -> ExternalJobResult | None
     )
 
 
+
+
+def _greenhouse_jobs_for_board(
+    client: httpx.Client,
+    board_token: str,
+) -> list[dict[str, Any]]:
+    cache_key = f"greenhouse:{board_token}"
+    cached = _cached_ats_jobs(cache_key)
+    if cached is not None:
+        return cached
+
+    _consume_provider_request()
+    response = client.get(
+        f"{GREENHOUSE_BASE_URL}/{board_token}/jobs",
+        params={"content": "true"},
+    )
+    response.raise_for_status()
+    payload = response.json()
+    raw_jobs = payload.get("jobs", []) if isinstance(payload, dict) else []
+    jobs = [job for job in raw_jobs if isinstance(job, dict)] if isinstance(raw_jobs, list) else []
+    _store_ats_jobs(cache_key, jobs)
+    return jobs
+
+
+def _lever_jobs_for_site(
+    client: httpx.Client,
+    site_name: str,
+) -> list[dict[str, Any]]:
+    cache_key = f"lever:{site_name}"
+    cached = _cached_ats_jobs(cache_key)
+    if cached is not None:
+        return cached
+
+    _consume_provider_request()
+    response = client.get(
+        f"{LEVER_BASE_URL}/{site_name}",
+        params={"mode": "json", "limit": str(MAX_PROVIDER_RESULTS_PER_BOARD)},
+        headers={"Accept": "application/json"},
+    )
+    response.raise_for_status()
+    payload = response.json()
+    jobs = [job for job in payload if isinstance(job, dict)] if isinstance(payload, list) else []
+    _store_ats_jobs(cache_key, jobs)
+    return jobs
+
+
 def _search_greenhouse_boards(
     client: httpx.Client,
     board_tokens: list[str],
@@ -1281,18 +1345,16 @@ def _search_greenhouse_boards(
     scored_jobs: list[tuple[int, ExternalJobResult]] = []
     fetched_count = 0
     errors = 0
+    budget_exhausted = False
 
     for board_token in board_tokens:
         try:
-            response = client.get(f"{GREENHOUSE_BASE_URL}/{board_token}/jobs", params={"content": "true"})
-            response.raise_for_status()
-            payload = response.json()
+            raw_jobs = _greenhouse_jobs_for_board(client, board_token)
+        except ProviderRequestBudgetExceeded:
+            budget_exhausted = True
+            break
         except (httpx.HTTPError, ValueError):
             errors += 1
-            continue
-
-        raw_jobs = payload.get("jobs", []) if isinstance(payload, dict) else []
-        if not isinstance(raw_jobs, list):
             continue
         fetched_count += len(raw_jobs)
 
@@ -1309,6 +1371,8 @@ def _search_greenhouse_boards(
     notes = ["Configured company ATS boards; coverage depends on the selected company tokens."]
     if errors:
         notes.append(f"{errors} Greenhouse board request{'s' if errors != 1 else ''} failed or returned invalid data.")
+    if budget_exhausted:
+        notes.append("Stopped Greenhouse requests after the per-search provider budget was reached.")
     return _ProviderOutcome("greenhouse", "Greenhouse company boards", fetched_count, scored_jobs, notes=notes)
 
 
@@ -1322,21 +1386,16 @@ def _search_lever_sites(
     scored_jobs: list[tuple[int, ExternalJobResult]] = []
     fetched_count = 0
     errors = 0
+    budget_exhausted = False
 
     for site_name in site_names:
         try:
-            response = client.get(
-                f"{LEVER_BASE_URL}/{site_name}",
-                params={"mode": "json", "limit": str(MAX_PROVIDER_RESULTS_PER_BOARD)},
-                headers={"Accept": "application/json"},
-            )
-            response.raise_for_status()
-            raw_jobs = response.json()
+            raw_jobs = _lever_jobs_for_site(client, site_name)
+        except ProviderRequestBudgetExceeded:
+            budget_exhausted = True
+            break
         except (httpx.HTTPError, ValueError):
             errors += 1
-            continue
-
-        if not isinstance(raw_jobs, list):
             continue
         fetched_count += len(raw_jobs)
 
@@ -1353,6 +1412,8 @@ def _search_lever_sites(
     notes = ["Configured company ATS boards; coverage depends on the selected company tokens."]
     if errors:
         notes.append(f"{errors} Lever site request{'s' if errors != 1 else ''} failed or returned invalid data.")
+    if budget_exhausted:
+        notes.append("Stopped Lever requests after the per-search provider budget was reached.")
     return _ProviderOutcome("lever", "Lever company boards", fetched_count, scored_jobs, notes=notes)
 
 
@@ -1368,6 +1429,7 @@ def _remoteok_jobs(client: httpx.Client, query: str) -> list[dict[str, Any]]:
     if family in {"software", "technology"}:
         params["tag"] = "dev"
 
+    _consume_provider_request()
     response = client.get(
         REMOTEOK_BASE_URL,
         params=params,
@@ -1387,7 +1449,7 @@ def _remoteok_jobs(client: httpx.Client, query: str) -> list[dict[str, Any]]:
 def _search_remoteok(client: httpx.Client, query: str, location: str | None, level: JobLevel) -> _ProviderOutcome:
     try:
         raw_jobs = _remoteok_jobs(client, query)
-    except (httpx.HTTPError, ValueError) as exc:
+    except (httpx.HTTPError, ValueError, ProviderRequestBudgetExceeded) as exc:
         return _ProviderOutcome(
             "remoteok",
             "Remote OK remote feed",
@@ -1491,6 +1553,7 @@ def _remotive_jobs_for_params(client: httpx.Client, params: dict[str, str]) -> l
         if isinstance(cached_jobs, list):
             return cached_jobs
 
+    _consume_provider_request()
     response = client.get(
         REMOTIVE_BASE_URL,
         params=params,
@@ -1513,6 +1576,7 @@ def _remotive_jobs(client: httpx.Client, query: str, level: JobLevel) -> tuple[l
     search_terms = _remotive_search_terms(query, level)
     raw_jobs_by_id: dict[str, dict[str, Any]] = {}
     failed_searches = 0
+    budget_exhausted = False
 
     for search_term in search_terms:
         params: dict[str, str] = {"limit": str(MAX_PROVIDER_RESULTS_PER_BOARD)}
@@ -1524,6 +1588,9 @@ def _remotive_jobs(client: httpx.Client, query: str, level: JobLevel) -> tuple[l
         try:
             for raw_job in _remotive_jobs_for_params(client, params):
                 raw_jobs_by_id[str(raw_job.get("id"))] = raw_job
+        except ProviderRequestBudgetExceeded:
+            budget_exhausted = True
+            break
         except (httpx.HTTPError, ValueError):
             failed_searches += 1
 
@@ -1532,6 +1599,8 @@ def _remotive_jobs(client: httpx.Client, query: str, level: JobLevel) -> tuple[l
     ]
     if failed_searches:
         notes.append(f"{failed_searches} Remotive search pass{'es' if failed_searches != 1 else ''} failed.")
+    if budget_exhausted:
+        notes.append("Stopped Remotive requests after the per-search provider budget was reached.")
     notes.append("Remotive is remote-first; it may not cover local or campus internship postings.")
     return list(raw_jobs_by_id.values()), notes
 
@@ -1677,20 +1746,26 @@ def search_external_jobs(
         providers_searched.append("remotive")
 
     outcomes: list[_ProviderOutcome] = []
+    budget_token = _ACTIVE_PROVIDER_REQUEST_BUDGET.set(
+        _ProviderRequestBudget(_provider_request_limit())
+    )
 
-    with httpx.Client(timeout=8.0, follow_redirects=True) as client:
-        outcomes.append(_search_greenhouse_boards(client, greenhouse_boards, cleaned_query, cleaned_location, resolved_level))
-        outcomes.append(_search_lever_sites(client, lever_sites, cleaned_query, cleaned_location, resolved_level))
+    try:
+        with _build_provider_client() as client:
+            outcomes.append(_search_greenhouse_boards(client, greenhouse_boards, cleaned_query, cleaned_location, resolved_level))
+            outcomes.append(_search_lever_sites(client, lever_sites, cleaned_query, cleaned_location, resolved_level))
 
-        if remoteok_enabled:
-            outcomes.append(_search_remoteok(client, cleaned_query, cleaned_location, resolved_level))
-        else:
-            outcomes.append(_ProviderOutcome("remoteok", "Remote OK remote feed", 0, [], status="disabled", notes=["Disabled by configuration."]))
+            if remoteok_enabled:
+                outcomes.append(_search_remoteok(client, cleaned_query, cleaned_location, resolved_level))
+            else:
+                outcomes.append(_ProviderOutcome("remoteok", "Remote OK remote feed", 0, [], status="disabled", notes=["Disabled by configuration."]))
 
-        if remotive_enabled:
-            outcomes.append(_search_remotive(client, cleaned_query, cleaned_location, resolved_level))
-        else:
-            outcomes.append(_ProviderOutcome("remotive", "Remotive remote feed", 0, [], status="disabled", notes=["Disabled by configuration."]))
+            if remotive_enabled:
+                outcomes.append(_search_remotive(client, cleaned_query, cleaned_location, resolved_level))
+            else:
+                outcomes.append(_ProviderOutcome("remotive", "Remotive remote feed", 0, [], status="disabled", notes=["Disabled by configuration."]))
+    finally:
+        _ACTIVE_PROVIDER_REQUEST_BUDGET.reset(budget_token)
 
     scored_results: list[tuple[int, ExternalJobResult]] = []
     for outcome in outcomes:

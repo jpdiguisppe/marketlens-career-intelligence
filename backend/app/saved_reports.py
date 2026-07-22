@@ -2,12 +2,13 @@ from datetime import datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app.analysis.schemas import CategoryCoverage, CoachingActionType, FitSummary, GapGroup
 from app.auth import AuthenticatedUser, get_current_user
 from app.database import get_db
+from app.external_urls import require_external_https_url, sanitize_external_https_url
 from app.models import SavedReportDB
 
 router = APIRouter(prefix="/saved-reports", tags=["saved-reports"])
@@ -52,6 +53,11 @@ class SavedReportCreate(BaseModel):
     apply_url: str | None = Field(default=None, max_length=2048)
     summary: SavedReportSummary
 
+    @field_validator("apply_url")
+    @classmethod
+    def validate_apply_url(cls, value: str | None) -> str | None:
+        return require_external_https_url(value)
+
 
 class SavedReport(SavedReportCreate):
     id: int
@@ -66,7 +72,7 @@ def _to_saved_report_response(saved_report: SavedReportDB) -> SavedReport:
         company=saved_report.company,
         title=saved_report.title,
         location=saved_report.location,
-        apply_url=saved_report.apply_url,
+        apply_url=sanitize_external_https_url(saved_report.apply_url),
         summary=SavedReportSummary.model_validate(saved_report.summary),
         created_at=saved_report.created_at,
     )
