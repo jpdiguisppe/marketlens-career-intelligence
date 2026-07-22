@@ -8,57 +8,15 @@ from urllib.parse import quote_plus
 
 import httpx
 
+from app.job_source_registry import default_source_identifiers, organization_name
+
 GREENHOUSE_BASE_URL = "https://boards-api.greenhouse.io/v1/boards"
 LEVER_BASE_URL = "https://api.lever.co/v0/postings"
 REMOTEOK_BASE_URL = "https://remoteok.com/api"
 REMOTIVE_BASE_URL = "https://remotive.com/api/remote-jobs"
 
-DEFAULT_GREENHOUSE_BOARDS = (
-    "datadog",
-    "airbnb",
-    "figma",
-    "duolingo",
-    "roblox",
-    "scaleai",
-    "hubspot",
-    "cloudflare",
-    "verkada",
-    "doordash",
-    "okta",
-    "mongodb",
-    "asana",
-    "plaid",
-    "brex",
-    "coinbase",
-    "ramp",
-    "gusto",
-    "rippling",
-    "affirm",
-)
-DEFAULT_LEVER_SITES = (
-    "github",
-    "postman",
-    "benchling",
-    "box",
-    "coursera",
-    "lyft",
-    "pinterest",
-    "reddit",
-    "snap",
-    "twitch",
-    "zapier",
-    "affirm",
-    "robinhood",
-    "rippling",
-    "webflow",
-    "notion",
-    "loom",
-    "intercom",
-    "mixpanel",
-    "fivetran",
-    "algolia",
-    "addepar",
-)
+DEFAULT_GREENHOUSE_BOARDS = default_source_identifiers("greenhouse")
+DEFAULT_LEVER_SITES = default_source_identifiers("lever")
 MAX_PROVIDER_RESULTS_PER_BOARD = 100
 REMOTEOK_CACHE_SECONDS = 15 * 60
 REMOTIVE_CACHE_SECONDS = 6 * 60 * 60
@@ -1095,46 +1053,7 @@ def _score_job(
 
 
 def _provider_company_name(provider_token: str) -> str:
-    special_names = {
-        "addepar": "Addepar",
-        "affirm": "Affirm",
-        "algolia": "Algolia",
-        "asana": "Asana",
-        "benchling": "Benchling",
-        "box": "Box",
-        "brex": "Brex",
-        "cloudflare": "Cloudflare",
-        "coinbase": "Coinbase",
-        "coursera": "Coursera",
-        "datadog": "Datadog",
-        "doordash": "DoorDash",
-        "duolingo": "Duolingo",
-        "figma": "Figma",
-        "fivetran": "Fivetran",
-        "github": "GitHub",
-        "gusto": "Gusto",
-        "hubspot": "HubSpot",
-        "intercom": "Intercom",
-        "lyft": "Lyft",
-        "mixpanel": "Mixpanel",
-        "mongodb": "MongoDB",
-        "notion": "Notion",
-        "okta": "Okta",
-        "pinterest": "Pinterest",
-        "plaid": "Plaid",
-        "postman": "Postman",
-        "ramp": "Ramp",
-        "reddit": "Reddit",
-        "rippling": "Rippling",
-        "roblox": "Roblox",
-        "scaleai": "Scale AI",
-        "snap": "Snap",
-        "twitch": "Twitch",
-        "verkada": "Verkada",
-        "webflow": "Webflow",
-        "zapier": "Zapier",
-    }
-    return special_names.get(provider_token, provider_token.replace("-", " ").replace("_", " ").title())
+    return organization_name(provider_token)
 
 
 def _normalize_greenhouse_job(board_token: str, raw_job: dict[str, Any]) -> ExternalJobResult | None:
