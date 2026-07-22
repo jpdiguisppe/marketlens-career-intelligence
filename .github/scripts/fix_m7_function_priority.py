@@ -52,22 +52,33 @@ def _query_role_family(query: str) -> RoleFamily | None:
 '''
 new_functions = '''def _query_role_family(query: str) -> RoleFamily | None:
     normalized = query.lower()
-
-    # First detect functions that can exist inside many industries. This keeps
-    # "healthcare data analyst" in data and "financial services marketing" in
-    # marketing while still allowing broad queries such as "finance internship"
-    # or "healthcare jobs" to retain their existing role-family behavior.
-    for family, terms in CROSS_INDUSTRY_FUNCTION_QUERY_TERMS.items():
-        if _contains_any(normalized, terms):
-            return family
-
     for family, terms in ROLE_FAMILY_QUERY_TERMS.items():
         if _contains_any(normalized, terms):
             return family
     return None
+
+
+def _query_job_function(query: str) -> RoleFamily | None:
+    normalized = query.lower()
+
+    # Keep job function independent from industry classification. This helper
+    # is deliberately separate from _query_role_family because the application
+    # bootstrap wraps that legacy function with compatibility behavior.
+    for family, terms in CROSS_INDUSTRY_FUNCTION_QUERY_TERMS.items():
+        if _contains_any(normalized, terms):
+            return family
+    return _query_role_family(query)
 '''
 if text.count(old_functions) != 1:
     raise RuntimeError(f"Expected one generated role-family function block, found {text.count(old_functions)}")
 text = text.replace(old_functions, new_functions, 1)
+
+old_parse = '''        job_function=_query_role_family(cleaned_query),
+'''
+new_parse = '''        job_function=_query_job_function(cleaned_query),
+'''
+if text.count(old_parse) != 1:
+    raise RuntimeError(f"Expected one generated parser function assignment, found {text.count(old_parse)}")
+text = text.replace(old_parse, new_parse, 1)
 
 path.write_text(text)
