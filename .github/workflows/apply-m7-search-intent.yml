@@ -24,7 +24,9 @@ jobs:
           fetch-depth: 0
 
       - name: Apply search intent changes
-        run: python .github/scripts/apply_m7_search_intent.py
+        run: |
+          python .github/scripts/apply_m7_search_intent.py
+          python .github/scripts/fix_m7_function_priority.py
 
       - name: Install backend dependencies
         working-directory: backend
@@ -63,6 +65,7 @@ jobs:
       - name: Commit search intent foundation
         run: |
           rm -f .github/scripts/apply_m7_search_intent.py
+          rm -f .github/scripts/fix_m7_function_priority.py
           rm -f .github/workflows/apply-m7-search-intent.yml
           rm -f m7-pytest-output.txt
           git config user.name "github-actions[bot]"
