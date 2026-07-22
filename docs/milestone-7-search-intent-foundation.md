@@ -18,5 +18,6 @@ This separation allows queries such as `sports marketing internship`, `healthcar
 - prefer a cross-industry function when a query includes both a function and an industry
 - expose detected industry metadata through the search API
 - preserve existing sports-industry precision rules
+- keep the new job-function parser independent from the legacy compatibility wrappers used for occupation-specific search behavior
 
 This phase does not yet expand external providers or enforce every detected industry during result filtering. Later Milestone 7 phases will use this metadata for source routing, coverage explanations, and broader industry-aware matching.
