@@ -15,6 +15,29 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Apply security hardening preview
+        run: python .github/scripts/apply_m7_security_hardening.py
+
+      - name: Upload patched source
+        uses: actions/upload-artifact@v4
+        with:
+          name: m7-security-hardened-source
+          path: |
+            backend/app/external_urls.py
+            backend/app/job_search.py
+            backend/app/job_source_registry.py
+            backend/app/main.py
+            backend/app/saved_jobs.py
+            backend/app/saved_reports.py
+            backend/tests/test_external_security.py
+            backend/tests/test_job_source_registry.py
+            frontend/src/App.tsx
+            frontend/src/SafeExternalLink.tsx
+            frontend/src/SavedJobs.tsx
+            frontend/src/SavedReports.tsx
+            frontend/src/security.ts
+            docs/milestone-7-source-registry.md
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -37,6 +60,9 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Apply security hardening preview
+        run: python .github/scripts/apply_m7_security_hardening.py
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -61,6 +87,9 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Apply security hardening preview
+        run: python .github/scripts/apply_m7_security_hardening.py
 
       - name: Build backend image
         run: docker build -t marketlens-backend ./backend
