@@ -8,7 +8,7 @@ MarketLens is a deployed full-stack career-intelligence platform that compares r
 - **Resume-to-job comparison:** Users can upload or paste a resume, search configured public job sources, select jobs, and compare fit.
 - **Role-aware Smart Fit:** The app ranks jobs using resume-backed evidence, role-family context, capability gaps, and coaching actions.
 - **Online + manual workflows:** Users can search public Greenhouse, Lever, Remote OK, and Remotive sources or paste outside postings manually.
-- **Security-conscious demo design:** Public users can analyze non-sensitive text without saving reports, while write/delete endpoints remain admin-protected.
+- **Private career workspace:** Clerk-authenticated users can save jobs and reduced Smart Fit report summaries with server-side ownership checks.
 - **Portfolio-ready packaging:** The repo now includes screenshots, a guided demo walkthrough, README highlights, and a resume/interview summary.
 - **Quality coverage:** Backend tests cover API behavior, job search filtering, Smart Fit analysis, role-aware behavior, and evaluation cases.
 
@@ -39,9 +39,10 @@ Built and deployed MarketLens, a full-stack React/FastAPI career-intelligence ap
 - **Backend API docs:** [FastAPI Swagger UI](https://marketlens-career-intelligence-production.up.railway.app/docs)
 - **Backend health check:** [API health endpoint](https://marketlens-career-intelligence-production.up.railway.app/health)
 - **Portfolio demo walkthrough:** [How to demo MarketLens](docs/portfolio-demo-walkthrough.md)
-- **Auth/private-data plan:** [Milestone 5 planning doc](docs/milestone-5-auth-private-data-plan.md)
+- **Milestone 6 completion:** [Private workspace completion record](docs/milestone-6-completion.md)
+- **Milestone 7 plan:** [Job-source coverage roadmap](docs/milestone-7-source-coverage-plan.md)
 
-The deployed version is a secured portfolio/demo app. Public visitors can view the saved demo dataset, explore skill dashboards, upload or paste non-sensitive resume text, search configured public job sources, paste job descriptions manually, and run non-saved Smart Fit comparisons. Creating postings, importing CSV files, and deleting saved postings are admin-only actions protected by an `X-Admin-API-Key` header.
+The deployed version is a secured portfolio application. Visitors can search configured public sources and run Smart Fit without saving. Signed-in users can privately save searched jobs and reduced Smart Fit report summaries. Creating shared demo postings, importing CSV files, and deleting shared postings remain admin-only actions protected by an `X-Admin-API-Key` header.
 
 Do not upload sensitive personal information, secrets, API keys, database URLs, or confidential employer/customer data.
 
@@ -80,28 +81,30 @@ MarketLens turns messy job postings into evidence. Instead of guessing what to l
 ## Current Product Workflow
 
 ```text
-Upload or paste resume
+Open MarketLens
+Sign in when private saving is needed
+Upload or paste a resume
 Search configured public job sources
-Filter by level: Any, Internship, Entry, Mid, Senior
-Optionally filter by location
+Filter by level and optionally location
 Review source coverage and search notes
 Select one or more returned jobs
-Compare selected jobs against the resume
-Rank jobs with role-aware Smart Fit
-Inspect each job's detailed Smart Fit report
+Compare selected jobs with role-aware Smart Fit
+Save promising searched jobs
+Explicitly save reduced Smart Fit report summaries
+Revisit or delete private records from dedicated tabs
 ```
 
-Manual pasted-job comparison still works for jobs outside the configured online sources:
+Manual pasted-job comparison remains available for jobs outside the configured online sources:
 
 ```text
 Upload or paste resume
 Paste one or more job descriptions
 Separate multiple pasted jobs with ---
-Analyze each job independently
-Rank jobs against the resume
-Explain why the ranking happened
-Inspect each job's detailed Smart Fit report
+Analyze and rank each job independently
+Explicitly save a reduced report summary when signed in
 ```
+
+The interface is organized into **Smart Fit**, **Saved Jobs**, **Saved Reports**, and **Market Data**. Smart Fit remains mounted while switching tabs so in-progress search and analysis state is preserved.
 
 Demo and smoke-test docs:
 
@@ -109,60 +112,56 @@ Demo and smoke-test docs:
 - [`docs/portfolio-screenshot-guide.md`](docs/portfolio-screenshot-guide.md)
 - [`docs/milestone-1-manual-comparison-smoke-test.md`](docs/milestone-1-manual-comparison-smoke-test.md)
 - [`docs/milestone-2-online-job-search-smoke-test.md`](docs/milestone-2-online-job-search-smoke-test.md)
-- [`docs/milestone-5-auth-private-data-plan.md`](docs/milestone-5-auth-private-data-plan.md)
-
+- [`docs/milestone-6-completion.md`](docs/milestone-6-completion.md)
 ## Current Demo Capabilities
 
-Public visitors can:
+All visitors can:
 
-- view the saved demo job posting dataset
-- view top skills, company breakdowns, and role-category breakdowns
-- upload `.txt`, `.md`, `.pdf`, or `.docx` resumes for text extraction
+- view the clearly labeled sample Market Data tab
+- upload `.txt`, `.md`, `.pdf`, or `.docx` resumes for request-time text extraction
 - paste resume text manually
-- search configured public Greenhouse, Lever, Remote OK, and Remotive job sources
-- search across multiple role families, not only software
-- filter searched jobs by experience level
-- optionally filter searched jobs by location
-- inspect warnings, source coverage metadata, and fallback search links when sources are thin
-- select searched jobs and compare them through Smart Fit
-- paste one or more job descriptions without saving them to the shared database
-- separate multiple pasted jobs with `---`
-- run Smart Fit analysis against one job
-- run batch Smart Fit comparison against 2–10 jobs
-- view ranked jobs, top matches, top gaps, and detailed reports per job
-- review role-aware ranking explanations, capability gaps, and coaching actions
-- check whether model-assisted extraction is configured
+- search configured public Greenhouse, Lever, Remote OK, and Remotive sources
+- search across multiple role families and filter by experience level and location
+- inspect source coverage notes, warnings, and fallback links
+- compare one to ten searched or manually pasted jobs through Smart Fit
+- view ranked results, requirement coverage, matches, gaps, limitations, and coaching actions
+- run deterministic analysis when model-assisted extraction is unavailable
 
-Admin-only actions require the `X-Admin-API-Key` header:
+Signed-in users can additionally:
+
+- save searched jobs privately
+- prevent duplicate saves of the same external posting
+- reopen and delete saved jobs
+- explicitly save reduced Smart Fit report summaries
+- revisit and delete private saved reports
+- move between Smart Fit, Saved Jobs, Saved Reports, and Market Data without losing active Smart Fit state
+
+MarketLens does not automatically save analysis inputs. Raw resume text and full job descriptions are not persisted inside saved-report records. Saved reports do contain derived fit summaries, skill names, gaps, coaching guidance, and job metadata.
+
+Admin-only shared-data actions require the `X-Admin-API-Key` header:
 
 - `POST /postings`
 - `POST /import/csv`
 - `DELETE /postings/{posting_id}`
-
-This keeps the public demo useful while preventing anonymous users from modifying or deleting shared demo data.
-
 ## Backend Features
 
 The FastAPI backend currently supports:
 
 - `GET /health` — health check
-- `GET /postings` — list saved demo postings
-- `GET /postings/{posting_id}` — retrieve one saved posting
-- `GET /jobs/search` — search configured public job sources, normalize results, and support role-family, level, location, source-coverage, and fallback-link metadata
-- `POST /skills/extract` — extract skills from pasted text
-- `GET /skills/top` — view overall skill frequency
-- `GET /skills/by-company` — compare skill frequency by company
-- `GET /skills/by-role` — compare skill frequency by role category
-- `POST /analysis/resume` — compare resume skills against saved postings
-- `POST /analysis/custom` — compare resume skills against pasted job descriptions using the simpler skill-gap engine
-- `POST /analysis/resume-file/extract` — extract text from `.txt`, `.md`, `.pdf`, or `.docx` resume uploads
-- `POST /analysis/smart` — run evidence-aware Smart Fit analysis against one pasted job description
-- `POST /analysis/smart/batch` — run Smart Fit analysis against 1–10 jobs and return ranked results
-- `GET /analysis/model-status` — report whether model-assisted extraction is configured without exposing secrets
-- `POST /postings` — admin-protected manual job posting creation
-- `POST /import/csv` — admin-protected CSV import
-- `DELETE /postings/{posting_id}` — admin-protected deletion of saved postings
-
+- `GET /me` — return the verified authenticated user
+- `GET /postings` and `GET /postings/{posting_id}` — read shared sample postings
+- `GET /jobs/search` — normalize configured public job sources with role, industry evidence, level, location, coverage, and fallback metadata
+- `POST /skills/extract` — extract recognized skills from text
+- `GET /skills/top`, `GET /skills/by-company`, and `GET /skills/by-role` — aggregate the shared sample dataset
+- `POST /analysis/resume` — compare resume skills against shared sample postings
+- `POST /analysis/custom` — run the simpler skill-gap engine against pasted descriptions
+- `POST /analysis/resume-file/extract` — extract request-time resume text from supported files
+- `POST /analysis/smart` — run evidence-aware Smart Fit against one job
+- `POST /analysis/smart/batch` — analyze and rank one to ten jobs
+- `GET /analysis/model-status` — report optional model configuration without exposing secrets
+- authenticated saved-job create/list/delete endpoints with user ownership filtering
+- authenticated saved-report create/list/read/delete endpoints with user ownership filtering
+- admin-protected shared posting creation, CSV import, and deletion
 ## Online Job Search Sources
 
 MarketLens uses public job APIs instead of scraping closed job boards.
@@ -241,50 +240,43 @@ JOB_SEARCH_REMOTIVE_ENABLED=true
 
 The React frontend currently supports:
 
-- resume upload and extraction for supported resume files
-- manual resume text entry
-- online job search
-- level dropdown for searched jobs
-- optional location input for searched jobs
-- searched-job result cards with source, company, location, link, and extracted skills
-- selecting searched jobs and comparing them through Smart Fit
-- manual job description entry
-- `---`-based multiple-job splitting
-- visible detected pasted-job count before analysis
-- backend batch Smart Fit comparison
-- ranked job results
-- ranking explanation summary
-- top matches and top gaps for each ranked job
-- detail switching between ranked job reports
-- role-aware report context, capability gaps, and prioritized coaching actions
-- disabled AI toggle when backend model-assisted extraction is not configured
-- dashboard summary cards for saved demo data
-- saved job posting table
-- overall top skills list with simple bar visuals
-- skills grouped by company
-- skills grouped by role category
-- empty and error states
-
+- Clerk sign-in, sign-up, sign-out, and user controls
+- resume upload and manual resume text entry
+- online job search with level and optional location filters
+- searched-job cards with source, company, location, link, and extracted skills
+- selection and Smart Fit comparison for searched jobs
+- manual one-job or multi-job description entry using `---`
+- ranked Smart Fit reports with role-aware evidence, capability gaps, and coaching actions
+- explicit save controls for searched jobs and reduced Smart Fit report summaries
+- private Saved Jobs and Saved Reports workspaces with deletion
+- a tabbed layout for Smart Fit, Saved Jobs, Saved Reports, and Market Data
+- preserved Smart Fit state while switching tabs
+- clearly labeled sample market analytics and the secondary sample-dataset comparison tool
+- visible model-assisted availability and deterministic fallback messaging
+- responsive layouts plus loading, empty, warning, and error states
 ## Security and Privacy Notes
 
-MarketLens is currently a portfolio/demo application, not a production service for sensitive personal data.
+MarketLens is a portfolio application, not a service for highly sensitive personal data.
 
-Current security controls include:
+Current security and privacy controls include:
 
-- admin API key protection for write/delete endpoints
-- CORS configuration for the deployed frontend origin
-- request size limits on free-text fields and uploaded resume files
-- CSV upload size and row-count limits
-- basic public endpoint rate limiting for analysis endpoints
+- Clerk-managed authentication instead of custom password storage
+- backend verification of Clerk session tokens
+- authorized frontend-origin restrictions and CORS configuration
+- server-side ownership filters on every private saved-job and saved-report read/delete operation
+- cross-user private-record requests returning `404`
+- analysis remaining non-persistent unless the user explicitly saves a result
+- raw resume text and full job descriptions excluded from saved-report persistence
+- backend-only model provider keys and model-status transparency
+- redaction of obvious contact details before configured model-provider calls
+- admin API key protection for shared posting write/delete endpoints
+- request size limits, CSV limits, and public analysis rate limiting
 - SQLAlchemy ORM usage instead of raw string-built SQL queries
-- resume uploads are processed for the current request and are not saved to the shared database
-- model-assisted extraction is disabled unless configured through backend-only environment variables
-- Dependabot checks for backend, frontend, and GitHub Actions dependencies
+- Dependabot and GitHub Actions checks
 
-Do not upload real Social Security numbers, addresses, phone numbers, medical details, financial details, API keys, passwords, database URLs, or confidential employer/customer data.
+Derived saved-report data can include fit summaries, skill names, gaps, coaching recommendations, and job metadata. Users should still avoid uploading Social Security numbers, medical or financial details, API keys, passwords, confidential employer information, or other unnecessary sensitive data.
 
 See [`SECURITY.md`](SECURITY.md) for the security policy and known limitations.
-
 ## Quality and CI
 
 Current checks include:
@@ -335,87 +327,85 @@ npm run dev
 ### Milestone 1 — Manual Job Comparison Workflow: complete
 
 - resume upload and paste
-- manual job-description paste
-- multi-job splitting with `---`
-- Smart Fit batch ranking
+- manual job-description comparison
+- multi-job splitting and Smart Fit ranking
 - detailed per-job reports
 
 ### Milestone 2 — Online Job Search + Smart Fit Comparison: complete
 
-- online job search endpoint
-- frontend search UI
-- Greenhouse + Lever provider support
-- Remote OK + Remotive provider support
-- level filters
-- location filtering with U.S.-remote fallback
-- field-aware role-family matching
-- selected-job comparison through Smart Fit
-- source coverage metadata
-- no-result explanations and fallback links
-
-Ongoing source-quality tuning remains expected because public API-friendly job sources are thinner for some categories, especially campus internships and finance/accounting roles.
+- normalized Greenhouse, Lever, Remote OK, and Remotive search
+- level and location filtering
+- selected-job Smart Fit comparison
+- source coverage metadata, warnings, and fallback links
 
 ### Milestone 3 — Role-Aware Smart Fit Intelligence: complete
 
-- role-aware scoring across multiple job families
-- capability-gap detection beyond exact keyword overlap
-- conservative capability-only fallback for postings with weak exact requirement structure
-- improved ranking explanations for compared jobs
-- cleaner evidence labels and priority-ordered coaching actions
-- cross-domain regression tests for role-aware behavior
+- role-aware scoring across job families
+- capability-gap detection beyond exact keywords
+- requirement coverage, ranking explanations, and coaching actions
+- deterministic and optional model-assisted extraction paths
 
 ### Milestone 4 — Portfolio/Demo Packaging: complete
 
-- demo walkthrough documentation
-- clearer recruiter/interviewer demo path
-- resume-ready project summary
-- README project highlights and tech stack summary
-- portfolio screenshots and screenshot guide
-- README and repository presentation polish
+- Railway deployment
+- Docker and GitHub Actions CI
+- demo walkthroughs, screenshots, and repository presentation
 
-### Milestone 5 — Auth + Private Data Foundation: next
+### Milestone 5 — Authentication + Private Data Foundation: complete
 
-See [`docs/milestone-5-auth-private-data-plan.md`](docs/milestone-5-auth-private-data-plan.md) for the security/privacy plan.
+- Clerk authentication UI
+- verified backend sessions
+- user-owned private database records
+- authorization and ownership-isolation tests
+- analyze-without-saving as the default
 
-Before MarketLens stores personal saved jobs, reports, resumes, or user history, the next milestone will establish a privacy-safe account foundation:
+### Milestone 6 — Saved Jobs, Saved Reports, and Private Dashboard: complete
 
-- choose an authentication provider instead of building password auth from scratch
-- add login/logout UI
-- verify authenticated users in the FastAPI backend
-- add user-owned database tables
-- require server-side authorization checks on every private endpoint
-- keep analyze-without-saving as the default workflow
-- avoid saving raw resume files by default
-- add delete/export controls for user-owned data
-- add tests proving one user cannot access another user's saved data
+- private saved searched jobs with duplicate prevention and deletion
+- explicitly saved reduced Smart Fit report summaries
+- private report history with read and delete controls
+- tabbed Smart Fit, Saved Jobs, Saved Reports, and Market Data interface
+- Smart Fit state preservation while switching tabs
+- production smoke test covering authentication, saving, refresh persistence, deletion, privacy visibility, and tab state
 
-### Milestone 6 — Saved Jobs, Saved Reports, and User Dashboard
+Deferred optional additions:
 
-After the private-data foundation is in place:
+- saved searches, alerts, collections, or folders
+- saving a manually pasted job as a standalone Saved Job record; its Smart Fit report can already be saved
 
-- save searched jobs to a user account
-- save pasted jobs when the user explicitly chooses to save them
-- save Smart Fit reports and comparison history
-- view saved jobs and saved reports in a private dashboard
-- delete saved jobs and reports
-- support saved searches or collections
+See [`docs/milestone-6-completion.md`](docs/milestone-6-completion.md).
 
-### Milestone 7 — Better Job Source Coverage
+### Milestone 7 — Better Job Source Coverage: in progress
 
-- improve configured public source coverage
-- evaluate legitimate job aggregator APIs or source partnerships
-- improve source coverage display in the frontend
-- support better fallback workflows for LinkedIn, Indeed, Handshake, Workday-backed pages, and school portals without scraping closed sites
-- improve non-software and internship coverage where API-friendly sources are thin
+The next major limitation is recall: precise filtering cannot return roles that are absent from the configured sources.
 
-### Milestone 8 — Optional AI-Assisted Analysis
+Planned work:
 
-Optional model-assisted analysis remains later-stage until the core app is more complete and the privacy model is stronger.
+- model search intent as separate job-function, industry, experience-level, and location dimensions
+- build a reusable industry taxonomy
+- create a configurable organization/source registry with coverage metadata
+- expand legitimate public Greenhouse and Lever boards plus suitable public APIs
+- improve internship and entry-level coverage
+- improve sports, entertainment, healthcare, finance, education, nonprofit, media, and other non-software coverage
+- improve user-facing source coverage explanations
+- provide responsible user-assisted workflows for Workday, Handshake, LinkedIn, Indeed, and other closed sources without scraping them
+- add recall and precision regression tests across industries
 
-Potential future work:
+See [`docs/milestone-7-source-coverage-plan.md`](docs/milestone-7-source-coverage-plan.md) and [issue #21](https://github.com/jpdiguisppe/marketlens-career-intelligence/issues/21).
 
-- model-assisted requirement parsing
-- stronger resume evidence matching
-- improved coaching explanations
-- stricter provider safety checks before enabling live model calls
-- backend-only provider keys and model-status transparency
+### Milestone 8 — Optional AI-Assisted Analysis: partially started
+
+Already implemented:
+
+- backend-only provider configuration
+- model-status transparency
+- optional model-assisted extraction
+- obvious contact-detail redaction
+- deterministic fallback when model assistance is unavailable
+
+Potential later work:
+
+- stronger semantic requirement parsing and evidence matching
+- more personalized coaching explanations
+- cost, latency, and evaluation controls for regular model usage
+- optional agent-style workflows
