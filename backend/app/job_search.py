@@ -15,6 +15,7 @@ from app.job_source_registry import (
     default_source_identifiers,
     organization_name,
 )
+from app.job_source_routing import build_source_routing_plan
 
 GREENHOUSE_BASE_URL = "https://boards-api.greenhouse.io/v1/boards"
 LEVER_BASE_URL = "https://api.lever.co/v0/postings"
@@ -1733,8 +1734,18 @@ def search_external_jobs(
     resolved_level = intent.level
     role_family = intent.job_function
     industry = intent.industry
-    greenhouse_boards = _configured_greenhouse_boards()
-    lever_sites = _configured_lever_sites()
+    configured_greenhouse_boards = _configured_greenhouse_boards()
+    configured_lever_sites = _configured_lever_sites()
+    routing_plan = build_source_routing_plan(
+        greenhouse_identifiers=configured_greenhouse_boards,
+        lever_identifiers=configured_lever_sites,
+        industry=industry,
+        job_function=role_family,
+        level=resolved_level,
+        location=cleaned_location,
+    )
+    greenhouse_boards = list(routing_plan.greenhouse_identifiers)
+    lever_sites = list(routing_plan.lever_identifiers)
     remoteok_enabled = _remoteok_enabled()
     remotive_enabled = _remotive_enabled()
 
@@ -1752,8 +1763,25 @@ def search_external_jobs(
 
     try:
         with _build_provider_client() as client:
-            outcomes.append(_search_greenhouse_boards(client, greenhouse_boards, cleaned_query, cleaned_location, resolved_level))
-            outcomes.append(_search_lever_sites(client, lever_sites, cleaned_query, cleaned_location, resolved_level))
+            greenhouse_outcome = _search_greenhouse_boards(
+                client,
+                greenhouse_boards,
+                cleaned_query,
+                cleaned_location,
+                resolved_level,
+            )
+            greenhouse_outcome.notes.insert(0, routing_plan.greenhouse_note)
+            outcomes.append(greenhouse_outcome)
+
+            lever_outcome = _search_lever_sites(
+                client,
+                lever_sites,
+                cleaned_query,
+                cleaned_location,
+                resolved_level,
+            )
+            lever_outcome.notes.insert(0, routing_plan.lever_note)
+            outcomes.append(lever_outcome)
 
             if remoteok_enabled:
                 outcomes.append(_search_remoteok(client, cleaned_query, cleaned_location, resolved_level))
