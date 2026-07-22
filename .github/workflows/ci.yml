@@ -15,47 +15,6 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Apply security hardening preview
-        id: hardening
-        run: |
-          set +e
-          python .github/scripts/apply_m7_security_hardening.py > hardening-output.txt 2>&1
-          status=$?
-          cat hardening-output.txt
-          echo "status=$status" >> "$GITHUB_OUTPUT"
-          exit 0
-
-      - name: Upload hardening diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: m7-security-hardening-diagnostics
-          path: hardening-output.txt
-
-      - name: Stop on hardening failure
-        if: steps.hardening.outputs.status != '0'
-        run: exit 1
-
-      - name: Upload patched source
-        uses: actions/upload-artifact@v4
-        with:
-          name: m7-security-hardened-source
-          path: |
-            backend/app/external_urls.py
-            backend/app/job_search.py
-            backend/app/job_source_registry.py
-            backend/app/main.py
-            backend/app/saved_jobs.py
-            backend/app/saved_reports.py
-            backend/tests/test_external_security.py
-            backend/tests/test_job_source_registry.py
-            frontend/src/App.tsx
-            frontend/src/SafeExternalLink.tsx
-            frontend/src/SavedJobs.tsx
-            frontend/src/SavedReports.tsx
-            frontend/src/security.ts
-            docs/milestone-7-source-registry.md
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
