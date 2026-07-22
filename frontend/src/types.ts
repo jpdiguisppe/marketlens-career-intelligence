@@ -102,6 +102,7 @@ export type ExternalJobSearchResponse = {
   location: string | null;
   level: JobSearchLevel;
   role_family: string | null;
+  industry: string | null;
   providers_searched: string[];
   result_count: number;
   results: ExternalJobPosting[];

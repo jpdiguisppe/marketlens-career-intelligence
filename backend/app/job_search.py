@@ -77,6 +77,15 @@ RoleFamily = Literal[
     "healthcare",
     "design",
 ]
+Industry = Literal[
+    "sports",
+    "entertainment",
+    "healthcare",
+    "financial_services",
+    "education",
+    "nonprofit",
+    "media",
+]
 
 EXPERIENCE_YEARS_PATTERN = re.compile(r"\b(\d{1,2})\s*\+?\s*(?:years?|yrs?)\b", re.IGNORECASE)
 MID_LEVEL_TITLE_PATTERN = re.compile(
@@ -348,14 +357,25 @@ ROLE_FAMILY_QUERY_TERMS: dict[RoleFamily, set[str]] = {
     "healthcare": {"healthcare", "health care", "clinical", "patient", "medical", "hospital"},
     "design": {"design", "designer", "ux", "ui", "visual design", "graphic design"},
 }
-SPORTS_QUERY_TERMS = {
-    "sport",
-    "sports",
-    "athletic",
-    "athletics",
-    "esports",
-    "e-sports",
+INDUSTRY_QUERY_TERMS: dict[Industry, set[str]] = {
+    "sports": {"sport", "sports", "athletic", "athletics", "esports", "e-sports"},
+    "entertainment": {"entertainment", "film", "television", "tv", "music", "streaming", "gaming"},
+    "healthcare": {"healthcare", "health care", "hospital", "medical", "clinical", "patient care"},
+    "financial_services": {"finance", "financial services", "banking", "fintech", "insurance", "investment"},
+    "education": {"education", "edtech", "university", "college", "school", "academic"},
+    "nonprofit": {"nonprofit", "non-profit", "charity", "foundation", "social impact"},
+    "media": {"media", "journalism", "publishing", "news", "broadcast", "broadcasting"},
 }
+CROSS_INDUSTRY_FUNCTION_QUERY_TERMS: dict[RoleFamily, set[str]] = {
+    "software": ROLE_FAMILY_QUERY_TERMS["software"],
+    "data": ROLE_FAMILY_QUERY_TERMS["data"],
+    "cybersecurity": ROLE_FAMILY_QUERY_TERMS["cybersecurity"],
+    "product": ROLE_FAMILY_QUERY_TERMS["product"],
+    "marketing": ROLE_FAMILY_QUERY_TERMS["marketing"],
+    "operations": ROLE_FAMILY_QUERY_TERMS["operations"],
+    "design": ROLE_FAMILY_QUERY_TERMS["design"],
+}
+SPORTS_QUERY_TERMS = INDUSTRY_QUERY_TERMS["sports"]
 SPORTS_TITLE_OR_COMPANY_TERMS = {
     "sport",
     "sports",
@@ -492,6 +512,15 @@ _REMOTIVE_CACHE: dict[str, dict[str, Any]] = {}
 
 
 @dataclass(frozen=True)
+class JobSearchIntent:
+    query: str
+    job_function: RoleFamily | None
+    industry: Industry | None
+    level: JobLevel
+    location: str | None
+
+
+@dataclass(frozen=True)
 class ExternalJobResult:
     id: str
     source: str
@@ -529,6 +558,7 @@ class JobSearchResults:
     results: list[ExternalJobResult]
     warnings: list[str]
     role_family: str | None = None
+    industry: str | None = None
     source_coverage: list[SourceCoverageSummary] = field(default_factory=list)
     search_suggestions: list[str] = field(default_factory=list)
     external_search_links: list[ExternalSearchLink] = field(default_factory=list)
@@ -704,11 +734,40 @@ def _query_role_family(query: str) -> RoleFamily | None:
     return None
 
 
-def _query_industry(query: str) -> str | None:
+def _query_job_function(query: str) -> RoleFamily | None:
     normalized = query.lower()
-    if _contains_any(normalized, SPORTS_QUERY_TERMS):
-        return "sports"
+
+    # Keep job function independent from industry classification. This helper
+    # is deliberately separate from _query_role_family because the application
+    # bootstrap wraps that legacy function with compatibility behavior.
+    for family, terms in CROSS_INDUSTRY_FUNCTION_QUERY_TERMS.items():
+        if _contains_any(normalized, terms):
+            return family
+    return _query_role_family(query)
+
+
+def _query_industry(query: str) -> Industry | None:
+    normalized = query.lower()
+    for industry, terms in INDUSTRY_QUERY_TERMS.items():
+        if _contains_any(normalized, terms):
+            return industry
     return None
+
+
+def parse_job_search_intent(
+    query: str,
+    location: str | None = None,
+    level: str | None = None,
+) -> JobSearchIntent:
+    cleaned_query = query.strip()
+    cleaned_location = location.strip() if location and location.strip() else None
+    return JobSearchIntent(
+        query=cleaned_query,
+        job_function=_query_job_function(cleaned_query),
+        industry=_query_industry(cleaned_query),
+        level=resolve_job_level(cleaned_query, level),
+        location=cleaned_location,
+    )
 
 
 def _sports_title_or_company_matches(title: str, company: str | None = None) -> bool:
@@ -1599,10 +1658,12 @@ def search_external_jobs(
     limit: int = 15,
     level: str | None = None,
 ) -> JobSearchResults:
-    cleaned_query = query.strip()
-    cleaned_location = location.strip() if location and location.strip() else None
-    resolved_level = resolve_job_level(cleaned_query, level)
-    role_family = _query_role_family(cleaned_query)
+    intent = parse_job_search_intent(query=query, location=location, level=level)
+    cleaned_query = intent.query
+    cleaned_location = intent.location
+    resolved_level = intent.level
+    role_family = intent.job_function
+    industry = intent.industry
     greenhouse_boards = _configured_greenhouse_boards()
     lever_sites = _configured_lever_sites()
     remoteok_enabled = _remoteok_enabled()
@@ -1657,6 +1718,7 @@ def search_external_jobs(
         location=cleaned_location,
         level=resolved_level,
         role_family=role_family,
+        industry=industry,
         providers_searched=providers_searched,
         source_coverage=[_coverage_from_outcome(outcome) for outcome in outcomes],
         results=ranked_results,
