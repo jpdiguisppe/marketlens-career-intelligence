@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - milestone-7-search-intent-foundation
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
