@@ -26,12 +26,33 @@ jobs:
       - name: Apply search intent changes
         run: python .github/scripts/apply_m7_search_intent.py
 
-      - name: Run backend tests
+      - name: Install backend dependencies
         working-directory: backend
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
-          python -m pytest
+
+      - name: Run backend tests
+        id: pytest
+        working-directory: backend
+        run: |
+          set +e
+          python -m pytest -x -vv > ../m7-pytest-output.txt 2>&1
+          status=$?
+          cat ../m7-pytest-output.txt
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload pytest output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m7-pytest-output
+          path: m7-pytest-output.txt
+
+      - name: Stop on backend test failure
+        if: steps.pytest.outputs.status != '0'
+        run: exit 1
 
       - name: Build frontend
         working-directory: frontend
@@ -43,6 +64,7 @@ jobs:
         run: |
           rm -f .github/scripts/apply_m7_search_intent.py
           rm -f .github/workflows/apply-m7-search-intent.yml
+          rm -f m7-pytest-output.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
