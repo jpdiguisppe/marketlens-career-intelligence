@@ -1,0 +1,34 @@
+name: Apply Milestone 6 closure roadmap update
+
+on:
+  push:
+    branches:
+      - milestone-7-roadmap-kickoff
+
+permissions:
+  contents: write
+
+jobs:
+  update-roadmap:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out roadmap branch
+        uses: actions/checkout@v4
+        with:
+          ref: milestone-7-roadmap-kickoff
+          fetch-depth: 0
+
+      - name: Apply roadmap update
+        run: python .github/scripts/apply_milestone_roadmap_update.py
+
+      - name: Commit documentation
+        run: |
+          rm -f .github/scripts/apply_milestone_roadmap_update.py
+          rm -f .github/workflows/apply-milestone-roadmap-update.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Complete Milestone 6 and start Milestone 7"
+          git push origin milestone-7-roadmap-kickoff
