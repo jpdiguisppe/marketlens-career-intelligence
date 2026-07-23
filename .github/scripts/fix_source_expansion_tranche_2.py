@@ -13,6 +13,7 @@ def replace_once(path: Path, old: str, new: str) -> None:
 
 
 job_search = ROOT / "backend/app/job_search.py"
+intent_patch = ROOT / "backend/app/job_search_intent_patch.py"
 routing_tests = ROOT / "backend/tests/test_job_source_routing.py"
 
 replace_once(
@@ -37,6 +38,12 @@ replace_once(
     job_search,
     '''    family = _query_role_family(query)\n    industry = _query_industry(query)\n    terms = _query_terms(query)\n''',
     '''    canonical_family = _query_job_function(query)\n    legacy_family = _query_role_family(query)\n    family = (\n        canonical_family\n        if canonical_family in STRICT_DESCRIPTION_ONLY_ROLE_FAMILIES\n        else legacy_family\n    )\n    industry = _query_industry(query)\n    terms = _query_terms(query)\n''',
+)
+
+replace_once(
+    intent_patch,
+    '''        if intent.role_family in intent_engine.ENGINE_HANDLED_FAMILIES:\n            return intent_engine.job_matches_search_intent(title, description, intent)\n\n        if intent.role_family is None:\n''',
+    '''        if intent.role_family in intent_engine.ENGINE_HANDLED_FAMILIES:\n            return intent_engine.job_matches_search_intent(title, description, intent)\n\n        canonical_family = job_search._query_job_function(query)\n        strict_families = getattr(\n            job_search,\n            "STRICT_DESCRIPTION_ONLY_ROLE_FAMILIES",\n            set(),\n        )\n        if canonical_family in strict_families:\n            return original_matches_requested_role(\n                title,\n                description,\n                query,\n                resolved_level,\n            )\n\n        if intent.role_family is None:\n''',
 )
 
 replace_once(
