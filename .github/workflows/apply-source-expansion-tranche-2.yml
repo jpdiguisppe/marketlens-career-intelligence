@@ -37,6 +37,7 @@ jobs:
         run: |
           rm .github/scripts/apply_source_expansion_tranche_2.py
           rm .github/workflows/apply-source-expansion-tranche-2.yml
+          rm -f .github/source-expansion-tranche-2-trigger
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
