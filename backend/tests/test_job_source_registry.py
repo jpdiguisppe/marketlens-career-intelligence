@@ -9,6 +9,7 @@ from app.job_source_registry import (
     configured_source_identifiers,
     default_source_identifiers,
     find_source,
+    industry_source_identifiers,
     normalize_source_identifier,
     organization_name,
     source_registry_entries,
@@ -60,6 +61,9 @@ EXPECTED_LEVER_SITES = (
     "fivetran",
     "algolia",
     "addepar",
+)
+EXPECTED_GREENHOUSE_INDUSTRY_BOARDS: tuple[str, ...] = ()
+EXPECTED_LEVER_INDUSTRY_SITES = (
     "theathletic",
     "feldinc",
     "standtogether",
@@ -75,45 +79,38 @@ def test_registry_keys_are_unique_and_metadata_is_complete() -> None:
     assert all(entry.role_families for entry in SOURCE_REGISTRY)
     assert all(entry.geographic_focus for entry in SOURCE_REGISTRY)
     assert all(entry.coverage_note for entry in SOURCE_REGISTRY)
+    assert all(entry.source_pool in {"primary", "industry_only"} for entry in SOURCE_REGISTRY)
 
 
-def test_registry_preserves_existing_default_provider_order() -> None:
+def test_registry_separates_primary_and_industry_only_defaults() -> None:
     assert default_source_identifiers("greenhouse") == EXPECTED_GREENHOUSE_BOARDS
     assert default_source_identifiers("lever") == EXPECTED_LEVER_SITES
+    assert industry_source_identifiers("greenhouse") == EXPECTED_GREENHOUSE_INDUSTRY_BOARDS
+    assert industry_source_identifiers("lever") == EXPECTED_LEVER_INDUSTRY_SITES
     assert DEFAULT_GREENHOUSE_BOARDS == EXPECTED_GREENHOUSE_BOARDS
     assert DEFAULT_LEVER_SITES == EXPECTED_LEVER_SITES
 
 
-def test_registry_exposes_industry_and_function_metadata_for_routing() -> None:
+def test_registry_exposes_industry_metadata_and_source_pool() -> None:
     duolingo = find_source("duolingo", "greenhouse")
-    twitch = find_source("twitch", "lever")
-    addepar = find_source("addepar", "lever")
     the_athletic = find_source("theathletic", "lever")
     feld = find_source("feldinc", "lever")
     stand_together = find_source("standtogether", "lever")
 
     assert duolingo is not None
-    assert "education" in duolingo.industries
-    assert "software" in duolingo.role_families
-
-    assert twitch is not None
-    assert {"entertainment", "media"}.issubset(twitch.industries)
-    assert "marketing" in twitch.role_families
-
-    assert addepar is not None
-    assert "financial_services" in addepar.industries
-    assert "finance" in addepar.role_families
+    assert duolingo.source_pool == "primary"
 
     assert the_athletic is not None
     assert {"sports", "media"}.issubset(the_athletic.industries)
-    assert "marketing" in the_athletic.role_families
+    assert the_athletic.source_pool == "industry_only"
 
     assert feld is not None
     assert {"sports", "entertainment"}.issubset(feld.industries)
-    assert "operations" in feld.role_families
+    assert feld.source_pool == "industry_only"
 
     assert stand_together is not None
     assert {"nonprofit", "education"}.issubset(stand_together.industries)
+    assert stand_together.source_pool == "industry_only"
     assert stand_together.early_career_relevance == "strong"
 
 
@@ -125,20 +122,19 @@ def test_registry_lookup_and_company_name_fallbacks_are_stable() -> None:
     assert find_source("missing-source", "greenhouse") is None
 
 
-def test_registry_can_filter_by_provider() -> None:
-    greenhouse_entries = source_registry_entries("greenhouse")
-    lever_entries = source_registry_entries("lever")
+def test_registry_can_filter_by_provider_and_pool() -> None:
+    primary_lever = source_registry_entries("lever", source_pool="primary")
+    industry_lever = source_registry_entries("lever", source_pool="industry_only")
 
-    assert len(greenhouse_entries) == len(EXPECTED_GREENHOUSE_BOARDS)
-    assert len(lever_entries) == len(EXPECTED_LEVER_SITES)
-    assert all(entry.provider == "greenhouse" for entry in greenhouse_entries)
-    assert all(entry.provider == "lever" for entry in lever_entries)
+    assert len(primary_lever) == len(EXPECTED_LEVER_SITES)
+    assert len(industry_lever) == len(EXPECTED_LEVER_INDUSTRY_SITES)
+    assert all(entry.provider == "lever" for entry in primary_lever + industry_lever)
 
 
-def test_uncached_broad_search_keeps_remote_feed_request_headroom() -> None:
+def test_uncached_broad_search_gains_request_headroom() -> None:
     ats_source_count = len(EXPECTED_GREENHOUSE_BOARDS) + len(EXPECTED_LEVER_SITES)
 
-    assert ats_source_count <= DEFAULT_MAX_PROVIDER_REQUESTS_PER_SEARCH - 3
+    assert ats_source_count <= DEFAULT_MAX_PROVIDER_REQUESTS_PER_SEARCH - 6
 
 
 def test_registry_rejects_malformed_and_unregistered_identifiers() -> None:
@@ -149,11 +145,16 @@ def test_registry_rejects_malformed_and_unregistered_identifiers() -> None:
     assert find_source("../internal", "lever") is None
 
 
-def test_environment_source_configuration_is_registry_allowlisted() -> None:
+def test_environment_configuration_cannot_move_sources_between_pools() -> None:
     assert configured_source_identifiers(
         "lever",
-        " github,../internal,unknown-company,github, theathletic ",
-    ) == ("github", "theathletic")
+        " github,../internal,unknown-company,theathletic ",
+    ) == ("github",)
+    assert configured_source_identifiers(
+        "lever",
+        " github,theathletic,feldinc ",
+        source_pool="industry_only",
+    ) == ("theathletic", "feldinc")
     assert configured_source_identifiers(
         "greenhouse",
         "https://evil.example,unknown-company",
