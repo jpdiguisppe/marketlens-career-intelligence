@@ -19,11 +19,16 @@ MIN_PROVIDER_FALLBACK_SOURCES = 2
 INDUSTRY_ADJACENCIES: dict[str, frozenset[str]] = {
     "sports": frozenset({"entertainment", "media", "gaming"}),
     "entertainment": frozenset({"media", "gaming", "sports"}),
-    "healthcare": frozenset({"life_sciences", "technology"}),
-    "financial_services": frozenset({"fintech", "technology"}),
-    "education": frozenset({"technology"}),
-    "nonprofit": frozenset({"education", "healthcare", "media"}),
-    "media": frozenset({"entertainment", "gaming", "technology"}),
+    "healthcare": frozenset({"life_sciences", "technology", "public_policy"}),
+    "financial_services": frozenset({"fintech", "technology", "corporate_legal"}),
+    "education": frozenset({"technology", "nonprofit", "public_policy"}),
+    "nonprofit": frozenset({"education", "healthcare", "media", "public_interest", "public_policy"}),
+    "media": frozenset({"entertainment", "gaming", "technology", "corporate_legal"}),
+    "legal_services": frozenset({"public_interest", "government", "nonprofit", "corporate_legal", "public_policy"}),
+    "public_interest": frozenset({"nonprofit", "government", "legal_services", "public_policy"}),
+    "government": frozenset({"public_policy", "legal_services", "public_interest", "nonprofit"}),
+    "corporate_legal": frozenset({"legal_services", "financial_services", "healthcare", "media"}),
+    "public_policy": frozenset({"government", "nonprofit", "healthcare", "education", "legal_services"}),
 }
 
 

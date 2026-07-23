@@ -60,6 +60,36 @@ ENTERTAINMENT_ROLE_FAMILIES = (
     "marketing",
     "operations",
 )
+LEGAL_ROLE_FAMILIES = (
+    "legal",
+    "compliance",
+    "policy",
+    "legal_operations",
+    "contracts",
+    "operations",
+    "marketing",
+    "data",
+)
+HEALTH_POLICY_ROLE_FAMILIES = HEALTH_ROLE_FAMILIES + (
+    "legal",
+    "compliance",
+    "policy",
+    "contracts",
+)
+MEDIA_POLICY_ROLE_FAMILIES = ENTERTAINMENT_ROLE_FAMILIES + (
+    "software",
+    "legal",
+    "compliance",
+    "policy",
+    "legal_operations",
+    "contracts",
+)
+EDUCATION_ROLE_FAMILIES = TECH_ROLE_FAMILIES + ("policy",)
+MISSION_POLICY_ROLE_FAMILIES = MISSION_ROLE_FAMILIES + (
+    "legal",
+    "compliance",
+    "policy",
+)
 
 
 def _source(
@@ -111,6 +141,16 @@ SOURCE_REGISTRY: tuple[JobSourceRegistryEntry, ...] = (
     _source("greenhouse", "gusto", "Gusto", ("technology", "human_resources")),
     _source("greenhouse", "rippling", "Rippling", ("technology", "human_resources")),
     _source("greenhouse", "affirm", "Affirm", ("financial_services", "fintech", "technology"), FINTECH_ROLE_FAMILIES),
+    _source(
+        "greenhouse",
+        "aclu",
+        "ACLU",
+        ("legal_services", "public_interest", "nonprofit", "government", "public_policy"),
+        LEGAL_ROLE_FAMILIES,
+        geographic_focus=("united_states", "varies_by_posting"),
+        source_pool="industry_only",
+        coverage_note="Official public Greenhouse board for national civil-liberties, legal, policy, and advocacy roles.",
+    ),
     _source("lever", "github", "GitHub", ("technology", "software")),
     _source("lever", "postman", "Postman", ("technology", "software")),
     _source("lever", "benchling", "Benchling", ("healthcare", "life_sciences", "technology"), HEALTH_ROLE_FAMILIES),
@@ -133,6 +173,59 @@ SOURCE_REGISTRY: tuple[JobSourceRegistryEntry, ...] = (
     _source("lever", "fivetran", "Fivetran", ("technology", "data")),
     _source("lever", "algolia", "Algolia", ("technology", "search")),
     _source("lever", "addepar", "Addepar", ("financial_services", "fintech", "technology"), FINTECH_ROLE_FAMILIES),
+    _source(
+        "lever",
+        "avalerehealth",
+        "Avalere Health",
+        ("healthcare", "life_sciences", "public_policy", "government"),
+        HEALTH_POLICY_ROLE_FAMILIES,
+        geographic_focus=("united_states", "remote", "varies_by_posting"),
+        source_pool="industry_only",
+        coverage_note="Official public Lever board spanning healthcare policy, advisory, medical, marketing, and operations roles.",
+    ),
+    _source(
+        "lever",
+        "wattpad",
+        "WEBTOON / Wattpad",
+        ("media", "entertainment", "publishing", "corporate_legal"),
+        MEDIA_POLICY_ROLE_FAMILIES,
+        early_career_relevance="strong",
+        geographic_focus=("united_states", "varies_by_posting"),
+        source_pool="industry_only",
+        coverage_note="Official public Lever board with media, content-policy, legal-business, and internship roles.",
+    ),
+    _source(
+        "lever",
+        "thedispatch",
+        "The Dispatch",
+        ("media", "journalism", "public_policy", "legal_services"),
+        ("policy", "legal", "marketing", "operations", "design"),
+        early_career_relevance="strong",
+        geographic_focus=("united_states", "remote", "varies_by_posting"),
+        source_pool="industry_only",
+        coverage_note="Official public Lever board for journalism, policy-adjacent media, and recurring internship roles.",
+    ),
+    _source(
+        "lever",
+        "kiddom",
+        "Kiddom",
+        ("education", "technology"),
+        EDUCATION_ROLE_FAMILIES,
+        geographic_focus=("united_states", "remote", "varies_by_posting"),
+        source_pool="industry_only",
+        coverage_note="Official public Lever board for K-12 education technology, curriculum, product, and operations roles.",
+    ),
+    _source(
+        "lever",
+        "stradaeducation",
+        "Strada Education Foundation",
+        ("education", "nonprofit", "public_interest", "public_policy", "social_impact"),
+        MISSION_POLICY_ROLE_FAMILIES,
+        early_career_relevance="strong",
+        geographic_focus=("united_states", "varies_by_posting"),
+        source_pool="industry_only",
+        coverage_note="Official public Lever board for education, workforce policy, nonprofit, internship, and co-op pathways.",
+    ),
     _source(
         "lever",
         "theathletic",
