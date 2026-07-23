@@ -278,6 +278,20 @@ def apply_job_search_intent_patch(job_search: Any) -> None:
         if intent.role_family in intent_engine.ENGINE_HANDLED_FAMILIES:
             return intent_engine.job_matches_search_intent(title, description, intent)
 
+        canonical_family = job_search._query_job_function(query)
+        strict_families = getattr(
+            job_search,
+            "STRICT_DESCRIPTION_ONLY_ROLE_FAMILIES",
+            set(),
+        )
+        if canonical_family in strict_families:
+            return original_matches_requested_role(
+                title,
+                description,
+                query,
+                resolved_level,
+            )
+
         if intent.role_family is None:
             return _generic_title_matches_query(
                 title,

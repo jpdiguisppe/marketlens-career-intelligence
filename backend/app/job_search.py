@@ -45,6 +45,11 @@ RoleFamily = Literal[
     "operations",
     "healthcare",
     "design",
+    "legal",
+    "compliance",
+    "policy",
+    "legal_operations",
+    "contracts",
 ]
 Industry = Literal[
     "sports",
@@ -54,6 +59,11 @@ Industry = Literal[
     "education",
     "nonprofit",
     "media",
+    "legal_services",
+    "government",
+    "public_interest",
+    "corporate_legal",
+    "public_policy",
 ]
 
 EXPERIENCE_YEARS_PATTERN = re.compile(r"\b(\d{1,2})\s*\+?\s*(?:years?|yrs?)\b", re.IGNORECASE)
@@ -301,6 +311,51 @@ DESIGN_TITLE_TERMS = {
     "visual designer",
     "graphic designer",
 }
+LEGAL_TITLE_TERMS = {
+    "legal intern",
+    "legal assistant",
+    "legal analyst",
+    "legal coordinator",
+    "paralegal",
+    "law clerk",
+    "attorney",
+    "counsel",
+    "litigation",
+}
+COMPLIANCE_TITLE_TERMS = {
+    "compliance",
+    "regulatory",
+    "risk and compliance",
+    "aml",
+    "kyc",
+    "ethics",
+}
+POLICY_TITLE_TERMS = {
+    "policy analyst",
+    "policy associate",
+    "policy intern",
+    "public policy",
+    "government affairs",
+    "public affairs",
+    "legislative",
+    "advocacy",
+}
+LEGAL_OPERATIONS_TITLE_TERMS = {
+    "legal operations",
+    "legal ops",
+    "litigation support",
+    "legal project manager",
+    "legal technology",
+    "e-billing",
+}
+CONTRACTS_TITLE_TERMS = {
+    "contracts analyst",
+    "contract analyst",
+    "contracts specialist",
+    "contract specialist",
+    "contract administrator",
+    "commercial contracts",
+}
 TECHNOLOGY_TITLE_TERMS = SOFTWARE_TITLE_TERMS | DATA_TITLE_TERMS | CYBERSECURITY_TITLE_TERMS
 ROLE_FAMILY_TITLE_TERMS: dict[RoleFamily, set[str]] = {
     "technology": TECHNOLOGY_TITLE_TERMS,
@@ -313,6 +368,11 @@ ROLE_FAMILY_TITLE_TERMS: dict[RoleFamily, set[str]] = {
     "operations": OPERATIONS_TITLE_TERMS,
     "healthcare": HEALTHCARE_TITLE_TERMS,
     "design": DESIGN_TITLE_TERMS,
+    "legal": LEGAL_TITLE_TERMS,
+    "compliance": COMPLIANCE_TITLE_TERMS,
+    "policy": POLICY_TITLE_TERMS,
+    "legal_operations": LEGAL_OPERATIONS_TITLE_TERMS,
+    "contracts": CONTRACTS_TITLE_TERMS,
 }
 ROLE_FAMILY_QUERY_TERMS: dict[RoleFamily, set[str]] = {
     "technology": {"computer science", "cs jobs", "tech jobs", "technology", "technical roles"},
@@ -325,6 +385,11 @@ ROLE_FAMILY_QUERY_TERMS: dict[RoleFamily, set[str]] = {
     "operations": {"operations", "strategy", "supply chain", "logistics", "procurement", "human resources", "hr"},
     "healthcare": {"healthcare", "health care", "clinical", "patient", "medical", "hospital"},
     "design": {"design", "designer", "ux", "ui", "visual design", "graphic design"},
+    "legal": {"legal", "law", "paralegal", "attorney", "counsel", "litigation", "law clerk"},
+    "compliance": {"compliance", "regulatory", "regulatory affairs", "aml", "kyc", "ethics", "risk and compliance"},
+    "policy": {"policy", "public policy", "government affairs", "public affairs", "legislative", "advocacy"},
+    "legal_operations": {"legal operations", "legal ops", "litigation support", "legal technology"},
+    "contracts": {"contracts", "contract analyst", "contracts analyst", "contract specialist", "contract administrator"},
 }
 INDUSTRY_QUERY_TERMS: dict[Industry, set[str]] = {
     "sports": {"sport", "sports", "athletic", "athletics", "esports", "e-sports"},
@@ -334,8 +399,18 @@ INDUSTRY_QUERY_TERMS: dict[Industry, set[str]] = {
     "education": {"education", "edtech", "university", "college", "school", "academic"},
     "nonprofit": {"nonprofit", "non-profit", "charity", "foundation", "social impact"},
     "media": {"media", "journalism", "publishing", "news", "broadcast", "broadcasting"},
+    "public_interest": {"public interest", "civil liberties", "civil rights", "legal aid"},
+    "government": {"government", "public sector", "federal government", "state government", "municipal"},
+    "corporate_legal": {"corporate legal", "in-house legal", "in house legal", "legal department"},
+    "public_policy": {"public policy", "policy research", "regulatory policy"},
+    "legal_services": {"legal", "law firm", "law office", "litigation", "paralegal", "attorney"},
 }
 CROSS_INDUSTRY_FUNCTION_QUERY_TERMS: dict[RoleFamily, set[str]] = {
+    "legal_operations": ROLE_FAMILY_QUERY_TERMS["legal_operations"],
+    "contracts": ROLE_FAMILY_QUERY_TERMS["contracts"],
+    "compliance": ROLE_FAMILY_QUERY_TERMS["compliance"],
+    "policy": ROLE_FAMILY_QUERY_TERMS["policy"],
+    "legal": ROLE_FAMILY_QUERY_TERMS["legal"],
     "software": ROLE_FAMILY_QUERY_TERMS["software"],
     "data": ROLE_FAMILY_QUERY_TERMS["data"],
     "cybersecurity": ROLE_FAMILY_QUERY_TERMS["cybersecurity"],
@@ -881,6 +956,23 @@ def _text_matches_role_family(value: str, family: RoleFamily) -> bool:
     return _contains_any(value.lower(), ROLE_FAMILY_TITLE_TERMS[family])
 
 
+STRICT_DESCRIPTION_ONLY_ROLE_FAMILIES: set[RoleFamily] = {
+    "legal",
+    "compliance",
+    "policy",
+    "legal_operations",
+    "contracts",
+}
+
+
+def _title_matches_other_role_family(title: str, requested_family: RoleFamily) -> bool:
+    return any(
+        family not in {requested_family, "technology"}
+        and _title_matches_role_family(title, family)
+        for family in ROLE_FAMILY_TITLE_TERMS
+    )
+
+
 def _looks_like_software_role(title: str) -> bool:
     return _title_matches_role_family(title, "software")
 
@@ -894,11 +986,25 @@ def _title_contains_core_query_term(title: str, query: str) -> bool:
 
 
 def _matches_requested_role(title: str, description: str, query: str, level: JobLevel | None = None) -> bool:
-    family = _query_role_family(query)
+    canonical_family = _query_job_function(query)
+    legacy_family = _query_role_family(query)
+    family = (
+        canonical_family
+        if canonical_family in STRICT_DESCRIPTION_ONLY_ROLE_FAMILIES
+        else legacy_family
+    )
     if family is None:
         return True
 
-    if _title_matches_role_family(title, family):
+    title_matches_requested_family = _title_matches_role_family(title, family)
+    if (
+        family in STRICT_DESCRIPTION_ONLY_ROLE_FAMILIES
+        and not title_matches_requested_family
+        and _title_matches_other_role_family(title, family)
+    ):
+        return False
+
+    if title_matches_requested_family:
         return True
 
     # SWE/software-engineer searches should feel narrow. Do not let generic
@@ -916,6 +1022,11 @@ def _matches_requested_role(title: str, description: str, query: str, level: Job
         title_lower,
         {"intern", "internship", "summer analyst", "analyst intern", "rotational program", "graduate program"},
     )
+    if (
+        family in STRICT_DESCRIPTION_ONLY_ROLE_FAMILIES
+        and _title_matches_other_role_family(title, family)
+    ):
+        return False
     return bool(
         (level in {"intern", "entry"} or _infer_level_from_query(query) in {"intern", "entry"})
         and is_generic_early_career_title
@@ -1121,7 +1232,13 @@ def _score_job(
     if not _matches_level(title, description, resolved_level):
         return 0
 
-    family = _query_role_family(query)
+    canonical_family = _query_job_function(query)
+    legacy_family = _query_role_family(query)
+    family = (
+        canonical_family
+        if canonical_family in STRICT_DESCRIPTION_ONLY_ROLE_FAMILIES
+        else legacy_family
+    )
     industry = _query_industry(query)
     terms = _query_terms(query)
     searchable_title = title.lower()

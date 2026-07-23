@@ -62,8 +62,13 @@ EXPECTED_LEVER_SITES = (
     "algolia",
     "addepar",
 )
-EXPECTED_GREENHOUSE_INDUSTRY_BOARDS: tuple[str, ...] = ()
+EXPECTED_GREENHOUSE_INDUSTRY_BOARDS = ("aclu",)
 EXPECTED_LEVER_INDUSTRY_SITES = (
+    "avalerehealth",
+    "wattpad",
+    "thedispatch",
+    "kiddom",
+    "stradaeducation",
     "theathletic",
     "feldinc",
     "standtogether",
@@ -96,6 +101,11 @@ def test_registry_exposes_industry_metadata_and_source_pool() -> None:
     the_athletic = find_source("theathletic", "lever")
     feld = find_source("feldinc", "lever")
     stand_together = find_source("standtogether", "lever")
+    aclu = find_source("aclu", "greenhouse")
+    avalere = find_source("avalerehealth", "lever")
+    wattpad = find_source("wattpad", "lever")
+    dispatch = find_source("thedispatch", "lever")
+    strada = find_source("stradaeducation", "lever")
 
     assert duolingo is not None
     assert duolingo.source_pool == "primary"
@@ -112,6 +122,26 @@ def test_registry_exposes_industry_metadata_and_source_pool() -> None:
     assert {"nonprofit", "education"}.issubset(stand_together.industries)
     assert stand_together.source_pool == "industry_only"
     assert stand_together.early_career_relevance == "strong"
+
+    assert aclu is not None
+    assert {"legal_services", "public_interest"}.issubset(aclu.industries)
+    assert aclu.source_pool == "industry_only"
+
+    assert avalere is not None
+    assert {"healthcare", "public_policy"}.issubset(avalere.industries)
+    assert "compliance" in avalere.role_families
+
+    assert wattpad is not None
+    assert {"media", "corporate_legal"}.issubset(wattpad.industries)
+    assert wattpad.early_career_relevance == "strong"
+
+    assert dispatch is not None
+    assert {"media", "legal_services"}.issubset(dispatch.industries)
+    assert dispatch.early_career_relevance == "strong"
+
+    assert strada is not None
+    assert {"education", "public_interest"}.issubset(strada.industries)
+    assert strada.early_career_relevance == "strong"
 
 
 def test_registry_lookup_and_company_name_fallbacks_are_stable() -> None:
