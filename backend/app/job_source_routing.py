@@ -3,7 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from app.job_source_registry import JobSourceRegistryEntry, Provider, find_source
+from app.job_source_registry import (
+    JobSourceRegistryEntry,
+    Provider,
+    SourcePool,
+    find_source,
+    industry_source_identifiers,
+)
 
 JobLevel = Literal["any", "intern", "entry", "mid", "senior"]
 
@@ -29,18 +35,40 @@ class SourceRoutingPlan:
     lever_note: str
     routed: bool
     direct_industry_matches: int
+    industry_only_sources_activated: int
 
 
 def _registered_entries(
     provider: Provider,
     identifiers: list[str] | tuple[str, ...],
+    *,
+    source_pool: SourcePool,
 ) -> list[JobSourceRegistryEntry]:
     entries: list[JobSourceRegistryEntry] = []
     for identifier in identifiers:
         entry = find_source(identifier, provider)
-        if entry is not None and entry.enabled:
+        if (
+            entry is not None
+            and entry.enabled
+            and entry.source_pool == source_pool
+        ):
             entries.append(entry)
     return entries
+
+
+def _matching_industry_only_entries(
+    provider: Provider,
+    industry: str,
+) -> list[JobSourceRegistryEntry]:
+    return [
+        entry
+        for entry in _registered_entries(
+            provider,
+            industry_source_identifiers(provider),
+            source_pool="industry_only",
+        )
+        if industry in entry.industries
+    ]
 
 
 def _source_score(
@@ -114,18 +142,20 @@ def _provider_note(
     provider_label: str,
     *,
     selected_count: int,
-    configured_count: int,
+    eligible_count: int,
     industry: str | None,
     job_function: str | None,
     level: JobLevel,
     location: str | None,
     direct_match_count: int,
+    industry_only_count: int,
     routed: bool,
 ) -> str:
     if not routed:
         return (
-            f"Source routing kept all {configured_count} configured {provider_label} boards because no "
-            "industry was detected. Job function, experience level, and location still filter and rank postings."
+            f"Source routing kept all {eligible_count} primary {provider_label} boards because no "
+            "industry was detected. Industry-only boards remained inactive; job function, "
+            "experience level, and location still filter and rank postings."
         )
 
     dimensions = [f"industry={industry}"]
@@ -141,9 +171,15 @@ def _provider_note(
         if direct_match_count
         else "No exact-industry registry match was available, so adjacent and general fallback sources were used."
     )
+    industry_pool_note = (
+        f" Activated {industry_only_count} matching industry-only {provider_label} "
+        f"board{'s' if industry_only_count != 1 else ''}."
+        if industry_only_count
+        else f" No matching industry-only {provider_label} boards were activated."
+    )
     return (
-        f"Intent-aware routing selected {selected_count} of {configured_count} configured {provider_label} boards "
-        f"for {', '.join(dimensions)}. {match_note}"
+        f"Intent-aware routing selected {selected_count} of {eligible_count} eligible {provider_label} boards "
+        f"for {', '.join(dimensions)}. {match_note}{industry_pool_note}"
     )
 
 
@@ -156,9 +192,16 @@ def build_source_routing_plan(
     level: JobLevel,
     location: str | None,
 ) -> SourceRoutingPlan:
-    greenhouse_entries = _registered_entries("greenhouse", greenhouse_identifiers)
-    lever_entries = _registered_entries("lever", lever_identifiers)
-    all_entries = greenhouse_entries + lever_entries
+    greenhouse_entries = _registered_entries(
+        "greenhouse",
+        greenhouse_identifiers,
+        source_pool="primary",
+    )
+    lever_entries = _registered_entries(
+        "lever",
+        lever_identifiers,
+        source_pool="primary",
+    )
 
     if industry is None:
         greenhouse_selected = tuple(entry.identifier for entry in greenhouse_entries)
@@ -169,28 +212,46 @@ def build_source_routing_plan(
             greenhouse_note=_provider_note(
                 "Greenhouse",
                 selected_count=len(greenhouse_selected),
-                configured_count=len(greenhouse_entries),
+                eligible_count=len(greenhouse_entries),
                 industry=None,
                 job_function=job_function,
                 level=level,
                 location=location,
                 direct_match_count=0,
+                industry_only_count=0,
                 routed=False,
             ),
             lever_note=_provider_note(
                 "Lever",
                 selected_count=len(lever_selected),
-                configured_count=len(lever_entries),
+                eligible_count=len(lever_entries),
                 industry=None,
                 job_function=job_function,
                 level=level,
                 location=location,
                 direct_match_count=0,
+                industry_only_count=0,
                 routed=False,
             ),
             routed=False,
             direct_industry_matches=0,
+            industry_only_sources_activated=0,
         )
+
+    greenhouse_industry_entries = _matching_industry_only_entries(
+        "greenhouse",
+        industry,
+    )
+    lever_industry_entries = _matching_industry_only_entries(
+        "lever",
+        industry,
+    )
+    all_entries = (
+        greenhouse_entries
+        + lever_entries
+        + greenhouse_industry_entries
+        + lever_industry_entries
+    )
 
     original_order = {
         (entry.provider, entry.identifier): index
@@ -249,25 +310,30 @@ def build_source_routing_plan(
         greenhouse_note=_provider_note(
             "Greenhouse",
             selected_count=len(greenhouse_selected),
-            configured_count=len(greenhouse_entries),
+            eligible_count=len(greenhouse_entries) + len(greenhouse_industry_entries),
             industry=industry,
             job_function=job_function,
             level=level,
             location=location,
             direct_match_count=greenhouse_direct_matches,
+            industry_only_count=len(greenhouse_industry_entries),
             routed=True,
         ),
         lever_note=_provider_note(
             "Lever",
             selected_count=len(lever_selected),
-            configured_count=len(lever_entries),
+            eligible_count=len(lever_entries) + len(lever_industry_entries),
             industry=industry,
             job_function=job_function,
             level=level,
             location=location,
             direct_match_count=lever_direct_matches,
+            industry_only_count=len(lever_industry_entries),
             routed=True,
         ),
         routed=True,
         direct_industry_matches=len(direct_entries),
+        industry_only_sources_activated=(
+            len(greenhouse_industry_entries) + len(lever_industry_entries)
+        ),
     )
