@@ -1,0 +1,39 @@
+name: Apply Milestone 7 Industry-Only Source Pool
+
+on:
+  push:
+    branches: [milestone-7-industry-only-source-pool]
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: milestone-7-industry-only-source-pool
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply focused source-pool changes
+        run: python .github/scripts/apply_industry_only_source_pool.py
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+      - name: Run backend tests
+        working-directory: backend
+        run: pytest -q
+      - name: Remove one-time integration files
+        run: |
+          git rm .github/scripts/apply_industry_only_source_pool.py
+          git rm .github/workflows/apply-industry-only-source-pool.yml
+      - name: Commit integrated changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend docs
+          git commit -m "Add secondary industry-only source pool"
+          git push origin HEAD:milestone-7-industry-only-source-pool
