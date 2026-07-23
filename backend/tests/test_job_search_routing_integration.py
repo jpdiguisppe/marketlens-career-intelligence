@@ -43,6 +43,9 @@ def test_search_external_jobs_routes_industry_specific_sources(monkeypatch) -> N
 
     assert "duolingo" in captured["greenhouse"]
     assert "coursera" in captured["lever"]
+    assert "standtogether" in captured["lever"]
+    assert "theathletic" not in captured["lever"]
+    assert "feldinc" not in captured["lever"]
     assert len(captured["greenhouse"]) < len(job_search.DEFAULT_GREENHOUSE_BOARDS)
     assert len(captured["lever"]) < len(job_search.DEFAULT_LEVER_SITES)
     assert result.providers_searched == [
@@ -51,6 +54,7 @@ def test_search_external_jobs_routes_industry_specific_sources(monkeypatch) -> N
     ]
     assert "Intent-aware routing selected" in result.source_coverage[0].notes[0]
     assert "industry=education" in result.source_coverage[0].notes[0]
+    assert "industry-only" in result.source_coverage[1].notes[0]
 
 
 def test_search_external_jobs_keeps_broad_search_sources(monkeypatch) -> None:
@@ -75,4 +79,6 @@ def test_search_external_jobs_keeps_broad_search_sources(monkeypatch) -> None:
 
     assert captured["greenhouse"] == list(job_search.DEFAULT_GREENHOUSE_BOARDS)
     assert captured["lever"] == list(job_search.DEFAULT_LEVER_SITES)
+    assert {"theathletic", "feldinc", "standtogether"}.isdisjoint(captured["lever"])
     assert "kept all" in result.source_coverage[0].notes[0]
+    assert "Industry-only boards remained inactive" in result.source_coverage[1].notes[0]
