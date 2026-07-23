@@ -24,13 +24,19 @@ replace_once(
 replace_once(
     job_search,
     '''def _matches_requested_role(title: str, description: str, query: str, level: JobLevel | None = None) -> bool:\n    family = _query_role_family(query)\n    if family is None:\n        return True\n\n    if _title_matches_role_family(title, family):\n''',
-    '''def _matches_requested_role(title: str, description: str, query: str, level: JobLevel | None = None) -> bool:\n    family = _query_role_family(query)\n    if family is None:\n        return True\n\n    title_matches_requested_family = _title_matches_role_family(title, family)\n    if (\n        family in STRICT_DESCRIPTION_ONLY_ROLE_FAMILIES\n        and not title_matches_requested_family\n        and _title_matches_other_role_family(title, family)\n    ):\n        return False\n\n    if title_matches_requested_family:\n''',
+    '''def _matches_requested_role(title: str, description: str, query: str, level: JobLevel | None = None) -> bool:\n    canonical_family = _query_job_function(query)\n    legacy_family = _query_role_family(query)\n    family = (\n        canonical_family\n        if canonical_family in STRICT_DESCRIPTION_ONLY_ROLE_FAMILIES\n        else legacy_family\n    )\n    if family is None:\n        return True\n\n    title_matches_requested_family = _title_matches_role_family(title, family)\n    if (\n        family in STRICT_DESCRIPTION_ONLY_ROLE_FAMILIES\n        and not title_matches_requested_family\n        and _title_matches_other_role_family(title, family)\n    ):\n        return False\n\n    if title_matches_requested_family:\n''',
 )
 
 replace_once(
     job_search,
     '''    is_generic_early_career_title = _contains_any(\n        title_lower,\n        {"intern", "internship", "summer analyst", "analyst intern", "rotational program", "graduate program"},\n    )\n    return bool(\n''',
     '''    is_generic_early_career_title = _contains_any(\n        title_lower,\n        {"intern", "internship", "summer analyst", "analyst intern", "rotational program", "graduate program"},\n    )\n    if (\n        family in STRICT_DESCRIPTION_ONLY_ROLE_FAMILIES\n        and _title_matches_other_role_family(title, family)\n    ):\n        return False\n    return bool(\n''',
+)
+
+replace_once(
+    job_search,
+    '''    family = _query_role_family(query)\n    industry = _query_industry(query)\n    terms = _query_terms(query)\n''',
+    '''    canonical_family = _query_job_function(query)\n    legacy_family = _query_role_family(query)\n    family = (\n        canonical_family\n        if canonical_family in STRICT_DESCRIPTION_ONLY_ROLE_FAMILIES\n        else legacy_family\n    )\n    industry = _query_industry(query)\n    terms = _query_terms(query)\n''',
 )
 
 replace_once(
