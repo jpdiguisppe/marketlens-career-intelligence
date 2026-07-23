@@ -43,7 +43,22 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          python -m pytest 2>&1 | tee /tmp/source-expansion-pytest.log
+          python - <<'PY' | tee /tmp/source-expansion-pytest.log
+          from app import job_search
+          query = "legal internship"
+          title = "Software Engineering Intern"
+          description = "Build backend services for the legal team."
+          canonical = job_search._query_job_function(query)
+          legacy = job_search._query_role_family(query)
+          print("DEBUG canonical_family=", canonical)
+          print("DEBUG legacy_family=", legacy)
+          print("DEBUG software_title=", job_search._title_matches_role_family(title, "software"))
+          print("DEBUG legal_title=", job_search._title_matches_role_family(title, "legal"))
+          print("DEBUG other_family=", job_search._title_matches_other_role_family(title, "legal"))
+          print("DEBUG role_match=", job_search._matches_requested_role(title, description, query, "intern"))
+          print("DEBUG score=", job_search._score_job(title, description, query, "intern", "Example Technology Company"))
+          PY
+          python -m pytest 2>&1 | tee -a /tmp/source-expansion-pytest.log
 
       - name: Upload pytest failure log
         if: failure()
