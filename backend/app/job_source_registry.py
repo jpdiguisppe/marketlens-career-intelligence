@@ -5,6 +5,7 @@ import re
 from typing import Literal
 
 Provider = Literal["greenhouse", "lever"]
+SourcePool = Literal["primary", "industry_only"]
 EarlyCareerRelevance = Literal["general", "strong", "limited", "unknown"]
 
 DEFAULT_COVERAGE_NOTE = (
@@ -29,6 +30,7 @@ class JobSourceRegistryEntry:
     role_families: tuple[str, ...]
     early_career_relevance: EarlyCareerRelevance
     geographic_focus: tuple[str, ...]
+    source_pool: SourcePool = "primary"
     enabled: bool = True
     coverage_note: str = DEFAULT_COVERAGE_NOTE
 
@@ -68,6 +70,7 @@ def _source(
     role_families: tuple[str, ...] = TECH_ROLE_FAMILIES,
     early_career_relevance: EarlyCareerRelevance = "general",
     geographic_focus: tuple[str, ...] = ("varies_by_posting",),
+    source_pool: SourcePool = "primary",
     coverage_note: str | None = None,
 ) -> JobSourceRegistryEntry:
     normalized_identifier = normalize_source_identifier(identifier)
@@ -82,6 +85,7 @@ def _source(
         role_families=role_families,
         early_career_relevance=early_career_relevance,
         geographic_focus=geographic_focus,
+        source_pool=source_pool,
         coverage_note=coverage_note or DEFAULT_COVERAGE_NOTE,
     )
 
@@ -135,6 +139,7 @@ SOURCE_REGISTRY: tuple[JobSourceRegistryEntry, ...] = (
         "The Athletic",
         ("sports", "media", "entertainment"),
         TECH_ROLE_FAMILIES,
+        source_pool="industry_only",
         coverage_note="Official public Lever board for a sports-media organization.",
     ),
     _source(
@@ -143,6 +148,7 @@ SOURCE_REGISTRY: tuple[JobSourceRegistryEntry, ...] = (
         "Feld Entertainment",
         ("sports", "entertainment", "media", "events"),
         ENTERTAINMENT_ROLE_FAMILIES,
+        source_pool="industry_only",
         coverage_note="Official public Lever board covering live entertainment and motorsports operations.",
     ),
     _source(
@@ -152,6 +158,7 @@ SOURCE_REGISTRY: tuple[JobSourceRegistryEntry, ...] = (
         ("nonprofit", "education", "social_impact", "media"),
         MISSION_ROLE_FAMILIES,
         early_career_relevance="strong",
+        source_pool="industry_only",
         coverage_note="Official public Lever board with mission-driven roles and fellowship pathways.",
     ),
 )
@@ -161,17 +168,31 @@ def source_registry_entries(
     provider: Provider | None = None,
     *,
     enabled_only: bool = True,
+    source_pool: SourcePool | None = None,
 ) -> tuple[JobSourceRegistryEntry, ...]:
     return tuple(
         entry
         for entry in SOURCE_REGISTRY
         if (provider is None or entry.provider == provider)
         and (entry.enabled or not enabled_only)
+        and (source_pool is None or entry.source_pool == source_pool)
     )
 
 
 def default_source_identifiers(provider: Provider) -> tuple[str, ...]:
-    return tuple(entry.identifier for entry in source_registry_entries(provider))
+    """Return primary sources used by broad searches."""
+    return tuple(
+        entry.identifier
+        for entry in source_registry_entries(provider, source_pool="primary")
+    )
+
+
+def industry_source_identifiers(provider: Provider) -> tuple[str, ...]:
+    """Return secondary sources activated only for matching industries."""
+    return tuple(
+        entry.identifier
+        for entry in source_registry_entries(provider, source_pool="industry_only")
+    )
 
 
 def find_source(
@@ -193,15 +214,20 @@ def find_source(
 def configured_source_identifiers(
     provider: Provider,
     raw_identifiers: str | None,
+    *,
+    source_pool: SourcePool = "primary",
 ) -> tuple[str, ...]:
     """Resolve environment configuration through the registry allowlist.
 
-    Invalid, disabled, duplicate, and unregistered identifiers are ignored.
-    An empty or fully rejected configuration safely falls back to the enabled
-    registry defaults rather than creating arbitrary outbound request targets.
+    Invalid, disabled, duplicate, unregistered, and wrong-pool identifiers are
+    ignored. An empty or fully rejected configuration safely falls back to the
+    enabled defaults for the requested pool.
     """
 
-    defaults = default_source_identifiers(provider)
+    defaults = tuple(
+        entry.identifier
+        for entry in source_registry_entries(provider, source_pool=source_pool)
+    )
     if not raw_identifiers:
         return defaults
 
@@ -211,7 +237,11 @@ def configured_source_identifiers(
         if normalized is None or normalized in selected:
             continue
         entry = find_source(normalized, provider)
-        if entry is not None and entry.enabled:
+        if (
+            entry is not None
+            and entry.enabled
+            and entry.source_pool == source_pool
+        ):
             selected.append(normalized)
 
     return tuple(selected) or defaults
