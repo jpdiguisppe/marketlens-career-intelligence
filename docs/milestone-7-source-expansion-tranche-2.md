@@ -23,6 +23,12 @@ Job functions now include `legal`, `compliance`, `policy`, `legal_operations`, a
 - `public interest policy internship`
 - `financial services regulatory analyst`
 
+## Precision behavior
+
+Law-adjacent functions use strict title-aware matching before the generic occupation fallback. A clearly unrelated title such as `Software Engineering Intern` is therefore not accepted for `legal internship` merely because its description mentions work for a legal team.
+
+Existing job families retain their established compatibility behavior; the strict path is limited to `legal`, `compliance`, `policy`, `legal_operations`, and `contracts`.
+
 ## Deliberate boundary
 
 This tranche improves intent parsing, routing, and source coverage. It does not yet classify JD, bar-admission, law-school, or undergraduate credential requirements. Credential-aware legal filtering remains a separate later phase.
