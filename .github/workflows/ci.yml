@@ -28,7 +28,9 @@ jobs:
           python-version: "3.12"
 
       - name: Apply source expansion
-        run: python .github/scripts/apply_source_expansion_tranche_2.py
+        run: |
+          python .github/scripts/apply_source_expansion_tranche_2.py
+          python .github/scripts/fix_source_expansion_tranche_2.py
 
       - name: Install backend dependencies
         working-directory: backend
@@ -55,6 +57,7 @@ jobs:
           git fetch origin main
           git checkout origin/main -- .github/workflows/ci.yml
           rm -f .github/scripts/apply_source_expansion_tranche_2.py
+          rm -f .github/scripts/fix_source_expansion_tranche_2.py
           rm -f .github/workflows/apply-source-expansion-tranche-2.yml
           rm -f .github/source-expansion-tranche-2-trigger
           git config user.name "github-actions[bot]"
