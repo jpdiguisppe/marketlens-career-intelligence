@@ -1,0 +1,705 @@
+{
+  "version": 1,
+  "description": "Deterministic offline benchmark for MarketLens job-search intent, candidate filtering, and source routing.",
+  "thresholds": {
+    "intent_accuracy": 1.0,
+    "candidate_accuracy": 0.95,
+    "candidate_recall": 0.95,
+    "candidate_precision": 0.95,
+    "negative_rejection_rate": 0.95,
+    "routing_accuracy": 1.0,
+    "critical_case_pass_rate": 1.0
+  },
+  "intent_cases": [
+    {
+      "id": "intent-sports-marketing-intern",
+      "category": "intent-industry-function-level",
+      "query": "sports marketing internship",
+      "location": "Philadelphia",
+      "expected": {"job_function": "marketing", "industry": "sports", "level": "intern", "location": "Philadelphia"}
+    },
+    {
+      "id": "intent-healthcare-compliance-entry",
+      "category": "intent-industry-function-level",
+      "query": "healthcare compliance analyst entry level",
+      "expected": {"job_function": "compliance", "industry": "healthcare", "level": "entry", "location": null}
+    },
+    {
+      "id": "intent-public-interest-policy-intern",
+      "category": "intent-legal-policy",
+      "query": "public interest policy internship",
+      "expected": {"job_function": "policy", "industry": "public_interest", "level": "intern", "location": null}
+    },
+    {
+      "id": "intent-financial-regulatory",
+      "category": "intent-legal-policy",
+      "query": "financial services regulatory analyst",
+      "expected": {"job_function": "compliance", "industry": "financial_services", "level": "any", "location": null}
+    },
+    {
+      "id": "intent-sports-legal-operations",
+      "category": "intent-legal-policy",
+      "query": "sports legal operations internship",
+      "expected": {"job_function": "legal_operations", "industry": "sports", "level": "intern", "location": null}
+    },
+    {
+      "id": "intent-law-student-judicial",
+      "category": "intent-legal-policy",
+      "query": "law student judicial internship",
+      "expected": {"job_function": "legal", "industry": null, "level": "intern", "location": null}
+    },
+    {
+      "id": "intent-healthcare-software",
+      "category": "intent-cross-industry-tech",
+      "query": "healthcare software engineer",
+      "expected": {"job_function": "software", "industry": "healthcare", "level": "any", "location": null}
+    },
+    {
+      "id": "intent-education-data-entry",
+      "category": "intent-cross-industry-tech",
+      "query": "education data analyst entry level",
+      "expected": {"job_function": "data", "industry": "education", "level": "entry", "location": null}
+    },
+    {
+      "id": "intent-nonprofit-communications",
+      "category": "intent-industry-function-level",
+      "query": "nonprofit communications internship",
+      "expected": {"job_function": "marketing", "industry": "nonprofit", "level": "intern", "location": null}
+    },
+    {
+      "id": "intent-media-contracts",
+      "category": "intent-legal-policy",
+      "query": "media contracts analyst",
+      "expected": {"job_function": "contracts", "industry": "media", "level": "any", "location": null}
+    },
+    {
+      "id": "intent-government-policy",
+      "category": "intent-legal-policy",
+      "query": "government policy analyst",
+      "expected": {"job_function": "policy", "industry": "government", "level": "any", "location": null}
+    },
+    {
+      "id": "intent-corporate-legal-compliance",
+      "category": "intent-legal-policy",
+      "query": "corporate legal compliance analyst",
+      "expected": {"job_function": "compliance", "industry": "corporate_legal", "level": "any", "location": null}
+    },
+    {
+      "id": "intent-computer-science-broad",
+      "category": "intent-general-tech",
+      "query": "computer science jobs",
+      "expected": {"job_function": "technology", "industry": null, "level": "any", "location": null}
+    },
+    {
+      "id": "intent-backend-general",
+      "category": "intent-general-tech",
+      "query": "backend engineer",
+      "expected": {"job_function": "software", "industry": null, "level": "any", "location": null}
+    },
+    {
+      "id": "intent-finance-rotational",
+      "category": "intent-early-career",
+      "query": "finance rotational program",
+      "expected": {"job_function": "finance", "industry": "financial_services", "level": "entry", "location": null}
+    },
+    {
+      "id": "intent-public-policy-fellowship",
+      "category": "intent-early-career",
+      "query": "public policy fellowship",
+      "expected": {"job_function": "policy", "industry": "public_policy", "level": "intern", "location": null}
+    },
+    {
+      "id": "intent-legal-operations-general",
+      "category": "intent-legal-policy",
+      "query": "legal operations",
+      "expected": {"job_function": "legal_operations", "industry": "legal_services", "level": "any", "location": null}
+    },
+    {
+      "id": "intent-marketing-intern-general",
+      "category": "intent-early-career",
+      "query": "marketing internship",
+      "expected": {"job_function": "marketing", "industry": null, "level": "intern", "location": null}
+    },
+    {
+      "id": "intent-cybersecurity-new-grad",
+      "category": "intent-early-career",
+      "query": "cybersecurity new grad",
+      "expected": {"job_function": "cybersecurity", "industry": null, "level": "entry", "location": null}
+    },
+    {
+      "id": "intent-sports-media-priority",
+      "category": "intent-industry-function-level",
+      "query": "sports media internship",
+      "expected": {"job_function": "marketing", "industry": "sports", "level": "intern", "location": null}
+    }
+  ],
+  "candidate_cases": [
+    {
+      "id": "candidate-software-intern-positive",
+      "category": "early-career-recall",
+      "query": "software engineering internship",
+      "level": "intern",
+      "title": "Software Engineering Intern",
+      "company": "Example Systems",
+      "description": "Current students build backend services with Python and SQL.",
+      "expected_match": true
+    },
+    {
+      "id": "candidate-education-coop-positive",
+      "category": "early-career-recall",
+      "query": "education software co-op",
+      "level": "intern",
+      "title": "2027 Software Engineering Co-op",
+      "company": "Learning Platform",
+      "description": "Students rotate through backend engineering teams and return to school after the term.",
+      "expected_match": true
+    },
+    {
+      "id": "candidate-apprentice-positive",
+      "category": "early-career-recall",
+      "query": "software apprenticeship",
+      "level": "intern",
+      "title": "Technology Apprentice",
+      "company": "Example Systems",
+      "description": "Apprentices receive structured software engineering and backend development training.",
+      "expected_match": true
+    },
+    {
+      "id": "candidate-policy-fellowship-positive",
+      "category": "early-career-recall",
+      "query": "public policy fellowship",
+      "level": "intern",
+      "title": "Public Policy Fellowship",
+      "company": "Policy Institute",
+      "description": "Undergraduate students support policy research and advocacy projects.",
+      "expected_match": true
+    },
+    {
+      "id": "candidate-finance-summer-analyst-positive",
+      "category": "early-career-recall",
+      "query": "finance internship",
+      "level": "intern",
+      "title": "Investment Banking Summer Analyst",
+      "company": "Example Bank",
+      "description": "Students support valuation, financial modeling, and transaction analysis.",
+      "expected_match": true
+    },
+    {
+      "id": "candidate-software-engineer-one-positive",
+      "category": "early-career-recall",
+      "query": "software engineer entry level",
+      "level": "entry",
+      "title": "Software Engineer I",
+      "company": "Example Systems",
+      "description": "Build backend services with Python, SQL, and REST APIs.",
+      "expected_match": true
+    },
+    {
+      "id": "candidate-finance-rotational-positive",
+      "category": "early-career-recall",
+      "query": "finance rotational program",
+      "level": "entry",
+      "title": "Finance Rotational Program",
+      "company": "Example Financial",
+      "description": "Recent graduates rotate through corporate finance, treasury, and accounting.",
+      "expected_match": true
+    },
+    {
+      "id": "candidate-data-low-experience-positive",
+      "category": "early-career-recall",
+      "query": "data analyst entry level",
+      "level": "entry",
+      "title": "Data Analyst",
+      "company": "Example Analytics",
+      "description": "Candidates should have 0-2 years of analytics experience and strong SQL skills.",
+      "expected_match": true
+    },
+    {
+      "id": "candidate-sports-marketing-positive",
+      "category": "industry-recall",
+      "query": "sports marketing internship",
+      "level": "intern",
+      "title": "Marketing Intern",
+      "company": "Major League Soccer",
+      "description": "Support fan engagement, sponsorship activation, and game-day campaigns.",
+      "expected_match": true
+    },
+    {
+      "id": "candidate-sports-data-positive",
+      "category": "industry-recall",
+      "query": "sports data analyst entry level",
+      "level": "entry",
+      "title": "Data Analyst I",
+      "company": "The Athletic",
+      "description": "Analyze subscriber and sports audience data with SQL and dashboards.",
+      "expected_match": true
+    },
+    {
+      "id": "candidate-healthcare-compliance-positive",
+      "category": "legal-access-recall",
+      "query": "healthcare compliance analyst entry level",
+      "level": "entry",
+      "title": "Compliance Analyst",
+      "company": "Healthcare Advisory Group",
+      "description": "Bachelor's degree required. Support healthcare regulatory reviews with 0-2 years of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "candidate-public-interest-policy-positive",
+      "category": "legal-access-recall",
+      "query": "public interest policy internship",
+      "level": "intern",
+      "title": "Policy Intern",
+      "company": "ACLU",
+      "description": "Undergraduate students conduct civil-liberties policy research and advocacy analysis.",
+      "expected_match": true
+    },
+    {
+      "id": "candidate-financial-regulatory-positive",
+      "category": "legal-access-recall",
+      "query": "financial services regulatory analyst entry level",
+      "level": "entry",
+      "title": "Regulatory Analyst",
+      "company": "Plaid",
+      "description": "Bachelor's degree and 1-2 years of regulatory or compliance experience preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "candidate-media-legal-ops-positive",
+      "category": "legal-access-recall",
+      "query": "media legal operations entry level",
+      "level": "entry",
+      "title": "Legal Operations Analyst",
+      "company": "WEBTOON",
+      "description": "Bachelor's degree required. No prior professional experience required; support e-billing and matter management.",
+      "expected_match": true
+    },
+    {
+      "id": "candidate-law-student-summer-associate-positive",
+      "category": "legal-credential-recall",
+      "query": "law student summer associate internship",
+      "level": "intern",
+      "title": "2027 Summer Associate",
+      "company": "Example Law Firm",
+      "description": "Applicants must be current 2L students and JD candidates enrolled in law school.",
+      "expected_match": true
+    },
+    {
+      "id": "candidate-law-student-judicial-positive",
+      "category": "legal-credential-recall",
+      "query": "law student judicial internship",
+      "level": "intern",
+      "title": "Judicial Intern",
+      "company": "State Court",
+      "description": "Applicants must be currently enrolled in law school and pursuing a JD.",
+      "expected_match": true
+    },
+    {
+      "id": "candidate-licensed-attorney-positive",
+      "category": "legal-credential-recall",
+      "query": "attorney jobs",
+      "level": "any",
+      "title": "Associate Attorney",
+      "company": "Example Law Firm",
+      "description": "JD required and active bar admission required.",
+      "expected_match": true
+    },
+    {
+      "id": "candidate-generic-legal-broad-positive",
+      "category": "legal-credential-recall",
+      "query": "legal jobs",
+      "level": "any",
+      "title": "Product Counsel",
+      "company": "Media Company",
+      "description": "Provide product counseling and maintain active bar membership.",
+      "expected_match": true
+    },
+    {
+      "id": "candidate-nonprofit-marketing-fellow-positive",
+      "category": "industry-recall",
+      "query": "nonprofit marketing fellowship",
+      "level": "intern",
+      "title": "Marketing Fellowship",
+      "company": "Stand Together",
+      "description": "Undergraduate students support communications and social-impact campaigns.",
+      "expected_match": true
+    },
+    {
+      "id": "candidate-education-data-positive",
+      "category": "industry-recall",
+      "query": "education data analyst entry level",
+      "level": "entry",
+      "title": "Data Analyst",
+      "company": "Education Platform",
+      "description": "No professional experience required. Analyze student outcomes using SQL.",
+      "expected_match": true
+    },
+    {
+      "id": "candidate-contracts-entry-positive",
+      "category": "legal-access-recall",
+      "query": "corporate legal contracts analyst entry level",
+      "level": "entry",
+      "title": "Contract Analyst",
+      "company": "Enterprise Company",
+      "description": "Bachelor's degree and 0-1 years of experience. Review commercial contracts.",
+      "expected_match": true
+    },
+    {
+      "id": "candidate-compliance-intern-positive",
+      "category": "legal-access-recall",
+      "query": "healthcare compliance internship",
+      "level": "intern",
+      "title": "Compliance Intern",
+      "company": "Healthcare Company",
+      "description": "Undergraduate students support healthcare compliance audits and regulatory research.",
+      "expected_match": true
+    },
+    {
+      "id": "candidate-senior-mentor-intern-negative",
+      "category": "early-career-precision",
+      "critical": true,
+      "query": "software engineering internship",
+      "level": "intern",
+      "title": "Senior Software Engineer",
+      "company": "Example Systems",
+      "description": "Own backend architecture and mentor software engineering interns.",
+      "expected_match": false
+    },
+    {
+      "id": "candidate-program-mention-negative",
+      "category": "early-career-precision",
+      "query": "software engineering internship",
+      "level": "intern",
+      "title": "Software Engineer",
+      "company": "Example Systems",
+      "description": "Build production systems and occasionally support the internship program.",
+      "expected_match": false
+    },
+    {
+      "id": "candidate-business-rotation-negative",
+      "category": "role-precision",
+      "query": "software engineer entry level",
+      "level": "entry",
+      "title": "Business Rotational Program",
+      "company": "Example Company",
+      "description": "Recent graduates rotate through sales, recruiting, and account management.",
+      "expected_match": false
+    },
+    {
+      "id": "candidate-entry-five-years-negative",
+      "category": "early-career-precision",
+      "critical": true,
+      "query": "software engineer entry level",
+      "level": "entry",
+      "title": "Software Engineer",
+      "company": "Example Systems",
+      "description": "This entry-level branded role requires 5+ years of production experience.",
+      "expected_match": false
+    },
+    {
+      "id": "candidate-analytics-engineer-strict-swe-negative",
+      "category": "role-precision",
+      "query": "software engineer entry level",
+      "level": "entry",
+      "title": "Analytics Engineer I",
+      "company": "Example Analytics",
+      "description": "Build data models and business intelligence pipelines with SQL.",
+      "expected_match": false
+    },
+    {
+      "id": "candidate-generic-sports-marketing-negative",
+      "category": "industry-precision",
+      "critical": true,
+      "query": "sports marketing internship",
+      "level": "intern",
+      "title": "Marketing Intern",
+      "company": "HubSpot",
+      "description": "Support B2B email campaigns, SEO, and product marketing.",
+      "expected_match": false
+    },
+    {
+      "id": "candidate-generic-sports-media-negative",
+      "category": "industry-precision",
+      "query": "sports media jobs",
+      "level": "any",
+      "title": "Media Planner",
+      "company": "General Advertising Agency",
+      "description": "Plan digital advertising campaigns for retail and software clients.",
+      "expected_match": false
+    },
+    {
+      "id": "candidate-legal-description-software-title-negative",
+      "category": "role-precision",
+      "critical": true,
+      "query": "legal internship",
+      "level": "intern",
+      "title": "Software Engineering Intern",
+      "company": "Legal Technology Company",
+      "description": "Build tools used by the legal team and attorneys.",
+      "expected_match": false
+    },
+    {
+      "id": "candidate-undergrad-legal-vs-summer-associate-negative",
+      "category": "legal-credential-precision",
+      "critical": true,
+      "query": "legal internship",
+      "level": "intern",
+      "title": "Summer Associate",
+      "company": "Example Law Firm",
+      "description": "Applicants must be current law students and JD candidates.",
+      "expected_match": false
+    },
+    {
+      "id": "candidate-undergrad-legal-vs-attorney-negative",
+      "category": "legal-credential-precision",
+      "critical": true,
+      "query": "legal jobs entry level",
+      "level": "entry",
+      "title": "Associate Attorney",
+      "company": "Example Law Firm",
+      "description": "JD required and active bar admission required.",
+      "expected_match": false
+    },
+    {
+      "id": "candidate-law-student-vs-undergrad-negative",
+      "category": "legal-credential-precision",
+      "critical": true,
+      "query": "law student internship",
+      "level": "intern",
+      "title": "Legal Intern",
+      "company": "Corporate Legal Department",
+      "description": "Open to undergraduate students currently enrolled in college.",
+      "expected_match": false
+    },
+    {
+      "id": "candidate-attorney-vs-assistant-negative",
+      "category": "legal-credential-precision",
+      "critical": true,
+      "query": "attorney jobs",
+      "level": "any",
+      "title": "Legal Assistant",
+      "company": "Example Law Firm",
+      "description": "Bachelor's degree preferred. Support attorneys and paralegals.",
+      "expected_match": false
+    },
+    {
+      "id": "candidate-entry-compliance-counsel-negative",
+      "category": "legal-credential-precision",
+      "critical": true,
+      "query": "compliance analyst entry level",
+      "level": "entry",
+      "title": "Compliance Counsel",
+      "company": "Financial Company",
+      "description": "JD required and active state bar membership required.",
+      "expected_match": false
+    },
+    {
+      "id": "candidate-senior-policy-intern-negative",
+      "category": "early-career-precision",
+      "query": "public interest policy internship",
+      "level": "intern",
+      "title": "Senior Policy Director",
+      "company": "Advocacy Organization",
+      "description": "Lead legislative strategy and supervise policy interns.",
+      "expected_match": false
+    },
+    {
+      "id": "candidate-legal-ops-software-negative",
+      "category": "role-precision",
+      "query": "media legal operations entry level",
+      "level": "entry",
+      "title": "Software Engineer I",
+      "company": "Media Company",
+      "description": "Build internal applications for the legal operations team.",
+      "expected_match": false
+    },
+    {
+      "id": "candidate-healthcare-compliance-nurse-negative",
+      "category": "role-precision",
+      "query": "healthcare compliance analyst entry level",
+      "level": "entry",
+      "title": "Registered Nurse",
+      "company": "Hospital",
+      "description": "Provide direct patient care in a clinical unit.",
+      "expected_match": false
+    },
+    {
+      "id": "candidate-marketing-data-intern-negative",
+      "category": "role-precision",
+      "query": "marketing internship",
+      "level": "intern",
+      "title": "Data Analyst Intern",
+      "company": "Example Analytics",
+      "description": "Analyze product telemetry with SQL and dashboards.",
+      "expected_match": false
+    },
+    {
+      "id": "candidate-contracts-manager-negative",
+      "category": "early-career-precision",
+      "query": "contracts analyst entry level",
+      "level": "entry",
+      "title": "Procurement Manager",
+      "company": "Enterprise Company",
+      "description": "Lead vendor negotiations and manage a team with 7+ years of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "candidate-seasonal-manager-negative",
+      "category": "early-career-precision",
+      "query": "marketing internship",
+      "level": "intern",
+      "title": "Summer Marketing Manager",
+      "company": "Retail Company",
+      "description": "Own seasonal campaigns and manage the marketing team.",
+      "expected_match": false
+    },
+    {
+      "id": "candidate-data-intern-mention-negative",
+      "category": "early-career-precision",
+      "query": "data internship",
+      "level": "intern",
+      "title": "Data Analyst",
+      "company": "Example Analytics",
+      "description": "Build dashboards and mentor interns during the summer.",
+      "expected_match": false
+    },
+    {
+      "id": "candidate-policy-fellow-software-negative",
+      "category": "role-precision",
+      "query": "public policy fellowship",
+      "level": "intern",
+      "title": "Software Engineering Fellow",
+      "company": "Civic Technology Group",
+      "description": "Build web applications used by policy researchers.",
+      "expected_match": false
+    },
+    {
+      "id": "candidate-finance-senior-intern-negative",
+      "category": "early-career-precision",
+      "query": "finance internship",
+      "level": "intern",
+      "title": "Senior Financial Analyst",
+      "company": "Example Bank",
+      "description": "Own forecasting and mentor finance interns. Requires 6+ years of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "candidate-cyber-engineer-three-entry-negative",
+      "category": "early-career-precision",
+      "query": "cybersecurity entry level",
+      "level": "entry",
+      "title": "Security Engineer III",
+      "company": "Security Company",
+      "description": "Lead threat detection engineering with 5+ years of experience.",
+      "expected_match": false
+    }
+  ],
+  "routing_cases": [
+    {
+      "id": "routing-broad-software-primary-only",
+      "category": "routing-broad",
+      "critical": true,
+      "query": "software engineer",
+      "level": "any",
+      "expected_routed": false,
+      "expected_industry": null,
+      "included_sources": ["greenhouse:datadog", "lever:github"],
+      "excluded_sources": ["greenhouse:aclu", "lever:theathletic", "lever:avalerehealth", "lever:kiddom"],
+      "max_total_sources": 45
+    },
+    {
+      "id": "routing-sports-activates-sports-boards",
+      "category": "routing-industry",
+      "critical": true,
+      "query": "sports marketing internship",
+      "level": "intern",
+      "expected_routed": true,
+      "expected_industry": "sports",
+      "included_sources": ["lever:theathletic", "lever:feldinc"],
+      "excluded_sources": ["greenhouse:aclu", "lever:avalerehealth"],
+      "minimum_industry_only_sources": 2,
+      "max_total_sources": 16
+    },
+    {
+      "id": "routing-nonprofit-activates-mission-boards",
+      "category": "routing-industry",
+      "query": "nonprofit marketing internship",
+      "level": "intern",
+      "expected_routed": true,
+      "expected_industry": "nonprofit",
+      "included_sources": ["greenhouse:aclu", "lever:stradaeducation", "lever:standtogether"],
+      "minimum_industry_only_sources": 3,
+      "max_total_sources": 16
+    },
+    {
+      "id": "routing-healthcare-activates-avalere",
+      "category": "routing-industry",
+      "query": "healthcare compliance analyst entry level",
+      "level": "entry",
+      "expected_routed": true,
+      "expected_industry": "healthcare",
+      "included_sources": ["lever:avalerehealth"],
+      "excluded_sources": ["lever:theathletic", "lever:feldinc"],
+      "minimum_industry_only_sources": 1,
+      "max_total_sources": 16
+    },
+    {
+      "id": "routing-education-activates-education-boards",
+      "category": "routing-industry",
+      "query": "education software entry level",
+      "level": "entry",
+      "expected_routed": true,
+      "expected_industry": "education",
+      "included_sources": ["lever:kiddom", "lever:stradaeducation", "lever:standtogether"],
+      "minimum_industry_only_sources": 3,
+      "max_total_sources": 16
+    },
+    {
+      "id": "routing-media-activates-media-policy-boards",
+      "category": "routing-industry",
+      "query": "media legal operations entry level",
+      "level": "entry",
+      "expected_routed": true,
+      "expected_industry": "media",
+      "included_sources": ["lever:wattpad", "lever:thedispatch"],
+      "minimum_industry_only_sources": 2,
+      "max_total_sources": 16
+    },
+    {
+      "id": "routing-legal-activates-legal-boards",
+      "category": "routing-legal",
+      "critical": true,
+      "query": "legal internship",
+      "level": "intern",
+      "expected_routed": true,
+      "expected_industry": "legal_services",
+      "included_sources": ["greenhouse:aclu", "lever:thedispatch"],
+      "minimum_industry_only_sources": 2,
+      "max_total_sources": 16
+    },
+    {
+      "id": "routing-public-interest-activates-mission-legal",
+      "category": "routing-legal",
+      "query": "public interest policy internship",
+      "level": "intern",
+      "expected_routed": true,
+      "expected_industry": "public_interest",
+      "included_sources": ["greenhouse:aclu", "lever:stradaeducation"],
+      "minimum_industry_only_sources": 2,
+      "max_total_sources": 16
+    },
+    {
+      "id": "routing-financial-services-does-not-activate-unrelated-niche",
+      "category": "routing-industry",
+      "critical": true,
+      "query": "financial services regulatory analyst entry level",
+      "level": "entry",
+      "expected_routed": true,
+      "expected_industry": "financial_services",
+      "included_sources": ["greenhouse:plaid", "lever:robinhood"],
+      "excluded_sources": ["greenhouse:aclu", "lever:theathletic", "lever:avalerehealth", "lever:kiddom", "lever:standtogether"],
+      "minimum_industry_only_sources": 0,
+      "max_total_sources": 16
+    }
+  ]
+}
