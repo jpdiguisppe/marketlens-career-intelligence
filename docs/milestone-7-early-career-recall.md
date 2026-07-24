@@ -17,5 +17,10 @@ Remote-provider search passes now include co-op, apprenticeship, fellowship, new
 - Senior and mid-level titles remain excluded from internship and entry-level searches.
 - A posting requiring four or more years of experience is not treated as entry-level even when the description uses entry-level branding.
 - Generic rotational/program titles must contain description evidence for the requested job function.
+- Established finance titles such as `Investment Banking Summer Analyst` remain valid internship matches.
+
+## Validation
+
+The focused regression suite covers level inference, seasonal and structured programs, low-experience descriptions, occupation evidence, experienced-role rejection, established Summer Analyst behavior, and expanded remote-provider query terms. The complete backend suite passed before the clean implementation commit was created.
 
 Credential-aware legal filtering remains the next separate legal-specific phase; this work only improves general early-career level recognition and recall.
