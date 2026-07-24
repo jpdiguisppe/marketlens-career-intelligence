@@ -18,3 +18,7 @@ After every completed search, the Smart Fit screen now shows:
 - The Workday option uses a Google site-restricted discovery query for indexed postings rather than scraping Workday tenant search pages.
 - Handshake is included for both internship and entry-level searches because campus systems frequently cover new-graduate roles as well as internships.
 - All outbound URLs remain HTTPS and pass through the frontend's safe external-link component.
+
+## Validation
+
+The integration gate passed the complete backend test suite and a frontend production build before creating the clean implementation commit. Standard pull-request CI then independently validates backend tests, the frontend build, and both Docker images on the final user-authored head.
