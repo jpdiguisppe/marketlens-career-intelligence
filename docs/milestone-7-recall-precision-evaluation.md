@@ -12,6 +12,17 @@ The benchmark includes three layers:
 
 The curated cases cover general technology, software, data, cybersecurity, finance, marketing, sports, healthcare, education, nonprofit, media, legal, compliance, policy, legal operations, contracts, internships, co-ops, fellowships, rotational programs, law-student roles, and licensed-attorney roles.
 
+## Passing baseline
+
+The initial accepted baseline contains 74 deterministic cases:
+
+- 20 intent cases
+- 45 candidate cases: 22 relevant postings and 23 deliberate false positives
+- 9 routing cases
+- 13 critical safety guardrails
+
+All 74 cases pass on the accepted branch. The first benchmark run also exposed a real compatibility bug: explicit cross-industry compliance searches could be overridden by older healthcare or finance family classification. The adapter now gives the canonical legal/compliance/policy/contracts function precedence before applying the compatibility engine.
+
 ## Acceptance thresholds
 
 The benchmark enforces:
