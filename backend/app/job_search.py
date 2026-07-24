@@ -10,6 +10,7 @@ from urllib.parse import quote_plus
 import httpx
 
 from app.external_urls import sanitize_external_https_url
+from app.legal_credentials import legal_credential_matches_search
 from app.job_source_registry import (
     configured_source_identifiers,
     default_source_identifiers,
@@ -318,8 +319,19 @@ LEGAL_TITLE_TERMS = {
     "legal coordinator",
     "paralegal",
     "law clerk",
+    "legal extern",
+    "judicial intern",
+    "judicial extern",
+    "summer associate",
     "attorney",
+    "associate attorney",
+    "staff attorney",
+    "lawyer",
     "counsel",
+    "public defender",
+    "prosecutor",
+    "solicitor",
+    "barrister",
     "litigation",
 }
 COMPLIANCE_TITLE_TERMS = {
@@ -385,7 +397,27 @@ ROLE_FAMILY_QUERY_TERMS: dict[RoleFamily, set[str]] = {
     "operations": {"operations", "strategy", "supply chain", "logistics", "procurement", "human resources", "hr"},
     "healthcare": {"healthcare", "health care", "clinical", "patient", "medical", "hospital"},
     "design": {"design", "designer", "ux", "ui", "visual design", "graphic design"},
-    "legal": {"legal", "law", "paralegal", "attorney", "counsel", "litigation", "law clerk"},
+    "legal": {
+        "legal",
+        "law",
+        "law student",
+        "jd candidate",
+        "j.d. candidate",
+        "1l",
+        "2l",
+        "3l",
+        "paralegal",
+        "attorney",
+        "lawyer",
+        "counsel",
+        "litigation",
+        "law clerk",
+        "legal extern",
+        "judicial intern",
+        "judicial internship",
+        "judicial extern",
+        "summer associate",
+    },
     "compliance": {"compliance", "regulatory", "regulatory affairs", "aml", "kyc", "ethics", "risk and compliance"},
     "policy": {"policy", "public policy", "government affairs", "public affairs", "legislative", "advocacy"},
     "legal_operations": {"legal operations", "legal ops", "litigation support", "legal technology"},
@@ -1381,6 +1413,14 @@ def _score_job(
         if canonical_family in STRICT_DESCRIPTION_ONLY_ROLE_FAMILIES
         else legacy_family
     )
+    if not legal_credential_matches_search(
+        title=title,
+        description=description,
+        query=query,
+        role_family=canonical_family,
+        level=resolved_level,
+    ):
+        return 0
     industry = _query_industry(query)
     terms = _query_terms(query)
     searchable_title = title.lower()
