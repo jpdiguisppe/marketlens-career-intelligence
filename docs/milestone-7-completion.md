@@ -113,6 +113,7 @@ Before completion:
 - backend Docker image passed
 - frontend Docker image passed
 - live Railway frontend/backend smoke test passed
+- final PR diff contains only `README.md` and this completion record; temporary smoke and finalization files were removed
 
 ## Remaining limitations
 
