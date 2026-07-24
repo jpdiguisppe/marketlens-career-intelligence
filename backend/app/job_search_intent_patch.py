@@ -273,11 +273,6 @@ def apply_job_search_intent_patch(job_search: Any) -> None:
         level: str | None = None,
     ) -> bool:
         resolved_level = level or job_search.resolve_job_level(query)
-        intent = intent_engine.classify_search_intent(query, resolved_level)
-
-        if intent.role_family in intent_engine.ENGINE_HANDLED_FAMILIES:
-            return intent_engine.job_matches_search_intent(title, description, intent)
-
         canonical_family = job_search._query_job_function(query)
         strict_families = getattr(
             job_search,
@@ -291,6 +286,10 @@ def apply_job_search_intent_patch(job_search: Any) -> None:
                 query,
                 resolved_level,
             )
+
+        intent = intent_engine.classify_search_intent(query, resolved_level)
+        if intent.role_family in intent_engine.ENGINE_HANDLED_FAMILIES:
+            return intent_engine.job_matches_search_intent(title, description, intent)
 
         if intent.role_family is None:
             return _generic_title_matches_query(

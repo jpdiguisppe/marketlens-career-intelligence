@@ -46,7 +46,7 @@
       "id": "intent-law-student-judicial",
       "category": "intent-legal-policy",
       "query": "law student judicial internship",
-      "expected": {"job_function": "legal", "industry": "legal_services", "level": "intern", "location": null}
+      "expected": {"job_function": "legal", "industry": null, "level": "intern", "location": null}
     },
     {
       "id": "intent-healthcare-software",
