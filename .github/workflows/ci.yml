@@ -28,7 +28,9 @@ jobs:
           python-version: "3.12"
 
       - name: Apply early-career changes
-        run: python .github/scripts/apply_early_career_recall.py
+        run: |
+          python .github/scripts/apply_early_career_recall.py
+          python .github/scripts/fix_early_career_recall.py
 
       - name: Install backend dependencies
         working-directory: backend
@@ -55,6 +57,7 @@ jobs:
           git fetch origin main
           git checkout origin/main -- .github/workflows/ci.yml
           rm -f .github/scripts/apply_early_career_recall.py
+          rm -f .github/scripts/fix_early_career_recall.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
