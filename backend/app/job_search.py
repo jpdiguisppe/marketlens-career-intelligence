@@ -484,13 +484,29 @@ LEVEL_QUERY_TERMS = {
     "coop",
     "co",
     "op",
+    "apprentice",
+    "apprenticeship",
+    "fellowship",
+    "summer",
+    "fall",
+    "spring",
+    "winter",
+    "student",
     "entry",
     "level",
     "junior",
     "associate",
     "new",
+    "recent",
     "grad",
     "graduate",
+    "rotational",
+    "rotation",
+    "program",
+    "early",
+    "career",
+    "campus",
+    "university",
     "senior",
     "staff",
     "principal",
@@ -498,7 +514,62 @@ LEVEL_QUERY_TERMS = {
     "mid",
 }
 GENERIC_SOFTWARE_QUERY_TERMS = {"engineer", "engineering", "developer", "development"}
-INTERN_TERMS = {"intern", "internship", "co-op", "coop", "co op"}
+INTERN_TERMS = {
+    "intern",
+    "internship",
+    "co-op",
+    "coop",
+    "co op",
+    "cooperative education",
+    "apprentice",
+    "apprenticeship",
+    "fellowship",
+    "summer associate",
+    "student trainee",
+    "industrial placement",
+    "graduate internship",
+}
+INTERN_TITLE_TERMS = INTERN_TERMS | {
+    "summer analyst",
+    "analyst intern",
+    "summer intern",
+    "summer internship",
+    "student intern",
+    "university intern",
+    "internship program",
+    "intern program",
+    "fellow",
+    "student program",
+    "university program",
+    "campus program",
+}
+INTERN_DESCRIPTION_TERMS = {
+    "internship program",
+    "intern program",
+    "co-op program",
+    "cooperative education",
+    "apprenticeship program",
+    "fellowship program",
+}
+STUDENT_ELIGIBILITY_TERMS = {
+    "currently enrolled",
+    "enrolled in a bachelor's",
+    "enrolled in a bachelor",
+    "enrolled in a master's",
+    "enrolled in a master",
+    "pursuing a bachelor's",
+    "pursuing a bachelor",
+    "pursuing a master's",
+    "pursuing a master",
+    "returning to school",
+    "return to school",
+    "graduation date",
+    "expected graduation",
+    "current student",
+    "undergraduate student",
+    "graduate student",
+}
+SEASONAL_EARLY_CAREER_TERMS = {"summer", "fall", "spring", "winter"}
 ENTRY_TITLE_TERMS = {
     "entry level",
     "entry-level",
@@ -506,9 +577,24 @@ ENTRY_TITLE_TERMS = {
     "associate",
     "new grad",
     "new graduate",
+    "recent graduate",
     "university grad",
     "university graduate",
     "early career",
+    "early talent",
+    "campus hire",
+    "university hire",
+}
+ENTRY_PROGRAM_TITLE_TERMS = {
+    "graduate program",
+    "graduate scheme",
+    "rotational program",
+    "rotation program",
+    "leadership development program",
+    "analyst development program",
+    "career development program",
+    "early career program",
+    "early talent program",
 }
 ENTRY_DESCRIPTION_TERMS = {
     "entry level",
@@ -519,9 +605,21 @@ ENTRY_DESCRIPTION_TERMS = {
     "junior accountant",
     "new grad",
     "new graduate",
+    "recent graduate",
     "university grad",
     "university graduate",
     "early career",
+    "early talent",
+    "campus hire",
+    "university hire",
+}
+ZERO_EXPERIENCE_TERMS = {
+    "no experience required",
+    "no prior experience required",
+    "no professional experience required",
+    "no prior professional experience required",
+    "0 years of experience",
+    "zero years of experience",
 }
 MID_TERMS = {
     "mid level",
@@ -776,9 +874,17 @@ def _query_terms(query: str) -> list[str]:
         "fpa": ["finance", "financial"],
         "intern": ["intern"],
         "internship": ["intern"],
+        "co-op": ["intern"],
+        "apprenticeship": ["intern"],
+        "fellowship": ["intern"],
+        "summer associate": ["intern"],
         "entry level": ["entry", "level"],
         "entry-level": ["entry", "level"],
         "new grad": ["new", "grad"],
+        "new graduate": ["new", "grad"],
+        "recent graduate": ["new", "grad"],
+        "rotational program": ["entry", "program"],
+        "graduate program": ["entry", "program"],
     }
 
     terms = re.findall(r"[a-z0-9+#&.]+", normalized)
@@ -833,7 +939,7 @@ def _infer_level_from_query(query: str) -> JobLevel:
     normalized = query.lower()
     if _contains_any(normalized, INTERN_TERMS):
         return "intern"
-    if _contains_any(normalized, ENTRY_TITLE_TERMS):
+    if _contains_any(normalized, ENTRY_TITLE_TERMS | ENTRY_PROGRAM_TITLE_TERMS):
         return "entry"
     if _contains_any(normalized, SENIOR_TERMS) or SENIOR_NUMBERED_TITLE_PATTERN.search(normalized):
         return "senior"
@@ -1020,7 +1126,7 @@ def _matches_requested_role(title: str, description: str, query: str, level: Job
     description_lower = description.lower()
     is_generic_early_career_title = _contains_any(
         title_lower,
-        {"intern", "internship", "summer analyst", "analyst intern", "rotational program", "graduate program"},
+        INTERN_TITLE_TERMS | ENTRY_PROGRAM_TITLE_TERMS,
     )
     if (
         family in STRICT_DESCRIPTION_ONLY_ROLE_FAMILIES
@@ -1047,9 +1153,33 @@ def _title_has_mid_signal(title: str) -> bool:
     return _contains_any(title.lower(), MID_TERMS) or MID_LEVEL_TITLE_PATTERN.search(title) is not None
 
 
+def _title_has_seasonal_early_career_signal(title: str) -> bool:
+    title_lower = title.lower()
+    if not _contains_any(title_lower, SEASONAL_EARLY_CAREER_TERMS):
+        return False
+    return bool(
+        _contains_any(
+            title_lower,
+            {"program", "student", "associate", "fellowship", "co-op", "coop", "intern", "internship"},
+        )
+        or re.search(r"\b20\d{2}\b", title_lower)
+    )
+
+
 def _looks_like_intern_role(title: str, description: str) -> bool:
-    searchable = f"{title} {description}".lower()
-    return _contains_any(searchable, INTERN_TERMS)
+    title_lower = title.lower()
+    description_lower = description.lower()
+
+    if _title_has_senior_signal(title) or _title_has_mid_signal(title):
+        return False
+    if _contains_any(title_lower, INTERN_TITLE_TERMS):
+        return True
+    if _title_has_seasonal_early_career_signal(title):
+        return _contains_any(
+            description_lower,
+            STUDENT_ELIGIBILITY_TERMS | INTERN_DESCRIPTION_TERMS,
+        )
+    return False
 
 
 def _looks_like_senior_role(title: str, description: str) -> bool:
@@ -1070,13 +1200,19 @@ def _looks_like_entry_role(title: str, description: str) -> bool:
     if _title_has_senior_signal(title) or _title_has_mid_signal(title):
         return False
 
-    if _contains_any(title_lower, ENTRY_TITLE_TERMS) or ENTRY_NUMBERED_TITLE_PATTERN.search(title):
-        return True
-
-    if _contains_any(description_lower, ENTRY_DESCRIPTION_TERMS):
-        return True
-
     max_years = _max_required_years(description)
+    if max_years >= 4:
+        return False
+
+    if (
+        _contains_any(title_lower, ENTRY_TITLE_TERMS | ENTRY_PROGRAM_TITLE_TERMS)
+        or ENTRY_NUMBERED_TITLE_PATTERN.search(title)
+    ):
+        return True
+
+    if _contains_any(description_lower, ENTRY_DESCRIPTION_TERMS | ZERO_EXPERIENCE_TERMS):
+        return True
+
     return 0 < max_years <= 3 and not _looks_like_senior_role(title, description)
 
 
@@ -1109,9 +1245,15 @@ def _level_score_bonus(title: str, description: str, level: JobLevel) -> int:
     if level == "any" or not _matches_level(title, description, level):
         return 0
     title_lower = title.lower()
-    if level == "intern" and _contains_any(title_lower, INTERN_TERMS):
+    if level == "intern" and (
+        _contains_any(title_lower, INTERN_TITLE_TERMS)
+        or _title_has_seasonal_early_career_signal(title)
+    ):
         return 10
-    if level == "entry" and (_contains_any(title_lower, ENTRY_TITLE_TERMS) or ENTRY_NUMBERED_TITLE_PATTERN.search(title)):
+    if level == "entry" and (
+        _contains_any(title_lower, ENTRY_TITLE_TERMS | ENTRY_PROGRAM_TITLE_TERMS)
+        or ENTRY_NUMBERED_TITLE_PATTERN.search(title)
+    ):
         return 8
     if level == "mid" and _title_has_mid_signal(title):
         return 8
