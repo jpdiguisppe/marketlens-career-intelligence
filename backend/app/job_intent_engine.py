@@ -36,15 +36,22 @@ INTERN_TITLE_TERMS = {
     "co-op",
     "coop",
     "co op",
+    "cooperative education",
     "summer analyst",
     "summer intern",
     "summer internship",
+    "summer associate",
     "student intern",
+    "student trainee",
     "university intern",
     "internship program",
     "intern program",
     "apprentice",
     "apprenticeship",
+    "fellow",
+    "fellowship",
+    "industrial placement",
+    "graduate internship",
 }
 
 ENTRY_TEXT_TERMS = {
@@ -54,9 +61,20 @@ ENTRY_TEXT_TERMS = {
     "associate",
     "new grad",
     "new graduate",
+    "recent graduate",
     "university grad",
     "university graduate",
     "early career",
+    "early talent",
+    "campus hire",
+    "university hire",
+    "graduate program",
+    "graduate scheme",
+    "rotational program",
+    "rotation program",
+    "leadership development program",
+    "analyst development program",
+    "career development program",
 }
 
 SOFTWARE_TITLE_TERMS = {
@@ -524,12 +542,16 @@ def _has_non_target_title_family(job: JobIntent, intent: SearchIntent) -> bool:
 
 
 def _can_use_description_fallback(job: JobIntent, description: str, intent: SearchIntent) -> bool:
-    # Description fallback is intentionally narrow. It is for true generic
-    # internship postings like "Summer Analyst" or "Engineering Intern", not
-    # arbitrary entry-level business/admin roles that merely mention data.
-    if intent.level != "intern":
-        return False
-    if not (job.has_internship_title or _contains_any(description.lower(), INTERN_TITLE_TERMS)):
+    # Description fallback is intentionally narrow. It is reserved for generic
+    # early-career program titles whose descriptions clearly identify the
+    # requested occupation family.
+    if intent.level == "intern":
+        if not job.has_internship_title:
+            return False
+    elif intent.level == "entry":
+        if not job.has_entry_title:
+            return False
+    else:
         return False
     return any(_description_matches_family(description, family) for family in intent.accepted_families)
 
@@ -583,9 +605,22 @@ def remotive_search_terms(query: str, level: JobLevel) -> list[str | None]:
     family = intent.role_family
     if family == "technology":
         terms.extend(
-            ["software intern", "data intern", "analytics intern", "cybersecurity intern", "intern"]
+            [
+                "software intern",
+                "data intern",
+                "analytics intern",
+                "cybersecurity intern",
+                "software co-op",
+                "technology apprenticeship",
+                "technology fellowship",
+                "intern",
+            ]
             if level == "intern"
-            else ["software", "data", "analytics", "cybersecurity", "developer"]
+            else (
+                ["software", "data", "analytics", "cybersecurity", "developer"]
+                if level != "entry"
+                else ["new grad software", "entry level data", "early career technology", "technology rotational program"]
+            )
         )
     elif family == "software":
         if level == "intern":
@@ -596,7 +631,18 @@ def remotive_search_terms(query: str, level: JobLevel) -> list[str | None]:
                 "software engineering internship",
                 "developer intern",
                 "engineering intern",
+                "software co-op",
+                "software apprentice",
+                "software fellowship",
                 "intern",
+            ])
+        elif level == "entry":
+            terms.extend([
+                "new grad software engineer",
+                "entry level software engineer",
+                "associate software engineer",
+                "software engineer i",
+                "software rotational program",
             ])
         elif "backend" in normalized:
             terms.extend(["backend", "backend developer"])
@@ -611,13 +657,25 @@ def remotive_search_terms(query: str, level: JobLevel) -> list[str | None]:
         if level == "intern":
             terms.extend(["finance intern", "finance internship", "accounting intern", "accounting internship", "summer analyst", "intern"])
         elif level == "entry":
-            terms.extend(["junior financial analyst", "entry level finance", "junior accountant"])
+            terms.extend([
+                "junior financial analyst",
+                "entry level finance",
+                "junior accountant",
+                "finance rotational program",
+                "recent graduate finance",
+            ])
     elif family == "data":
         terms.extend(["data analyst", "analytics", "business intelligence"])
         if level == "intern":
             terms.extend(["data analyst intern", "data analytics intern", "analytics intern", "data science intern", "intern"])
         elif level == "entry":
-            terms.extend(["junior data analyst", "entry level data analyst", "analytics associate"])
+            terms.extend([
+                "junior data analyst",
+                "entry level data analyst",
+                "analytics associate",
+                "new grad data analyst",
+                "data rotational program",
+            ])
     elif family == "cybersecurity":
         terms.extend(["cybersecurity", "security analyst", "information security"])
         if level == "intern":
@@ -627,11 +685,18 @@ def remotive_search_terms(query: str, level: JobLevel) -> list[str | None]:
     elif family:
         terms.extend(sorted(ROLE_QUERY_TERMS.get(family, set()))[:4])
         if level == "intern":
-            terms.extend([f"{term} intern" for term in sorted(ROLE_QUERY_TERMS.get(family, set()))[:3]])
+            base_terms = sorted(ROLE_QUERY_TERMS.get(family, set()))[:3]
+            terms.extend([f"{term} intern" for term in base_terms])
+            terms.extend([f"{term} co-op" for term in base_terms[:2]])
+            terms.extend([f"{term} fellowship" for term in base_terms[:2]])
+        elif level == "entry":
+            base_terms = sorted(ROLE_QUERY_TERMS.get(family, set()))[:3]
+            terms.extend([f"entry level {term}" for term in base_terms])
+            terms.extend([f"new grad {term}" for term in base_terms[:2]])
     elif level == "intern":
-        terms.extend(["intern", "internship"])
+        terms.extend(["intern", "internship", "co-op", "apprenticeship", "fellowship"])
     elif level == "entry":
-        terms.extend(["junior", "entry level"])
+        terms.extend(["junior", "entry level", "new grad", "recent graduate", "rotational program"])
 
     if level == "intern" or family in {"software", "finance", "technology"}:
         terms.append(None)
