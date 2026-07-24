@@ -25,4 +25,8 @@ This phase separates legal and law-adjacent postings by the minimum credential l
 - A summer-associate, law-clerk, or judicial-intern posting is excluded from a generic undergraduate legal-internship search when law-school requirements are present.
 - Non-legal search behavior is unchanged.
 
+## Validation boundary
+
+The regression suite covers query-band inference, posting classification, undergraduate legal internships, law-student searches, licensed-attorney searches, compliance-counsel exclusions, inclusive undergraduate/law-student postings, unknown evidence, and unchanged non-legal scoring. The full backend suite must pass before the integration is committed, followed by the normal frontend and Docker validation pipeline on the clean branch head.
+
 This filtering is deterministic and evidence-based. It does not infer a candidate's personal credentials, provide legal advice, or claim that every employer uses legal titles consistently.
