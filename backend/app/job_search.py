@@ -1949,31 +1949,39 @@ def _external_search_links(query: str, location: str | None, level: JobLevel) ->
     external_query = _external_search_query(query, location, level)
     query_param = quote_plus(external_query)
     location_param = quote_plus(location or "United States")
+    workday_query = quote_plus(
+        f'(site:myworkdayjobs.com OR site:myworkdaysite.com) "{external_query}"'
+    )
 
     links = [
         ExternalSearchLink(
             label="Google Jobs search",
             url=f"https://www.google.com/search?q={quote_plus(external_query + ' jobs')}",
-            note="Broad fallback when API-friendly sources are thin.",
+            note="Broad external discovery link. MarketLens does not import or verify these results.",
         ),
         ExternalSearchLink(
             label="Indeed search",
             url=f"https://www.indeed.com/jobs?q={query_param}&l={location_param}",
-            note="Useful for local, finance, accounting, healthcare, and operations roles.",
+            note="Useful for local and non-technical roles. Opens Indeed separately; MarketLens does not scrape it.",
         ),
         ExternalSearchLink(
             label="LinkedIn Jobs search",
             url=f"https://www.linkedin.com/jobs/search/?keywords={query_param}&location={location_param}",
-            note="Useful for professional internships and company-posted roles.",
+            note="Useful for professional and company-posted roles. Login may be required.",
+        ),
+        ExternalSearchLink(
+            label="Workday / company career-site search",
+            url=f"https://www.google.com/search?q={workday_query}",
+            note="MarketLens opens a Google search for indexed Workday postings without scraping Workday search pages.",
         ),
     ]
 
-    if level == "intern":
+    if level in {"intern", "entry"}:
         links.append(
             ExternalSearchLink(
                 label="Handshake search",
                 url=f"https://app.joinhandshake.com/stu/postings?query={query_param}",
-                note="Often stronger for campus internships, but usually requires a school login.",
+                note="Often stronger for campus internships and new-grad roles; usually requires a school login.",
             )
         )
 

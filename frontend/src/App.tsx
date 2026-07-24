@@ -10,6 +10,7 @@ import {
   SavedReportsPanel,
 } from "./SavedReports";
 import { SafeExternalLink } from "./SafeExternalLink";
+import { JobSearchDiscoveryPanel } from "./JobSearchDiscoveryPanel";
 
 import {
   analyzeResume,
@@ -24,6 +25,7 @@ import {
 } from "./api";
 import type {
   ExternalJobPosting,
+  ExternalSearchLink,
   GroupedSkillCounts,
   JobPosting,
   JobSearchLevel,
@@ -33,6 +35,7 @@ import type {
   SkillCounts,
   SmartFitAnalysisResponse,
   SmartFitBatchResult,
+  SourceCoverage,
 } from "./types";
 
 type DashboardData = {
@@ -669,6 +672,10 @@ function CustomAnalysisPanel() {
   const [jobSearchResults, setJobSearchResults] = useState<ExternalJobPosting[]>([]);
   const [selectedExternalJobIds, setSelectedExternalJobIds] = useState<string[]>([]);
   const [jobSearchWarnings, setJobSearchWarnings] = useState<string[]>([]);
+  const [jobSearchCoverage, setJobSearchCoverage] = useState<SourceCoverage[]>([]);
+  const [jobSearchSuggestions, setJobSearchSuggestions] = useState<string[]>([]);
+  const [jobSearchLinks, setJobSearchLinks] = useState<ExternalSearchLink[]>([]);
+  const [hasCompletedJobSearch, setHasCompletedJobSearch] = useState(false);
   const [jobSearchError, setJobSearchError] = useState<string | null>(null);
   const [isSearchingJobs, setIsSearchingJobs] = useState(false);
 
@@ -806,6 +813,10 @@ description,
       setIsSearchingJobs(true);
       setJobSearchError(null);
       setJobSearchWarnings([]);
+      setJobSearchCoverage([]);
+      setJobSearchSuggestions([]);
+      setJobSearchLinks([]);
+      setHasCompletedJobSearch(false);
       setSelectedExternalJobIds([]);
       const searchResult = await searchExternalJobs({
         query: jobSearchQuery.trim(),
@@ -815,9 +826,17 @@ description,
       });
       setJobSearchResults(searchResult.results);
       setJobSearchWarnings(searchResult.warnings);
+      setJobSearchCoverage(searchResult.source_coverage);
+      setJobSearchSuggestions(searchResult.search_suggestions);
+      setJobSearchLinks(searchResult.external_search_links);
+      setHasCompletedJobSearch(true);
     } catch (error) {
       setJobSearchResults([]);
       setJobSearchWarnings([]);
+      setJobSearchCoverage([]);
+      setJobSearchSuggestions([]);
+      setJobSearchLinks([]);
+      setHasCompletedJobSearch(false);
       setJobSearchError(
         error instanceof Error ? error.message : "Could not search external job boards.",
       );
@@ -975,6 +994,14 @@ description,
             ))}
           </div>
         )}
+
+        <JobSearchDiscoveryPanel
+          hasSearched={hasCompletedJobSearch}
+          resultCount={jobSearchResults.length}
+          sourceCoverage={jobSearchCoverage}
+          searchSuggestions={jobSearchSuggestions}
+          externalSearchLinks={jobSearchLinks}
+        />
 
         <div className="form-footer">
           <p className="helper-text">
