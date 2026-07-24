@@ -10,7 +10,7 @@ MarketLens is a deployed full-stack career-intelligence platform that compares r
 - **Online + manual workflows:** Users can search public Greenhouse, Lever, Remote OK, and Remotive sources or paste outside postings manually.
 - **Private career workspace:** Clerk-authenticated users can save jobs and reduced Smart Fit report summaries with server-side ownership checks.
 - **Portfolio-ready packaging:** The repo now includes screenshots, a guided demo walkthrough, README highlights, and a resume/interview summary.
-- **Quality coverage:** Backend tests cover API behavior, job search filtering, Smart Fit analysis, role-aware behavior, and evaluation cases.
+- **Quality coverage:** Backend tests cover API behavior, job search filtering, Smart Fit analysis, and a 74-case offline recall/precision benchmark with critical safety guardrails.
 
 ## Tech Stack
 
@@ -40,7 +40,7 @@ Built and deployed MarketLens, a full-stack React/FastAPI career-intelligence ap
 - **Backend health check:** [API health endpoint](https://marketlens-career-intelligence-production.up.railway.app/health)
 - **Portfolio demo walkthrough:** [How to demo MarketLens](docs/portfolio-demo-walkthrough.md)
 - **Milestone 6 completion:** [Private workspace completion record](docs/milestone-6-completion.md)
-- **Milestone 7 plan:** [Job-source coverage roadmap](docs/milestone-7-source-coverage-plan.md)
+- **Milestone 7 completion:** [Production-verified job-source coverage record](docs/milestone-7-completion.md)
 
 The deployed version is a secured portfolio application. Visitors can search configured public sources and run Smart Fit without saving. Signed-in users can privately save searched jobs and reduced Smart Fit report summaries. Creating shared demo postings, importing CSV files, and deleting shared postings remain admin-only actions protected by an `X-Admin-API-Key` header.
 
@@ -113,6 +113,7 @@ Demo and smoke-test docs:
 - [`docs/milestone-1-manual-comparison-smoke-test.md`](docs/milestone-1-manual-comparison-smoke-test.md)
 - [`docs/milestone-2-online-job-search-smoke-test.md`](docs/milestone-2-online-job-search-smoke-test.md)
 - [`docs/milestone-6-completion.md`](docs/milestone-6-completion.md)
+- [`docs/milestone-7-completion.md`](docs/milestone-7-completion.md)
 ## Current Demo Capabilities
 
 All visitors can:
@@ -121,8 +122,8 @@ All visitors can:
 - upload `.txt`, `.md`, `.pdf`, or `.docx` resumes for request-time text extraction
 - paste resume text manually
 - search configured public Greenhouse, Lever, Remote OK, and Remotive sources
-- search across multiple role families and filter by experience level and location
-- inspect source coverage notes, warnings, and fallback links
+- search with separate job-function, industry, experience-level, and location intent
+- inspect provider-by-provider coverage, routing notes, warnings, suggestions, and responsible external fallback links
 - compare one to ten searched or manually pasted jobs through Smart Fit
 - view ranked results, requirement coverage, matches, gaps, limitations, and coaching actions
 - run deterministic analysis when model-assisted extraction is unavailable
@@ -173,7 +174,7 @@ Configured source types:
 - **Remote OK public JSON feed** — remote-first job feed
 - **Remotive public API** — remote-first job feed with search/category support
 
-MarketLens does **not** claim to search all of LinkedIn, Indeed, Handshake, Workday, company career pages, or school career portals. When no results are found, the API returns source-coverage metadata, human-readable search notes, and fallback search links so the user can continue outside the configured API-friendly sources and paste those jobs back into Smart Fit.
+MarketLens does **not** claim to search all of LinkedIn, Indeed, Handshake, Workday, company career pages, or school career portals. After a search, the product separates sources it actually queried from external continuation links, returns provider-by-provider coverage and routing notes, and guides users to paste outside postings back into Smart Fit.
 
 ### Role-family search behavior
 
@@ -182,7 +183,7 @@ Search is no longer software-only. The backend detects role-family intent from t
 Currently supported families include:
 
 ```text
-software, finance, data, cybersecurity, product, marketing, operations, healthcare, design
+technology, software, finance, data, cybersecurity, product, marketing, operations, healthcare, design, legal, compliance, policy, legal_operations, contracts
 ```
 
 Examples:
@@ -196,6 +197,10 @@ cybersecurity internship
 marketing intern
 software engineer intern
 backend developer
+sports marketing internship
+healthcare compliance analyst entry level
+legal internship
+law student judicial internship
 ```
 
 For finance/accounting, the matcher recognizes signals such as:
@@ -210,8 +215,9 @@ It also protects against level-only false positives. For example, `finance inter
 ### Experience level behavior
 
 - `level=any` keeps the search general-purpose and can return senior, mid-level, entry-level, or internship roles.
-- `level=intern` only returns internship/co-op-looking roles.
-- `level=entry`, `level=mid`, and `level=senior` filter by experience signal.
+- `level=intern` recognizes internships, co-ops, fellowships, apprenticeships, student programs, and guarded seasonal early-career titles.
+- `level=entry` recognizes new-grad, recent-graduate, Engineer I/Analyst I, rotational-program, low-experience, and no-experience-required signals.
+- `level=mid` and `level=senior` filter by title and experience signals while protecting early-career searches from experienced-role false positives.
 - Query text can infer level intent, such as `SWE Intern`, `entry level finance`, or `senior product manager`.
 
 ### Location behavior
@@ -242,7 +248,8 @@ The React frontend currently supports:
 
 - Clerk sign-in, sign-up, sign-out, and user controls
 - resume upload and manual resume text entry
-- online job search with level and optional location filters
+- online job search with separate function, industry, level, and optional location intent
+- provider-by-provider searched/fetched/matched coverage, routing notes, suggestions, and external continuation links
 - searched-job cards with source, company, location, link, and extracted skills
 - selection and Smart Fit comparison for searched jobs
 - manual one-job or multi-job description entry using `---`
@@ -285,6 +292,7 @@ Current checks include:
 - backend unit tests for skill extraction, job search normalization/filtering, role-family search, and Smart Fit analysis behavior
 - backend role-aware Smart Fit tests across software, data, cybersecurity, finance, product, healthcare, operations, and admin-style roles
 - backend evaluation cases for Smart Fit analysis
+- deterministic 74-case job-search benchmark covering intent, recall, precision, negative rejection, source routing, and critical credential/industry guardrails
 - frontend production build validation
 - Docker image build validation for the backend and frontend
 - GitHub Actions continuous integration on pushes and pull requests to `main`
@@ -299,6 +307,13 @@ cd backend
 source .venv/bin/activate
 python -m pip install -r requirements.txt
 python -m pytest
+```
+
+Run the formal job-search evaluation:
+
+```bash
+cd backend
+python scripts/run_job_search_evaluation.py
 ```
 
 Run the frontend production build:
@@ -375,23 +390,19 @@ Deferred optional additions:
 
 See [`docs/milestone-6-completion.md`](docs/milestone-6-completion.md).
 
-### Milestone 7 — Better Job Source Coverage: in progress
+### Milestone 7 — Better Job Source Coverage: complete
 
-The next major limitation is recall: precise filtering cannot return roles that are absent from the configured sources.
+- separate job-function, industry, experience-level, and location intent
+- reusable industry taxonomy plus a typed, allowlisted Greenhouse/Lever source registry
+- primary and industry-only source pools with bounded intent-aware routing
+- broader sports, nonprofit, healthcare, education, media, legal, public-interest, policy, and financial-services coverage
+- stronger internship, co-op, fellowship, apprenticeship, seasonal, rotational, and new-grad recall
+- credential-aware separation of undergraduate legal, law-student, and licensed-attorney roles
+- transparent provider coverage, routing notes, suggestions, and responsible LinkedIn/Indeed/Handshake/Workday continuation links without scraping
+- deterministic 74-case recall/precision/routing benchmark with enforced thresholds and critical guardrails
+- live Railway smoke test covering the deployed frontend bundle, API health, model status, intent dimensions, source reporting, credential behavior, and external-link safety
 
-Planned work:
-
-- model search intent as separate job-function, industry, experience-level, and location dimensions
-- build a reusable industry taxonomy
-- create a configurable organization/source registry with coverage metadata
-- expand legitimate public Greenhouse and Lever boards plus suitable public APIs
-- improve internship and entry-level coverage
-- improve sports, entertainment, healthcare, finance, education, nonprofit, media, and other non-software coverage
-- improve user-facing source coverage explanations
-- provide responsible user-assisted workflows for Workday, Handshake, LinkedIn, Indeed, and other closed sources without scraping them
-- add recall and precision regression tests across industries
-
-See [`docs/milestone-7-source-coverage-plan.md`](docs/milestone-7-source-coverage-plan.md) and [issue #21](https://github.com/jpdiguisppe/marketlens-career-intelligence/issues/21).
+See [`docs/milestone-7-completion.md`](docs/milestone-7-completion.md), [`docs/milestone-7-recall-precision-evaluation.md`](docs/milestone-7-recall-precision-evaluation.md), and [`docs/milestone-7-source-coverage-plan.md`](docs/milestone-7-source-coverage-plan.md).
 
 ### Milestone 8 — Optional AI-Assisted Analysis: partially started
 
