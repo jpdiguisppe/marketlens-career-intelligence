@@ -186,8 +186,8 @@ def _run_scenario(scenario: dict[str, str]) -> tuple[dict[str, Any], list[str]]:
             failures.append(
                 f"result violated strict location: {job.company} | {job.title} | {job.location}"
             )
-        if not job.apply_url.startswith("https://"):
-            failures.append(f"non-HTTPS apply URL returned for {job.id}")
+        if not job.apply_url or not job.apply_url.startswith("https://"):
+            failures.append(f"missing or non-HTTPS apply URL returned for {job.id}")
 
         result_rows.append(
             {
