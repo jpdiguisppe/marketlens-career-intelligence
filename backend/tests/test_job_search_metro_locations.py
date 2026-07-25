@@ -1,4 +1,4 @@
-from app.job_search import _matches_location, _search_suggestions
+from app.job_search import _matches_location, _search_suggestions, _warnings_for_no_results
 
 
 def test_philadelphia_search_includes_recognized_metro_locations() -> None:
@@ -47,3 +47,15 @@ def test_no_result_guidance_describes_actual_location_behavior() -> None:
     assert "metro-area" in combined
     assert "exclude remote-only" in combined
     assert "include u.s.-remote" not in combined
+
+
+def test_no_result_warning_does_not_claim_remote_roles_were_included() -> None:
+    warnings = _warnings_for_no_results(
+        "electrical engineer",
+        "Philadelphia",
+        "entry",
+        None,
+    )
+    combined = " ".join(warnings).lower()
+    assert "remote-only roles were excluded" in combined
+    assert "u.s.-remote roles are included" not in combined
