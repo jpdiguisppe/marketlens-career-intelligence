@@ -19,7 +19,7 @@ def test_elementary_school_query_rejects_middle_school_titles() -> None:
 def test_elementary_school_query_accepts_grade_level_title_evidence() -> None:
     assert _score_job(
         title="3rd Grade Teacher",
-        description="Teach an elementary classroom.",
+        description="Teach elementary students in a public school education program.",
         query="elementary school teacher",
         level="any",
     ) > 0
