@@ -46,6 +46,59 @@ jobs:
           set -o pipefail
           python -m pytest -vv | tee full-backend-tests.log
 
+      - name: Inspect current KIPP entry candidate
+        working-directory: backend
+        run: |
+          python - <<'PY' | tee kipp-entry-diagnostic.log
+          import json
+          import re
+
+          from app import job_search
+          from app import job_search_source_expansion as expansion
+
+          posting_id = "744000139102344"
+          source = next(
+              source
+              for source in expansion.SMARTRECRUITERS_SOURCES
+              if source.identifier == "KIPP"
+          )
+          with job_search._build_provider_client() as client:
+              details = expansion._posting_details(
+                  client,
+                  source,
+                  posting_id,
+                  job_search._provider_cache_seconds(),
+              )
+          raw = {"id": posting_id, "name": details.get("name")}
+          job = expansion._normalize_posting(job_search, source, raw, details)
+          assert job is not None
+
+          patterns = [
+              job_search.EXPERIENCE_YEARS_PATTERN,
+              re.compile(r"\\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten)\\s*\\+?\\s*(?:years?|yrs?)\\b", re.IGNORECASE),
+          ]
+          matches = []
+          for pattern in patterns:
+              for match in pattern.finditer(job.description):
+                  start = max(0, match.start() - 100)
+                  end = min(len(job.description), match.end() + 140)
+                  matches.append({
+                      "match": match.group(0),
+                      "context": job.description[start:end],
+                  })
+
+          print(json.dumps({
+              "title": job.title,
+              "location": job.location,
+              "experience_level_metadata": details.get("experienceLevel"),
+              "max_required_years": job_search._max_required_years(job.description),
+              "matches_entry": job_search._matches_level(job.title, job.description, "entry"),
+              "score_any": job_search._score_job(job.title, job.description, "elementary school teacher", "any", company=job.company),
+              "score_entry": job_search._score_job(job.title, job.description, "elementary school teacher", "entry", company=job.company),
+              "year_matches": matches,
+          }, indent=2, sort_keys=True))
+          PY
+
       - name: Upload diagnostic logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -54,6 +107,7 @@ jobs:
           path: |
             backend/focused-search-gates.log
             backend/full-backend-tests.log
+            backend/kipp-entry-diagnostic.log
           if-no-files-found: error
 
       - name: Fail when diagnostics fail
