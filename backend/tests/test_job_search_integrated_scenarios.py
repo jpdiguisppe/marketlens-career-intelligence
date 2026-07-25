@@ -5,11 +5,9 @@ from pathlib import Path
 from app.job_search_evaluation import _candidate_match, _ranking_result
 
 
-SCENARIO_PATH = (
-    Path(__file__).resolve().parents[1]
-    / "evaluation"
-    / "job_search_integrated_scenarios.json"
-)
+EVALUATION_DIR = Path(__file__).resolve().parents[1] / "evaluation"
+SCENARIO_PATH = EVALUATION_DIR / "job_search_integrated_scenarios.json"
+LEVEL_SCENARIO_PATH = EVALUATION_DIR / "job_search_mid_senior_scenarios.json"
 REQUIRED_SECTORS = {
     "healthcare",
     "education-liberal-arts",
@@ -23,11 +21,36 @@ REQUIRED_SECTORS = {
 }
 
 
-def _load_scenarios() -> dict[str, object]:
-    with SCENARIO_PATH.open(encoding="utf-8") as scenario_file:
+def _load_json(path: Path) -> dict[str, object]:
+    with path.open(encoding="utf-8") as scenario_file:
         scenarios = json.load(scenario_file)
     assert scenarios["version"] == 1
     return scenarios
+
+
+def _load_scenarios() -> dict[str, object]:
+    return _load_json(SCENARIO_PATH)
+
+
+def _load_level_scenarios() -> dict[str, object]:
+    return _load_json(LEVEL_SCENARIO_PATH)
+
+
+def _evaluate_candidate_cases(cases: list[dict[str, object]]) -> list[dict[str, object]]:
+    failures = []
+    for case in cases:
+        predicted_match, actual = _candidate_match(case)
+        expected_match = bool(case["expected_match"])
+        if predicted_match != expected_match:
+            failures.append(
+                {
+                    "id": case["id"],
+                    "sector": case["sector"],
+                    "expected_match": expected_match,
+                    "actual": actual,
+                }
+            )
+    return failures
 
 
 def test_integrated_matrix_cannot_shrink_to_narrow_role_only_coverage() -> None:
@@ -69,21 +92,7 @@ def test_integrated_matrix_cannot_shrink_to_narrow_role_only_coverage() -> None:
 
 def test_integrated_occupation_level_and_location_candidates_all_pass() -> None:
     scenarios = _load_scenarios()
-    failures = []
-
-    for case in scenarios["candidate_cases"]:
-        predicted_match, actual = _candidate_match(case)
-        expected_match = bool(case["expected_match"])
-        if predicted_match != expected_match:
-            failures.append(
-                {
-                    "id": case["id"],
-                    "sector": case["sector"],
-                    "expected_match": expected_match,
-                    "actual": actual,
-                }
-            )
-
+    failures = _evaluate_candidate_cases(scenarios["candidate_cases"])
     assert not failures, json.dumps(failures, indent=2, sort_keys=True)
 
 
@@ -103,4 +112,19 @@ def test_integrated_cross_sector_ranking_prefers_exact_local_work() -> None:
                 }
             )
 
+    assert not failures, json.dumps(failures, indent=2, sort_keys=True)
+
+
+def test_mid_and_senior_levels_are_validated_with_location_and_role() -> None:
+    scenarios = _load_level_scenarios()
+    cases = scenarios["candidate_cases"]
+
+    assert len(cases) >= 14
+    assert {case["level"] for case in cases} == {"mid", "senior"}
+    assert len({case["sector"] for case in cases}) >= 7
+    assert all(case.get("location") and case.get("job_location") for case in cases)
+    assert sum(bool(case["expected_match"]) for case in cases) >= 7
+    assert sum(not bool(case["expected_match"]) for case in cases) >= 7
+
+    failures = _evaluate_candidate_cases(cases)
     assert not failures, json.dumps(failures, indent=2, sort_keys=True)
