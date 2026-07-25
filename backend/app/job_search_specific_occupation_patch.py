@@ -20,6 +20,11 @@ ELEMENTARY_TITLE_TERMS = {
     "k-5",
     "k–5",
 }
+ELEMENTARY_OCCUPATION_TERMS = {
+    "teacher",
+    "educator",
+    "instructor",
+}
 ELEMENTARY_GRADE_PATTERN = re.compile(
     r"\b(?:grades?\s*[1-5]|[1-5](?:st|nd|rd|th)\s+grade)\b",
     re.IGNORECASE,
@@ -58,10 +63,15 @@ def _query_contains_any(job_search: Any, query: str, terms: set[str]) -> bool:
 
 def _elementary_title_match(job_search: Any, title: str) -> bool:
     title_lower = title.lower()
-    return bool(
+    has_elementary_level = bool(
         job_search._contains_any(title_lower, ELEMENTARY_TITLE_TERMS)
         or ELEMENTARY_GRADE_PATTERN.search(title_lower)
     )
+    has_teaching_occupation = job_search._contains_any(
+        title_lower,
+        ELEMENTARY_OCCUPATION_TERMS,
+    )
+    return has_elementary_level and has_teaching_occupation
 
 
 def _is_non_journalism_editor_title(job_search: Any, title: str) -> bool:
@@ -85,6 +95,13 @@ def apply_job_search_specific_occupation_patch(job_search: Any) -> None:
         query: str,
         level: str | None = None,
     ) -> bool:
+        # Grade-number titles such as "3rd Grade Teacher" are legitimate curated
+        # aliases for elementary-school teaching even though they do not repeat
+        # the word elementary. This branch must run before the generic specific-
+        # occupation guard, which intentionally requires title-level evidence.
+        if _query_contains_any(job_search, query, ELEMENTARY_QUERY_TERMS):
+            return _elementary_title_match(job_search, title)
+
         base_match = original_matches_requested_role(
             title,
             description,
@@ -93,9 +110,6 @@ def apply_job_search_specific_occupation_patch(job_search: Any) -> None:
         )
         if not base_match:
             return False
-
-        if _query_contains_any(job_search, query, ELEMENTARY_QUERY_TERMS):
-            return _elementary_title_match(job_search, title)
 
         if (
             _query_contains_any(job_search, query, JOURNALISM_QUERY_TERMS)
