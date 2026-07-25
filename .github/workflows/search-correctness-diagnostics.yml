@@ -37,6 +37,12 @@ jobs:
             pytest-report.txt
             benchmark-report.txt
           if-no-files-found: error
+      - name: Upload backend source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: search-correctness-backend-source
+          path: backend
+          if-no-files-found: error
       - name: Fail when diagnostics failed
         if: steps.diagnostics.outputs.pytest_status != '0' || steps.diagnostics.outputs.benchmark_status != '0'
         run: exit 1
