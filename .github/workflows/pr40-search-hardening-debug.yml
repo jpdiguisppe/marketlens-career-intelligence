@@ -38,14 +38,24 @@ jobs:
             tests/test_smartrecruiters_source_extensions.py \
             | tee focused-search-gates.log
 
-      - name: Upload focused test log
+      - name: Run complete backend diagnostics
+        id: full_backend
+        continue-on-error: true
+        working-directory: backend
+        run: |
+          set -o pipefail
+          python -m pytest -vv | tee full-backend-tests.log
+
+      - name: Upload diagnostic logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pr40-focused-search-gates
-          path: backend/focused-search-gates.log
+          path: |
+            backend/focused-search-gates.log
+            backend/full-backend-tests.log
           if-no-files-found: error
 
-      - name: Fail when focused tests fail
-        if: steps.focused_tests.outcome == 'failure'
+      - name: Fail when diagnostics fail
+        if: steps.focused_tests.outcome == 'failure' || steps.full_backend.outcome == 'failure'
         run: exit 1
