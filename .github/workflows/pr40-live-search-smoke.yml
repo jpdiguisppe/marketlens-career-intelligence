@@ -25,22 +25,32 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
-      - name: Run live cross-sector search smoke
-        id: live_smoke
+      - name: Run strict local cross-sector smoke
+        id: local_smoke
         continue-on-error: true
         working-directory: backend
         run: |
           set -o pipefail
-          python scripts/run_live_search_hardening_smoke.py | tee live-search-smoke.json
+          python scripts/run_live_search_hardening_smoke.py | tee live-search-local-smoke.json
 
-      - name: Upload live smoke report
+      - name: Run broadened national search smoke
+        id: breadth_smoke
+        continue-on-error: true
+        working-directory: backend
+        run: |
+          set -o pipefail
+          python scripts/run_live_search_breadth_smoke.py | tee live-search-breadth-smoke.json
+
+      - name: Upload live smoke reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pr40-live-search-smoke
-          path: backend/live-search-smoke.json
+          path: |
+            backend/live-search-local-smoke.json
+            backend/live-search-breadth-smoke.json
           if-no-files-found: error
 
-      - name: Fail when live smoke fails
-        if: steps.live_smoke.outcome == 'failure'
+      - name: Fail when a live smoke fails
+        if: steps.local_smoke.outcome == 'failure' || steps.breadth_smoke.outcome == 'failure'
         run: exit 1
