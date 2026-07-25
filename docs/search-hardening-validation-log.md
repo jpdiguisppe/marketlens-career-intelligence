@@ -1,6 +1,6 @@
 # Search Hardening Validation Log
 
-This log records the validation work for Issue #39 and PR #40.
+This log records the validation work for Issue #39, implementation PR #40, and production-completion PR #41.
 
 ## Deterministic benchmark
 
@@ -44,7 +44,7 @@ The required sector groups are:
 
 ## Complete hosted validation
 
-The final branch passed:
+The final implementation branch passed:
 
 - 290 backend tests
 - frontend TypeScript/Vite production build
@@ -79,7 +79,7 @@ The fixes preserve important boundaries:
 
 ## Live public-provider validation
 
-The strict live pass executed ten representative `entry` + `Philadelphia` searches across the required sectors.
+The strict branch-level live pass executed ten representative `entry` + `Philadelphia` searches across the required sectors.
 
 Results:
 
@@ -105,6 +105,25 @@ Results:
 
 The one current zero-result breadth scenario was `agronomist`. Syngenta Group was selected and queried as the verified agriculture source, but the current public inventory did not contain a valid matching U.S. posting during this run.
 
+## Railway production verification
+
+After PR #40 was squash-merged to `main`, a validation-only GitHub Actions run tested the deployed Railway frontend and backend rather than the branch implementation.
+
+Production checks passed:
+
+- backend `/health` returned `{"status":"ok"}`
+- the deployed frontend returned HTTP 200 with a valid React root
+- `electrical engineer` + `entry` + `Philadelphia` returned no false filler results and reported the intended AECOM, Bosch, CRB, and Bosch Home Comfort SmartRecruiters sources alongside the configured Greenhouse, Lever, and remote providers
+- `elementary school teacher` + `entry` + `Philadelphia` returned exactly one current local result: KIPP's `[2026-2027] Elementary School Social Studies Teacher` in `Philadelphia, PA, United States`
+- the elementary search did not admit middle-school or remote-only roles
+- `journalism` + `entry` + `Philadelphia` returned exactly one current local result: `Multi-Media Journalist, Telemundo T62 Filadelfia` in Philadelphia
+- the journalism search did not admit cinematic, film-editor, or video-editor false positives
+- `computer science` + `entry` returned 15 current U.S./remote technical candidates while preserving the broad-family entry-evidence boundary
+- no closed job board was falsely listed as searched
+- all returned job and external continuation links were HTTPS
+
+The production report completed successfully in the `Issue 39 Production Verification` workflow associated with PR #41.
+
 ## Source coverage boundary
 
 MarketLens now queries named public Greenhouse, Lever, and SmartRecruiters employer boards plus Remote OK and Remotive. SmartRecruiters is not treated as a universal job board. The source set includes verified boards across education, science, engineering, healthcare, public service, media, trades, agriculture, delivery/service work, business, and technology.
@@ -113,4 +132,6 @@ LinkedIn, Indeed, Handshake, Workday search pages, school portals, and every com
 
 ## Completion conclusion
 
-The old 74-case score was not sufficient evidence of broad correctness. Issue #39 is supported instead by enforced cross-sector breadth, integrated occupation + level + location cases, the complete application suite, container builds, and reviewed live-provider results. Milestone 8 may resume only after the merged change is also verified in the deployed Railway product.
+The old 74-case score was not sufficient evidence of broad correctness. Issue #39 is complete based on enforced cross-sector breadth, integrated occupation + level + location cases, the complete application suite, container builds, reviewed live-provider results, and independent verification of the merged code in the deployed Railway frontend and API.
+
+Milestone 7.1 is complete. Milestone 8 may resume.
