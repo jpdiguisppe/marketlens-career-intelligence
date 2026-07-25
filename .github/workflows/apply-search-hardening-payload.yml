@@ -17,14 +17,43 @@ jobs:
         with:
           ref: issue-39-search-correctness-hardening
           fetch-depth: 0
-      - name: Decode and verify payload
+      - name: Reconstruct and diagnose payload
+        id: payload
+        shell: bash
+        run: |
+          set +e
+          sha256sum .github/search-hardening-payload/chunk-* > /tmp/chunk-sha256.txt
+          cat .github/search-hardening-payload/chunk-* > /tmp/search-hardening-payload.b64
+          base64 -d /tmp/search-hardening-payload.b64 > /tmp/search-hardening-payload.tar.gz
+          base64_status=$?
+          sha256sum /tmp/search-hardening-payload.tar.gz > /tmp/payload-sha256.txt
+          tar -tzf /tmp/search-hardening-payload.tar.gz > /tmp/payload-files.txt 2> /tmp/payload-tar-error.txt
+          tar_status=$?
+          actual_sha=$(cut -d' ' -f1 /tmp/payload-sha256.txt)
+          echo "base64_status=$base64_status" >> "$GITHUB_OUTPUT"
+          echo "tar_status=$tar_status" >> "$GITHUB_OUTPUT"
+          echo "actual_sha=$actual_sha" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Upload payload diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: search-hardening-payload-diagnostics
+          path: |
+            /tmp/chunk-sha256.txt
+            /tmp/payload-sha256.txt
+            /tmp/payload-files.txt
+            /tmp/payload-tar-error.txt
+            /tmp/search-hardening-payload.b64
+            /tmp/search-hardening-payload.tar.gz
+          if-no-files-found: error
+      - name: Verify and extract payload
+        if: steps.payload.outputs.base64_status == '0' && steps.payload.outputs.tar_status == '0' && steps.payload.outputs.actual_sha == '9da757b8ec3a86646799885330659b1d7c89f867ac072fa187b1b5da8a7c17c8'
         shell: bash
         run: |
           set -euo pipefail
-          cat .github/search-hardening-payload/chunk-* | base64 -d > /tmp/search-hardening-payload.tar.gz
-          echo "9da757b8ec3a86646799885330659b1d7c89f867ac072fa187b1b5da8a7c17c8  /tmp/search-hardening-payload.tar.gz" | sha256sum -c -
           tar -xzf /tmp/search-hardening-payload.tar.gz -C backend
       - name: Commit applied files and remove temporary payload
+        if: steps.payload.outputs.base64_status == '0' && steps.payload.outputs.tar_status == '0' && steps.payload.outputs.actual_sha == '9da757b8ec3a86646799885330659b1d7c89f867ac072fa187b1b5da8a7c17c8'
         shell: bash
         run: |
           set -euo pipefail
@@ -36,3 +65,8 @@ jobs:
           git add backend .github
           git commit -m "Expand cross-sector search correctness and source coverage"
           git push origin HEAD:issue-39-search-correctness-hardening
+      - name: Fail on invalid payload
+        if: steps.payload.outputs.base64_status != '0' || steps.payload.outputs.tar_status != '0' || steps.payload.outputs.actual_sha != '9da757b8ec3a86646799885330659b1d7c89f867ac072fa187b1b5da8a7c17c8'
+        run: |
+          echo "Payload reconstruction failed. Actual SHA: ${{ steps.payload.outputs.actual_sha }}"
+          exit 1
