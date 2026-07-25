@@ -1,9 +1,9 @@
 name: Apply search hardening payload
 
 on:
-  push:
+  pull_request:
     branches:
-      - issue-39-search-correctness-hardening
+      - main
 
 permissions:
   contents: write
@@ -29,6 +29,7 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf .github/search-hardening-payload
+          rm -f .github/search-hardening-trigger.txt
           rm -f .github/workflows/apply-search-hardening-payload.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
