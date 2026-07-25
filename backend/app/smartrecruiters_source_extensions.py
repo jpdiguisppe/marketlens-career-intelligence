@@ -83,3 +83,12 @@ def apply_smartrecruiters_source_extensions(
     combined = (*existing, *additions)
     source_registry.SMARTRECRUITERS_SOURCES = combined
     source_expansion.SMARTRECRUITERS_SOURCES = combined
+
+    # SmartRecruiters list responses omit the full requirements text that often
+    # carries level evidence. Keep the detail stage bounded, but give it enough
+    # headroom that lead/senior titles rejected after detail retrieval do not
+    # crowd legitimate entry-level candidates out of the shortlist.
+    source_expansion.MAX_DETAIL_REQUESTS = max(
+        source_expansion.MAX_DETAIL_REQUESTS,
+        16,
+    )
