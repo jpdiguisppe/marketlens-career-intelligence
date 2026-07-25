@@ -1,0 +1,29 @@
+--- a/backend/app/job_search_correctness_patch.py
++++ b/backend/app/job_search_correctness_patch.py
+@@ -314,6 +314,26 @@
+         ):
+             return base_match
+ 
++        # Generic early-career program titles are allowed only when the tuned
++        # family matcher found explicit requested-role evidence in the
++        # description. This preserves technology rotational programs without
++        # admitting business programs that rotate through unrelated functions.
++        if base_match and job_search._contains_any(
++            title.lower(),
++            job_search.INTERN_TITLE_TERMS | job_search.ENTRY_PROGRAM_TITLE_TERMS,
++        ):
++            return True
++
++        # Analytics Engineer is a recognized data-family neighbor for a Data
++        # Analyst search. Keep it eligible, while exact Data Analyst titles still
++        # receive the larger occupation/query score and rank first.
++        if (
++            base_match
++            and job_search._contains_phrase(query.lower(), "data analyst")
++            and job_search._contains_phrase(title.lower(), "analytics engineer")
++        ):
++            return True
++
+         # Known families keep broad and description-backed recall, but concrete
+         # occupations inside those families still preserve their full title. A
+         # medical-assistant search cannot become every healthcare role, and a
