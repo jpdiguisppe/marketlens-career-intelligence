@@ -22,8 +22,19 @@ jobs:
         shell: bash
         run: |
           set +e
-          sha256sum .github/search-hardening-payload/chunk-* > /tmp/chunk-sha256.txt
-          cat .github/search-hardening-payload/chunk-* > /tmp/search-hardening-payload.b64
+          payload_parts=(
+            .github/search-hardening-payload/chunk-00a
+            .github/search-hardening-payload/chunk-00b
+            .github/search-hardening-payload/chunk-01
+            .github/search-hardening-payload/chunk-02
+            .github/search-hardening-payload/chunk-03a
+            .github/search-hardening-payload/chunk-03b
+            .github/search-hardening-payload/chunk-04
+            .github/search-hardening-payload/chunk-05
+            .github/search-hardening-payload/chunk-06
+          )
+          sha256sum "${payload_parts[@]}" > /tmp/chunk-sha256.txt
+          cat "${payload_parts[@]}" > /tmp/search-hardening-payload.b64
           base64 -d /tmp/search-hardening-payload.b64 > /tmp/search-hardening-payload.tar.gz
           base64_status=$?
           sha256sum /tmp/search-hardening-payload.tar.gz > /tmp/payload-sha256.txt
