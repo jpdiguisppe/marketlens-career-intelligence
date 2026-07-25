@@ -1,12 +1,31 @@
 """Application package bootstrap.
 
-Keep package-level work minimal. The job-search intent patch keeps Milestone 2
-behavior fixes isolated from provider-fetching code while we stabilize search.
+Keep package-level work minimal. The job-search adapters isolate intent,
+occupation, level, location, source coverage, and cross-sector correctness
+behavior from provider-fetching code.
 """
 
 from . import job_search as _job_search
+from . import job_search_source_expansion as _source_expansion
+from . import smartrecruiters_sources as _smartrecruiters_sources
+from .job_search_correctness_patch import apply_job_search_correctness_patch
 from .job_search_intent_patch import apply_job_search_intent_patch
+from .job_search_level_patch import apply_job_search_level_patch
+from .job_search_location_patch import apply_job_search_location_patch
 from .job_search_occupation_overrides import apply_job_search_occupation_overrides
+from .job_search_specific_occupation_patch import (
+    apply_job_search_specific_occupation_patch,
+)
+from .smartrecruiters_source_extensions import apply_smartrecruiters_source_extensions
 
 apply_job_search_intent_patch(_job_search)
 apply_job_search_occupation_overrides(_job_search)
+apply_job_search_correctness_patch(_job_search)
+apply_job_search_specific_occupation_patch(_job_search)
+apply_job_search_level_patch(_job_search)
+apply_job_search_location_patch(_job_search)
+apply_smartrecruiters_source_extensions(
+    _smartrecruiters_sources,
+    _source_expansion,
+)
+_source_expansion.apply_job_search_source_expansion(_job_search)

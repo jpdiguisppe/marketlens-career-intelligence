@@ -1,3 +1,4 @@
+from app import job_search
 from app.job_search import _score_job, search_external_jobs
 
 
@@ -66,6 +67,29 @@ def test_no_result_response_includes_transparency_and_fallback_links(monkeypatch
     monkeypatch.setenv("JOB_SEARCH_LEVER_SITES", "definitely-not-a-real-site")
     monkeypatch.setenv("JOB_SEARCH_REMOTEOK_ENABLED", "false")
     monkeypatch.setenv("JOB_SEARCH_REMOTIVE_ENABLED", "false")
+    monkeypatch.setenv("JOB_SEARCH_SMARTRECRUITERS_ENABLED", "false")
+    monkeypatch.setattr(
+        job_search,
+        "_search_greenhouse_boards",
+        lambda *args, **kwargs: job_search._ProviderOutcome(
+            "greenhouse",
+            "Greenhouse company boards",
+            0,
+            [],
+            notes=[],
+        ),
+    )
+    monkeypatch.setattr(
+        job_search,
+        "_search_lever_sites",
+        lambda *args, **kwargs: job_search._ProviderOutcome(
+            "lever",
+            "Lever company boards",
+            0,
+            [],
+            notes=[],
+        ),
+    )
 
     results = search_external_jobs(query="finance internship", location="Remote", level="intern", limit=5)
 

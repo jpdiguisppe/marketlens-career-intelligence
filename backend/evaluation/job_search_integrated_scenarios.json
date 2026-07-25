@@ -1,0 +1,433 @@
+{
+  "version": 1,
+  "description": "Issue #39 integrated occupation, level, location, remote-rejection, and ranking scenarios across nine career sectors.",
+  "sectors": [
+    "healthcare",
+    "education-liberal-arts",
+    "science-research",
+    "engineering-built-environment",
+    "business-finance-operations",
+    "legal-public-service",
+    "trades-construction-logistics",
+    "creative-communications",
+    "service-hospitality-transport-agriculture"
+  ],
+  "candidate_cases": [
+    {
+      "id": "integrated-healthcare-local-positive",
+      "sector": "healthcare",
+      "query": "medical assistant",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Medical Assistant",
+      "description": "Entry-level patient care position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "integrated-healthcare-remote-negative",
+      "sector": "healthcare",
+      "query": "medical assistant",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Remote - USA",
+      "title": "Medical Assistant",
+      "description": "Entry-level patient care position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "integrated-healthcare-occupation-negative",
+      "sector": "healthcare",
+      "query": "medical assistant",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Registered Nurse",
+      "description": "Entry-level patient care position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "integrated-education-local-positive",
+      "sector": "education-liberal-arts",
+      "query": "special education teacher",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Special Education Teacher",
+      "description": "Entry-level teaching position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "integrated-education-remote-negative",
+      "sector": "education-liberal-arts",
+      "query": "special education teacher",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Remote - USA",
+      "title": "Special Education Teacher",
+      "description": "Entry-level teaching position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "integrated-education-occupation-negative",
+      "sector": "education-liberal-arts",
+      "query": "special education teacher",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Elementary Teacher",
+      "description": "Entry-level teaching position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "integrated-science-local-positive",
+      "sector": "science-research",
+      "query": "laboratory technician",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Lab Technician I",
+      "description": "Entry-level laboratory position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "integrated-science-remote-negative",
+      "sector": "science-research",
+      "query": "laboratory technician",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Remote - USA",
+      "title": "Lab Technician I",
+      "description": "Entry-level laboratory position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "integrated-science-occupation-negative",
+      "sector": "science-research",
+      "query": "laboratory technician",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "IT Support Technician",
+      "description": "Entry-level technical position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "integrated-engineering-local-positive",
+      "sector": "engineering-built-environment",
+      "query": "electrical engineer",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Electrical Engineer I",
+      "description": "Entry-level electrical design position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "integrated-engineering-remote-negative",
+      "sector": "engineering-built-environment",
+      "query": "electrical engineer",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Remote - USA",
+      "title": "Electrical Engineer I",
+      "description": "Entry-level electrical design position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "integrated-engineering-occupation-negative",
+      "sector": "engineering-built-environment",
+      "query": "electrical engineer",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Analytics Engineer",
+      "description": "Entry-level data position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "integrated-business-local-positive",
+      "sector": "business-finance-operations",
+      "query": "human resources specialist",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "HR Specialist",
+      "description": "Entry-level human resources position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "integrated-business-remote-negative",
+      "sector": "business-finance-operations",
+      "query": "human resources specialist",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Remote - USA",
+      "title": "HR Specialist",
+      "description": "Entry-level human resources position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "integrated-business-occupation-negative",
+      "sector": "business-finance-operations",
+      "query": "human resources specialist",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Marketing Specialist",
+      "description": "Entry-level marketing position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "integrated-legal-public-service-local-positive",
+      "sector": "legal-public-service",
+      "query": "policy analyst",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Policy Analyst I",
+      "description": "Entry-level public policy position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "integrated-legal-public-service-remote-negative",
+      "sector": "legal-public-service",
+      "query": "policy analyst",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Remote - USA",
+      "title": "Policy Analyst I",
+      "description": "Entry-level public policy position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "integrated-legal-public-service-occupation-negative",
+      "sector": "legal-public-service",
+      "query": "policy analyst",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Data Analyst",
+      "description": "Entry-level analytics position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "integrated-trades-local-positive",
+      "sector": "trades-construction-logistics",
+      "query": "electrician",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Apprentice Electrician",
+      "description": "Entry-level apprenticeship position with supervised electrical work.",
+      "expected_match": true
+    },
+    {
+      "id": "integrated-trades-remote-negative",
+      "sector": "trades-construction-logistics",
+      "query": "electrician",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Remote - USA",
+      "title": "Apprentice Electrician",
+      "description": "Entry-level apprenticeship position with supervised electrical work.",
+      "expected_match": false
+    },
+    {
+      "id": "integrated-trades-occupation-negative",
+      "sector": "trades-construction-logistics",
+      "query": "electrician",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Electrical Engineer I",
+      "description": "Entry-level electrical design position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "integrated-creative-local-positive",
+      "sector": "creative-communications",
+      "query": "graphic designer",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Junior Graphic Designer",
+      "description": "Entry-level visual design position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "integrated-creative-remote-negative",
+      "sector": "creative-communications",
+      "query": "graphic designer",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Remote - USA",
+      "title": "Junior Graphic Designer",
+      "description": "Entry-level visual design position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "integrated-creative-occupation-negative",
+      "sector": "creative-communications",
+      "query": "graphic designer",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Product Designer",
+      "description": "Entry-level product design position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "integrated-service-local-positive",
+      "sector": "service-hospitality-transport-agriculture",
+      "query": "delivery driver",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Delivery Driver",
+      "description": "Entry-level delivery position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "integrated-service-remote-negative",
+      "sector": "service-hospitality-transport-agriculture",
+      "query": "delivery driver",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Remote - USA",
+      "title": "Delivery Driver",
+      "description": "Entry-level delivery position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "integrated-service-occupation-negative",
+      "sector": "service-hospitality-transport-agriculture",
+      "query": "delivery driver",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Software Driver Engineer",
+      "description": "Entry-level software position requiring 1 year of experience.",
+      "expected_match": false
+    }
+  ],
+  "ranking_cases": [
+    {
+      "id": "integrated-ranking-healthcare",
+      "sector": "healthcare",
+      "query": "medical assistant",
+      "level": "entry",
+      "location": "Philadelphia",
+      "expected_best": "exact-local",
+      "candidates": [
+        {"id": "exact-local", "title": "Medical Assistant", "job_location": "Philadelphia, PA", "description": "Entry-level patient care position requiring 1 year of experience."},
+        {"id": "exact-remote", "title": "Medical Assistant", "job_location": "Remote - USA", "description": "Entry-level patient care position requiring 1 year of experience."},
+        {"id": "wrong-local", "title": "Registered Nurse", "job_location": "Philadelphia, PA", "description": "Entry-level patient care position requiring 1 year of experience."}
+      ]
+    },
+    {
+      "id": "integrated-ranking-education",
+      "sector": "education-liberal-arts",
+      "query": "special education teacher",
+      "level": "entry",
+      "location": "Philadelphia",
+      "expected_best": "exact-local",
+      "candidates": [
+        {"id": "exact-local", "title": "Special Education Teacher", "job_location": "Philadelphia, PA", "description": "Entry-level teaching position requiring 1 year of experience."},
+        {"id": "exact-remote", "title": "Special Education Teacher", "job_location": "Remote - USA", "description": "Entry-level teaching position requiring 1 year of experience."},
+        {"id": "wrong-local", "title": "Elementary Teacher", "job_location": "Philadelphia, PA", "description": "Entry-level teaching position requiring 1 year of experience."}
+      ]
+    },
+    {
+      "id": "integrated-ranking-science",
+      "sector": "science-research",
+      "query": "laboratory technician",
+      "level": "entry",
+      "location": "Philadelphia",
+      "expected_best": "exact-local",
+      "candidates": [
+        {"id": "exact-local", "title": "Lab Technician I", "job_location": "Philadelphia, PA", "description": "Entry-level laboratory position requiring 1 year of experience."},
+        {"id": "exact-remote", "title": "Lab Technician I", "job_location": "Remote - USA", "description": "Entry-level laboratory position requiring 1 year of experience."},
+        {"id": "wrong-local", "title": "IT Support Technician", "job_location": "Philadelphia, PA", "description": "Entry-level technical position requiring 1 year of experience."}
+      ]
+    },
+    {
+      "id": "integrated-ranking-engineering",
+      "sector": "engineering-built-environment",
+      "query": "electrical engineer",
+      "level": "entry",
+      "location": "Philadelphia",
+      "expected_best": "exact-local",
+      "candidates": [
+        {"id": "exact-local", "title": "Electrical Engineer I", "job_location": "Philadelphia, PA", "description": "Entry-level electrical design position requiring 1 year of experience."},
+        {"id": "exact-remote", "title": "Electrical Engineer I", "job_location": "Remote - USA", "description": "Entry-level electrical design position requiring 1 year of experience."},
+        {"id": "wrong-local", "title": "Analytics Engineer", "job_location": "Philadelphia, PA", "description": "Entry-level data position requiring 1 year of experience."}
+      ]
+    },
+    {
+      "id": "integrated-ranking-business",
+      "sector": "business-finance-operations",
+      "query": "human resources specialist",
+      "level": "entry",
+      "location": "Philadelphia",
+      "expected_best": "exact-local",
+      "candidates": [
+        {"id": "exact-local", "title": "HR Specialist", "job_location": "Philadelphia, PA", "description": "Entry-level human resources position requiring 1 year of experience."},
+        {"id": "exact-remote", "title": "HR Specialist", "job_location": "Remote - USA", "description": "Entry-level human resources position requiring 1 year of experience."},
+        {"id": "wrong-local", "title": "Marketing Specialist", "job_location": "Philadelphia, PA", "description": "Entry-level marketing position requiring 1 year of experience."}
+      ]
+    },
+    {
+      "id": "integrated-ranking-legal-public-service",
+      "sector": "legal-public-service",
+      "query": "policy analyst",
+      "level": "entry",
+      "location": "Philadelphia",
+      "expected_best": "exact-local",
+      "candidates": [
+        {"id": "exact-local", "title": "Policy Analyst I", "job_location": "Philadelphia, PA", "description": "Entry-level public policy position requiring 1 year of experience."},
+        {"id": "exact-remote", "title": "Policy Analyst I", "job_location": "Remote - USA", "description": "Entry-level public policy position requiring 1 year of experience."},
+        {"id": "wrong-local", "title": "Data Analyst", "job_location": "Philadelphia, PA", "description": "Entry-level analytics position requiring 1 year of experience."}
+      ]
+    },
+    {
+      "id": "integrated-ranking-trades",
+      "sector": "trades-construction-logistics",
+      "query": "electrician",
+      "level": "entry",
+      "location": "Philadelphia",
+      "expected_best": "exact-local",
+      "candidates": [
+        {"id": "exact-local", "title": "Apprentice Electrician", "job_location": "Philadelphia, PA", "description": "Entry-level apprenticeship position with supervised electrical work."},
+        {"id": "exact-remote", "title": "Apprentice Electrician", "job_location": "Remote - USA", "description": "Entry-level apprenticeship position with supervised electrical work."},
+        {"id": "wrong-local", "title": "Electrical Engineer I", "job_location": "Philadelphia, PA", "description": "Entry-level electrical design position requiring 1 year of experience."}
+      ]
+    },
+    {
+      "id": "integrated-ranking-creative",
+      "sector": "creative-communications",
+      "query": "graphic designer",
+      "level": "entry",
+      "location": "Philadelphia",
+      "expected_best": "exact-local",
+      "candidates": [
+        {"id": "exact-local", "title": "Junior Graphic Designer", "job_location": "Philadelphia, PA", "description": "Entry-level visual design position requiring 1 year of experience."},
+        {"id": "exact-remote", "title": "Junior Graphic Designer", "job_location": "Remote - USA", "description": "Entry-level visual design position requiring 1 year of experience."},
+        {"id": "wrong-local", "title": "Product Designer", "job_location": "Philadelphia, PA", "description": "Entry-level product design position requiring 1 year of experience."}
+      ]
+    },
+    {
+      "id": "integrated-ranking-service",
+      "sector": "service-hospitality-transport-agriculture",
+      "query": "delivery driver",
+      "level": "entry",
+      "location": "Philadelphia",
+      "expected_best": "exact-local",
+      "candidates": [
+        {"id": "exact-local", "title": "Delivery Driver", "job_location": "Philadelphia, PA", "description": "Entry-level delivery position requiring 1 year of experience."},
+        {"id": "exact-remote", "title": "Delivery Driver", "job_location": "Remote - USA", "description": "Entry-level delivery position requiring 1 year of experience."},
+        {"id": "wrong-local", "title": "Software Driver Engineer", "job_location": "Philadelphia, PA", "description": "Entry-level software position requiring 1 year of experience."}
+      ]
+    }
+  ]
+}

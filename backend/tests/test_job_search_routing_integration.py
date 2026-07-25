@@ -11,6 +11,7 @@ def test_search_external_jobs_routes_industry_specific_sources(monkeypatch) -> N
     monkeypatch.setattr(job_search, "_build_provider_client", lambda: nullcontext(object()))
     monkeypatch.setattr(job_search, "_remoteok_enabled", lambda: False)
     monkeypatch.setattr(job_search, "_remotive_enabled", lambda: False)
+    monkeypatch.setenv("JOB_SEARCH_SMARTRECRUITERS_ENABLED", "false")
 
     def fake_greenhouse(client, board_tokens, query, location, level):
         captured["greenhouse"] = list(board_tokens)
@@ -63,6 +64,7 @@ def test_search_external_jobs_keeps_broad_search_sources(monkeypatch) -> None:
     monkeypatch.setattr(job_search, "_build_provider_client", lambda: nullcontext(object()))
     monkeypatch.setattr(job_search, "_remoteok_enabled", lambda: False)
     monkeypatch.setattr(job_search, "_remotive_enabled", lambda: False)
+    monkeypatch.setenv("JOB_SEARCH_SMARTRECRUITERS_ENABLED", "false")
 
     def fake_greenhouse(client, board_tokens, query, location, level):
         captured["greenhouse"] = list(board_tokens)

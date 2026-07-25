@@ -1,0 +1,160 @@
+{
+  "version": 1,
+  "description": "Issue #39 mid- and senior-level occupation plus location scenarios.",
+  "candidate_cases": [
+    {
+      "id": "level-mid-mechanical-engineer-positive",
+      "sector": "engineering-built-environment",
+      "query": "mechanical engineer",
+      "level": "mid",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Mechanical Engineer II",
+      "description": "Mechanical design role requiring 4 years of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "level-mid-mechanical-engineer-entry-negative",
+      "sector": "engineering-built-environment",
+      "query": "mechanical engineer",
+      "level": "mid",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Mechanical Engineer I",
+      "description": "Entry-level mechanical design role requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "level-mid-accountant-positive",
+      "sector": "business-finance-operations",
+      "query": "accountant",
+      "level": "mid",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Accountant II",
+      "description": "Accounting role requiring 4 years of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "level-mid-accountant-entry-negative",
+      "sector": "business-finance-operations",
+      "query": "accountant",
+      "level": "mid",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Staff Accountant",
+      "description": "Entry-level accounting role requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "level-mid-laboratory-technician-positive",
+      "sector": "science-research",
+      "query": "laboratory technician",
+      "level": "mid",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Laboratory Technician",
+      "description": "Laboratory role requiring 4 years of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "level-mid-laboratory-technician-entry-negative",
+      "sector": "science-research",
+      "query": "laboratory technician",
+      "level": "mid",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Lab Technician I",
+      "description": "Entry-level laboratory role requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "level-senior-physical-therapist-positive",
+      "sector": "healthcare",
+      "query": "physical therapy",
+      "level": "senior",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Senior Physical Therapist",
+      "description": "Senior rehabilitation role requiring 6 years of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "level-senior-physical-therapist-entry-negative",
+      "sector": "healthcare",
+      "query": "physical therapy",
+      "level": "senior",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Physical Therapist",
+      "description": "Entry-level rehabilitation role requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "level-senior-editor-positive",
+      "sector": "creative-communications",
+      "query": "journalism",
+      "level": "senior",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Senior Editor",
+      "description": "Senior newsroom role requiring 6 years of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "level-senior-editor-entry-negative",
+      "sector": "creative-communications",
+      "query": "journalism",
+      "level": "senior",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Staff Reporter",
+      "description": "Entry-level reporting role requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "level-senior-hvac-technician-positive",
+      "sector": "trades-construction-logistics",
+      "query": "hvac technician",
+      "level": "senior",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Senior HVAC Technician",
+      "description": "Senior field-service role requiring 6 years of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "level-senior-hvac-technician-entry-negative",
+      "sector": "trades-construction-logistics",
+      "query": "hvac technician",
+      "level": "senior",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "HVAC Technician I",
+      "description": "Entry-level field-service role requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "level-senior-policy-analyst-positive",
+      "sector": "legal-public-service",
+      "query": "policy analyst",
+      "level": "senior",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Senior Policy Analyst",
+      "description": "Senior public-policy role requiring 6 years of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "level-senior-policy-analyst-entry-negative",
+      "sector": "legal-public-service",
+      "query": "policy analyst",
+      "level": "senior",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Policy Analyst I",
+      "description": "Entry-level public-policy role requiring 1 year of experience.",
+      "expected_match": false
+    }
+  ]
+}

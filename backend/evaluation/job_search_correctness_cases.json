@@ -1,0 +1,3076 @@
+{
+  "version": 1,
+  "description": "Issue #39 cross-sector occupation, location, and ranking regressions.",
+  "thresholds": {
+    "location_accuracy": 1.0,
+    "ranking_accuracy": 1.0
+  },
+  "intent_cases": [],
+  "candidate_cases": [
+    {
+      "id": "correctness-electrical-engineer-local-positive",
+      "category": "engineering-correctness",
+      "critical": true,
+      "query": "Electrical Engineer",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Electrical Engineer I",
+      "company": "Regional Engineering",
+      "description": "Entry-level electrical design role requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-electrical-engineer-analytics-negative",
+      "category": "engineering-correctness",
+      "critical": true,
+      "query": "Electrical Engineer",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Analytics Engineer",
+      "company": "Data Company",
+      "description": "Build analytics pipelines with SQL. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-electrical-engineer-remote-negative",
+      "category": "location-correctness",
+      "critical": true,
+      "query": "Electrical Engineer",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Remote - USA",
+      "title": "Electrical Engineer I",
+      "company": "Remote Engineering",
+      "description": "Entry-level electrical engineering role requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-electrical-engineer-marketing-negative",
+      "category": "engineering-correctness",
+      "critical": true,
+      "query": "Electrical Engineer",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Remote (California, United States)",
+      "title": "Marketing Assistant",
+      "company": "Venture Media",
+      "description": "Support social media and content. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-mechanical-engineer-positive",
+      "category": "engineering-correctness",
+      "query": "mechanical engineer",
+      "level": "entry",
+      "title": "Mechanical Design Engineer I",
+      "company": "Industrial Systems",
+      "description": "Design mechanical assemblies. One year of experience preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-civil-engineer-positive",
+      "category": "engineering-correctness",
+      "query": "civil engineering",
+      "level": "entry",
+      "title": "Civil Engineer I",
+      "company": "Infrastructure Group",
+      "description": "Support roadway and site design with 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-elementary-teacher-positive",
+      "category": "education-correctness",
+      "critical": true,
+      "query": "elementary school teacher",
+      "level": "entry",
+      "title": "Elementary Teacher",
+      "company": "Public School",
+      "description": "Teach elementary students. Candidates may have 0-2 years of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-elementary-teacher-data-negative",
+      "category": "education-correctness",
+      "critical": true,
+      "query": "elementary school teacher",
+      "level": "entry",
+      "title": "Education Data Analyst",
+      "company": "Learning Analytics",
+      "description": "Analyze K-12 performance data with 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-chemist-positive",
+      "category": "science-correctness",
+      "critical": true,
+      "query": "chemistry",
+      "level": "entry",
+      "title": "Analytical Chemist I",
+      "company": "Research Laboratory",
+      "description": "Perform chemical testing. One year of laboratory experience preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-chemist-sales-negative",
+      "category": "science-correctness",
+      "query": "chemistry",
+      "level": "entry",
+      "title": "Chemical Sales Representative",
+      "company": "Chemical Supplier",
+      "description": "Sell laboratory products. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-lab-technician-positive",
+      "category": "science-correctness",
+      "query": "laboratory technician",
+      "level": "entry",
+      "title": "Lab Technician I",
+      "company": "Research Laboratory",
+      "description": "Prepare samples and maintain laboratory equipment. One year preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-lab-technician-it-negative",
+      "category": "science-correctness",
+      "query": "laboratory technician",
+      "level": "entry",
+      "title": "IT Support Technician",
+      "company": "Technology Services",
+      "description": "Support laptops and user accounts. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-accountant-positive",
+      "category": "business-correctness",
+      "critical": true,
+      "query": "accountant",
+      "level": "entry",
+      "title": "Staff Accountant",
+      "company": "Regional Business",
+      "description": "Prepare reconciliations. One year of accounting experience preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-accountant-marketing-negative",
+      "category": "business-correctness",
+      "query": "accountant",
+      "level": "entry",
+      "title": "Marketing Analyst",
+      "company": "Consumer Brand",
+      "description": "Analyze campaigns. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-human-resources-positive",
+      "category": "business-correctness",
+      "query": "human resources specialist",
+      "level": "entry",
+      "title": "HR Specialist",
+      "company": "Regional Employer",
+      "description": "Support employee onboarding. One year of HR experience preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-human-resources-software-negative",
+      "category": "business-correctness",
+      "query": "human resources specialist",
+      "level": "entry",
+      "title": "Software Engineer I",
+      "company": "HR Technology",
+      "description": "Build human resources software. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-social-worker-positive",
+      "category": "liberal-arts-correctness",
+      "critical": true,
+      "query": "social worker",
+      "level": "entry",
+      "title": "Social Worker I",
+      "company": "Community Services",
+      "description": "Provide case management. One year of experience preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-social-worker-media-negative",
+      "category": "liberal-arts-correctness",
+      "query": "social worker",
+      "level": "entry",
+      "title": "Social Media Manager",
+      "company": "Media Agency",
+      "description": "Manage social channels. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-journalism-positive",
+      "category": "liberal-arts-correctness",
+      "query": "journalism",
+      "level": "entry",
+      "title": "Staff Reporter",
+      "company": "Local Newspaper",
+      "description": "Report and write local news. One year of experience preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-journalism-marketing-negative",
+      "category": "liberal-arts-correctness",
+      "query": "journalism",
+      "level": "entry",
+      "title": "Marketing Coordinator",
+      "company": "Media Company",
+      "description": "Coordinate campaigns. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-librarian-positive",
+      "category": "education-correctness",
+      "query": "librarian",
+      "level": "entry",
+      "title": "Assistant Librarian",
+      "company": "County Library",
+      "description": "Support reference services. One year of experience preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-librarian-software-negative",
+      "category": "education-correctness",
+      "query": "librarian",
+      "level": "entry",
+      "title": "Library Software Engineer",
+      "company": "Library Technology",
+      "description": "Build catalog software. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-electrician-positive",
+      "category": "trades-correctness",
+      "critical": true,
+      "query": "electrician",
+      "level": "entry",
+      "title": "Apprentice Electrician",
+      "company": "Electrical Contractor",
+      "description": "Assist licensed electricians in an apprenticeship program.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-electrician-engineer-negative",
+      "category": "trades-correctness",
+      "query": "electrician",
+      "level": "entry",
+      "title": "Electrical Engineer I",
+      "company": "Engineering Firm",
+      "description": "Design electrical systems. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-welder-positive",
+      "category": "trades-correctness",
+      "query": "welding",
+      "level": "entry",
+      "title": "Welder I",
+      "company": "Fabrication Shop",
+      "description": "Perform MIG welding. One year of experience preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-welding-sales-negative",
+      "category": "trades-correctness",
+      "query": "welding",
+      "level": "entry",
+      "title": "Welding Sales Representative",
+      "company": "Equipment Supplier",
+      "description": "Sell welding equipment. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-carpenter-positive",
+      "category": "trades-correctness",
+      "query": "carpentry",
+      "level": "entry",
+      "title": "Apprentice Carpenter",
+      "company": "Construction Company",
+      "description": "Learn framing and finish carpentry through an apprenticeship.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-hvac-positive",
+      "category": "trades-correctness",
+      "query": "hvac technician",
+      "level": "entry",
+      "title": "HVAC Technician I",
+      "company": "Mechanical Services",
+      "description": "Install and service HVAC equipment. One year preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-graphic-designer-positive",
+      "category": "creative-correctness",
+      "critical": true,
+      "query": "graphic designer",
+      "level": "entry",
+      "title": "Junior Graphic Designer",
+      "company": "Creative Studio",
+      "description": "Create visual assets. One year of design experience preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-graphic-designer-product-negative",
+      "category": "creative-correctness",
+      "query": "graphic designer",
+      "level": "entry",
+      "title": "Product Manager",
+      "company": "Design Software",
+      "description": "Manage a design product. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-physical-therapist-positive",
+      "category": "healthcare-correctness",
+      "critical": true,
+      "query": "physical therapy",
+      "level": "entry",
+      "title": "Physical Therapist",
+      "company": "Rehabilitation Center",
+      "description": "Provide patient rehabilitation. One year of experience preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-physical-therapy-sales-negative",
+      "category": "healthcare-correctness",
+      "query": "physical therapy",
+      "level": "entry",
+      "title": "Physical Therapy Sales Representative",
+      "company": "Medical Supplier",
+      "description": "Sell rehabilitation equipment. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-pharmacist-positive",
+      "category": "healthcare-correctness",
+      "query": "pharmacy",
+      "level": "entry",
+      "title": "Staff Pharmacist",
+      "company": "Community Pharmacy",
+      "description": "Dispense medications. One year of experience preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-pharmacy-sales-negative",
+      "category": "healthcare-correctness",
+      "query": "pharmacy",
+      "level": "entry",
+      "title": "Pharmacy Sales Specialist",
+      "company": "Medical Supplier",
+      "description": "Sell pharmacy software. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-police-officer-positive",
+      "category": "public-service-correctness",
+      "query": "criminal justice",
+      "level": "entry",
+      "title": "Police Officer Recruit",
+      "company": "City Government",
+      "description": "Entry-level public safety role with academy training.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-policy-analyst-positive",
+      "category": "public-service-correctness",
+      "query": "political science",
+      "level": "entry",
+      "title": "Policy Analyst I",
+      "company": "State Government",
+      "description": "Research public policy. One year of experience preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-dental-hygienist-positive",
+      "category": "cross-sector-healthcare",
+      "critical": true,
+      "query": "dental hygienist",
+      "level": "entry",
+      "title": "Dental Hygienist",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-dental-hygienist-negative",
+      "category": "cross-sector-healthcare",
+      "critical": true,
+      "query": "dental hygienist",
+      "level": "entry",
+      "title": "Dental Sales Representative",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-veterinary-technician-positive",
+      "category": "cross-sector-healthcare",
+      "critical": false,
+      "query": "veterinary technician",
+      "level": "entry",
+      "title": "Veterinary Technician I",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-veterinary-technician-negative",
+      "category": "cross-sector-healthcare",
+      "critical": false,
+      "query": "veterinary technician",
+      "level": "entry",
+      "title": "IT Support Technician",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-respiratory-therapy-positive",
+      "category": "cross-sector-healthcare",
+      "critical": false,
+      "query": "respiratory therapy",
+      "level": "entry",
+      "title": "Respiratory Therapist",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-respiratory-therapy-negative",
+      "category": "cross-sector-healthcare",
+      "critical": false,
+      "query": "respiratory therapy",
+      "level": "entry",
+      "title": "Physical Therapist",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-radiology-positive",
+      "category": "cross-sector-healthcare",
+      "critical": false,
+      "query": "radiology",
+      "level": "entry",
+      "title": "Radiologic Technologist",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-radiology-negative",
+      "category": "cross-sector-healthcare",
+      "critical": false,
+      "query": "radiology",
+      "level": "entry",
+      "title": "Radiology Sales Specialist",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-occupational-therapy-positive",
+      "category": "cross-sector-healthcare",
+      "critical": false,
+      "query": "occupational therapy",
+      "level": "entry",
+      "title": "Occupational Therapist",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-occupational-therapy-negative",
+      "category": "cross-sector-healthcare",
+      "critical": false,
+      "query": "occupational therapy",
+      "level": "entry",
+      "title": "Occupational Health Nurse",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-speech-language-pathologist-positive",
+      "category": "cross-sector-healthcare",
+      "critical": false,
+      "query": "speech language pathologist",
+      "level": "entry",
+      "title": "Speech Language Pathologist",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-speech-language-pathologist-negative",
+      "category": "cross-sector-healthcare",
+      "critical": false,
+      "query": "speech language pathologist",
+      "level": "entry",
+      "title": "Speech Writer",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-medical-assistant-positive",
+      "category": "cross-sector-healthcare",
+      "critical": false,
+      "query": "medical assistant",
+      "level": "entry",
+      "title": "Medical Assistant",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-medical-assistant-negative",
+      "category": "cross-sector-healthcare",
+      "critical": false,
+      "query": "medical assistant",
+      "level": "entry",
+      "title": "Registered Nurse",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-behavioral-health-counselor-positive",
+      "category": "cross-sector-healthcare",
+      "critical": false,
+      "query": "behavioral health counselor",
+      "level": "entry",
+      "title": "Behavioral Health Counselor",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-behavioral-health-counselor-negative",
+      "category": "cross-sector-healthcare",
+      "critical": false,
+      "query": "behavioral health counselor",
+      "level": "entry",
+      "title": "Behavioral Health Analyst",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-special-education-teacher-positive",
+      "category": "cross-sector-education-liberal-arts",
+      "critical": true,
+      "query": "special education teacher",
+      "level": "entry",
+      "title": "Special Education Teacher",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-special-education-teacher-negative",
+      "category": "cross-sector-education-liberal-arts",
+      "critical": true,
+      "query": "special education teacher",
+      "level": "entry",
+      "title": "Elementary Teacher",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-school-counselor-positive",
+      "category": "cross-sector-education-liberal-arts",
+      "critical": false,
+      "query": "school counselor",
+      "level": "entry",
+      "title": "School Counselor",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-school-counselor-negative",
+      "category": "cross-sector-education-liberal-arts",
+      "critical": false,
+      "query": "school counselor",
+      "level": "entry",
+      "title": "Sales Counselor",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-academic-advisor-positive",
+      "category": "cross-sector-education-liberal-arts",
+      "critical": false,
+      "query": "academic advisor",
+      "level": "entry",
+      "title": "Academic Advisor",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-academic-advisor-negative",
+      "category": "cross-sector-education-liberal-arts",
+      "critical": false,
+      "query": "academic advisor",
+      "level": "entry",
+      "title": "Financial Advisor",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-instructional-designer-positive",
+      "category": "cross-sector-education-liberal-arts",
+      "critical": false,
+      "query": "instructional designer",
+      "level": "entry",
+      "title": "Instructional Designer",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-instructional-designer-negative",
+      "category": "cross-sector-education-liberal-arts",
+      "critical": false,
+      "query": "instructional designer",
+      "level": "entry",
+      "title": "Product Designer",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-professor-positive",
+      "category": "cross-sector-education-liberal-arts",
+      "critical": false,
+      "query": "professor",
+      "level": "entry",
+      "title": "Assistant Professor",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-professor-negative",
+      "category": "cross-sector-education-liberal-arts",
+      "critical": false,
+      "query": "professor",
+      "level": "entry",
+      "title": "Administrative Assistant",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-paraprofessional-positive",
+      "category": "cross-sector-education-liberal-arts",
+      "critical": false,
+      "query": "paraprofessional",
+      "level": "entry",
+      "title": "Paraprofessional",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-paraprofessional-negative",
+      "category": "cross-sector-education-liberal-arts",
+      "critical": false,
+      "query": "paraprofessional",
+      "level": "entry",
+      "title": "Marketing Assistant",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-admissions-counselor-positive",
+      "category": "cross-sector-education-liberal-arts",
+      "critical": false,
+      "query": "admissions counselor",
+      "level": "entry",
+      "title": "Admissions Counselor",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-admissions-counselor-negative",
+      "category": "cross-sector-education-liberal-arts",
+      "critical": false,
+      "query": "admissions counselor",
+      "level": "entry",
+      "title": "Mental Health Counselor",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-museum-curator-positive",
+      "category": "cross-sector-education-liberal-arts",
+      "critical": false,
+      "query": "museum curator",
+      "level": "entry",
+      "title": "Museum Curator",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-museum-curator-negative",
+      "category": "cross-sector-education-liberal-arts",
+      "critical": false,
+      "query": "museum curator",
+      "level": "entry",
+      "title": "Museum Store Associate",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-archivist-positive",
+      "category": "cross-sector-education-liberal-arts",
+      "critical": false,
+      "query": "archivist",
+      "level": "entry",
+      "title": "Archivist",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-archivist-negative",
+      "category": "cross-sector-education-liberal-arts",
+      "critical": false,
+      "query": "archivist",
+      "level": "entry",
+      "title": "Data Analyst",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-biologist-positive",
+      "category": "cross-sector-science-research",
+      "critical": false,
+      "query": "biologist",
+      "level": "entry",
+      "title": "Research Biologist",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-biologist-negative",
+      "category": "cross-sector-science-research",
+      "critical": false,
+      "query": "biologist",
+      "level": "entry",
+      "title": "Biology Teacher",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-environmental-scientist-positive",
+      "category": "cross-sector-science-research",
+      "critical": true,
+      "query": "environmental scientist",
+      "level": "entry",
+      "title": "Environmental Scientist",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-environmental-scientist-negative",
+      "category": "cross-sector-science-research",
+      "critical": true,
+      "query": "environmental scientist",
+      "level": "entry",
+      "title": "Environmental Sales Representative",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-geologist-positive",
+      "category": "cross-sector-science-research",
+      "critical": false,
+      "query": "geologist",
+      "level": "entry",
+      "title": "Staff Geologist",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-geologist-negative",
+      "category": "cross-sector-science-research",
+      "critical": false,
+      "query": "geologist",
+      "level": "entry",
+      "title": "Geology Teacher",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-physicist-positive",
+      "category": "cross-sector-science-research",
+      "critical": false,
+      "query": "physicist",
+      "level": "entry",
+      "title": "Staff Physicist",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-physicist-negative",
+      "category": "cross-sector-science-research",
+      "critical": false,
+      "query": "physicist",
+      "level": "entry",
+      "title": "Physics Teacher",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-microbiologist-positive",
+      "category": "cross-sector-science-research",
+      "critical": false,
+      "query": "microbiologist",
+      "level": "entry",
+      "title": "Microbiologist",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-microbiologist-negative",
+      "category": "cross-sector-science-research",
+      "critical": false,
+      "query": "microbiologist",
+      "level": "entry",
+      "title": "Microbiology Sales Specialist",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-research-assistant-positive",
+      "category": "cross-sector-science-research",
+      "critical": false,
+      "query": "research assistant",
+      "level": "entry",
+      "title": "Research Assistant",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-research-assistant-negative",
+      "category": "cross-sector-science-research",
+      "critical": false,
+      "query": "research assistant",
+      "level": "entry",
+      "title": "Executive Assistant",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-clinical-research-coordinator-positive",
+      "category": "cross-sector-science-research",
+      "critical": false,
+      "query": "clinical research coordinator",
+      "level": "entry",
+      "title": "Clinical Research Coordinator",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-clinical-research-coordinator-negative",
+      "category": "cross-sector-science-research",
+      "critical": false,
+      "query": "clinical research coordinator",
+      "level": "entry",
+      "title": "Marketing Coordinator",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-statistician-positive",
+      "category": "cross-sector-science-research",
+      "critical": false,
+      "query": "statistician",
+      "level": "entry",
+      "title": "Statistician I",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-statistician-negative",
+      "category": "cross-sector-science-research",
+      "critical": false,
+      "query": "statistician",
+      "level": "entry",
+      "title": "Statistics Teacher",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-aerospace-engineer-positive",
+      "category": "cross-sector-engineering-built-environment",
+      "critical": true,
+      "query": "aerospace engineer",
+      "level": "entry",
+      "title": "Aerospace Engineer I",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-aerospace-engineer-negative",
+      "category": "cross-sector-engineering-built-environment",
+      "critical": true,
+      "query": "aerospace engineer",
+      "level": "entry",
+      "title": "Software Engineer I",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-industrial-engineer-positive",
+      "category": "cross-sector-engineering-built-environment",
+      "critical": false,
+      "query": "industrial engineer",
+      "level": "entry",
+      "title": "Industrial Engineer I",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-industrial-engineer-negative",
+      "category": "cross-sector-engineering-built-environment",
+      "critical": false,
+      "query": "industrial engineer",
+      "level": "entry",
+      "title": "Software Engineer I",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-biomedical-engineer-positive",
+      "category": "cross-sector-engineering-built-environment",
+      "critical": false,
+      "query": "biomedical engineer",
+      "level": "entry",
+      "title": "Biomedical Engineer I",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-biomedical-engineer-negative",
+      "category": "cross-sector-engineering-built-environment",
+      "critical": false,
+      "query": "biomedical engineer",
+      "level": "entry",
+      "title": "Medical Assistant",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-chemical-engineer-positive",
+      "category": "cross-sector-engineering-built-environment",
+      "critical": false,
+      "query": "chemical engineer",
+      "level": "entry",
+      "title": "Chemical Engineer I",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-chemical-engineer-negative",
+      "category": "cross-sector-engineering-built-environment",
+      "critical": false,
+      "query": "chemical engineer",
+      "level": "entry",
+      "title": "Chemical Sales Representative",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-process-engineer-positive",
+      "category": "cross-sector-engineering-built-environment",
+      "critical": false,
+      "query": "process engineer",
+      "level": "entry",
+      "title": "Process Engineer I",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-process-engineer-negative",
+      "category": "cross-sector-engineering-built-environment",
+      "critical": false,
+      "query": "process engineer",
+      "level": "entry",
+      "title": "Business Process Analyst",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-manufacturing-engineer-positive",
+      "category": "cross-sector-engineering-built-environment",
+      "critical": false,
+      "query": "manufacturing engineer",
+      "level": "entry",
+      "title": "Manufacturing Engineer I",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-manufacturing-engineer-negative",
+      "category": "cross-sector-engineering-built-environment",
+      "critical": false,
+      "query": "manufacturing engineer",
+      "level": "entry",
+      "title": "Software Engineer I",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-architecture-positive",
+      "category": "cross-sector-engineering-built-environment",
+      "critical": false,
+      "query": "architecture",
+      "level": "entry",
+      "title": "Architectural Designer",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-architecture-negative",
+      "category": "cross-sector-engineering-built-environment",
+      "critical": false,
+      "query": "architecture",
+      "level": "entry",
+      "title": "Software Architect",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-human-resources-specialist-positive",
+      "category": "cross-sector-business-finance-operations",
+      "critical": true,
+      "query": "human resources specialist",
+      "level": "entry",
+      "title": "HR Specialist",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-human-resources-specialist-negative",
+      "category": "cross-sector-business-finance-operations",
+      "critical": true,
+      "query": "human resources specialist",
+      "level": "entry",
+      "title": "Software Engineer I",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-payroll-specialist-positive",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "payroll specialist",
+      "level": "entry",
+      "title": "Payroll Specialist",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-payroll-specialist-negative",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "payroll specialist",
+      "level": "entry",
+      "title": "Marketing Specialist",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-procurement-specialist-positive",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "procurement specialist",
+      "level": "entry",
+      "title": "Procurement Specialist",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-procurement-specialist-negative",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "procurement specialist",
+      "level": "entry",
+      "title": "Product Specialist",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-supply-chain-analyst-positive",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "supply chain analyst",
+      "level": "entry",
+      "title": "Supply Chain Analyst",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-supply-chain-analyst-negative",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "supply chain analyst",
+      "level": "entry",
+      "title": "Financial Analyst",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-logistics-coordinator-positive",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "logistics coordinator",
+      "level": "entry",
+      "title": "Logistics Coordinator",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-logistics-coordinator-negative",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "logistics coordinator",
+      "level": "entry",
+      "title": "Marketing Coordinator",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-operations-manager-positive",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "operations manager",
+      "level": "any",
+      "title": "Operations Manager",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "General occupation match case.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-operations-manager-negative",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "operations manager",
+      "level": "any",
+      "title": "Marketing Manager",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "General occupation match case.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-customer-service-representative-positive",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "customer service representative",
+      "level": "entry",
+      "title": "Customer Service Representative",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-customer-service-representative-negative",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "customer service representative",
+      "level": "entry",
+      "title": "Sales Representative",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-administrative-assistant-positive",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "administrative assistant",
+      "level": "entry",
+      "title": "Administrative Assistant",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-administrative-assistant-negative",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "administrative assistant",
+      "level": "entry",
+      "title": "Marketing Assistant",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-executive-assistant-positive",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "executive assistant",
+      "level": "entry",
+      "title": "Executive Assistant",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-executive-assistant-negative",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "executive assistant",
+      "level": "entry",
+      "title": "Executive Recruiter",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-insurance-underwriter-positive",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "insurance underwriter",
+      "level": "entry",
+      "title": "Insurance Underwriter",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-insurance-underwriter-negative",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "insurance underwriter",
+      "level": "entry",
+      "title": "Software Engineer",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-claims-adjuster-positive",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "claims adjuster",
+      "level": "entry",
+      "title": "Claims Adjuster",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-claims-adjuster-negative",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "claims adjuster",
+      "level": "entry",
+      "title": "Marketing Analyst",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-actuary-positive",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "actuary",
+      "level": "entry",
+      "title": "Actuary I",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-actuary-negative",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "actuary",
+      "level": "entry",
+      "title": "Data Analyst",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-tax-accountant-positive",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "tax accountant",
+      "level": "entry",
+      "title": "Tax Accountant",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-tax-accountant-negative",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "tax accountant",
+      "level": "entry",
+      "title": "Tax Software Engineer",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-auditor-positive",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "auditor",
+      "level": "entry",
+      "title": "Internal Auditor",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-auditor-negative",
+      "category": "cross-sector-business-finance-operations",
+      "critical": false,
+      "query": "auditor",
+      "level": "entry",
+      "title": "Security Analyst",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-paralegal-positive",
+      "category": "cross-sector-legal-public-service",
+      "critical": false,
+      "query": "paralegal",
+      "level": "entry",
+      "title": "Paralegal I",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-paralegal-negative",
+      "category": "cross-sector-legal-public-service",
+      "critical": false,
+      "query": "paralegal",
+      "level": "entry",
+      "title": "Legal Software Engineer",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-legal-assistant-positive",
+      "category": "cross-sector-legal-public-service",
+      "critical": false,
+      "query": "legal assistant",
+      "level": "entry",
+      "title": "Legal Assistant",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-legal-assistant-negative",
+      "category": "cross-sector-legal-public-service",
+      "critical": false,
+      "query": "legal assistant",
+      "level": "entry",
+      "title": "Executive Assistant",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-contract-administrator-positive",
+      "category": "cross-sector-legal-public-service",
+      "critical": true,
+      "query": "contract administrator",
+      "level": "entry",
+      "title": "Contract Administrator",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-contract-administrator-negative",
+      "category": "cross-sector-legal-public-service",
+      "critical": true,
+      "query": "contract administrator",
+      "level": "entry",
+      "title": "System Administrator",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-compliance-analyst-positive",
+      "category": "cross-sector-legal-public-service",
+      "critical": false,
+      "query": "compliance analyst",
+      "level": "entry",
+      "title": "Compliance Analyst",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-compliance-analyst-negative",
+      "category": "cross-sector-legal-public-service",
+      "critical": false,
+      "query": "compliance analyst",
+      "level": "entry",
+      "title": "Financial Analyst",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-policy-analyst-positive",
+      "category": "cross-sector-legal-public-service",
+      "critical": false,
+      "query": "policy analyst",
+      "level": "entry",
+      "title": "Policy Analyst I",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-policy-analyst-negative",
+      "category": "cross-sector-legal-public-service",
+      "critical": false,
+      "query": "policy analyst",
+      "level": "entry",
+      "title": "Data Analyst",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-probation-officer-positive",
+      "category": "cross-sector-legal-public-service",
+      "critical": false,
+      "query": "probation officer",
+      "level": "entry",
+      "title": "Probation Officer",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-probation-officer-negative",
+      "category": "cross-sector-legal-public-service",
+      "critical": false,
+      "query": "probation officer",
+      "level": "entry",
+      "title": "Security Officer",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-police-officer-positive",
+      "category": "cross-sector-legal-public-service",
+      "critical": false,
+      "query": "police officer",
+      "level": "entry",
+      "title": "Police Officer Recruit",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-police-officer-negative",
+      "category": "cross-sector-legal-public-service",
+      "critical": false,
+      "query": "police officer",
+      "level": "entry",
+      "title": "Security Officer",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-firefighter-positive",
+      "category": "cross-sector-legal-public-service",
+      "critical": false,
+      "query": "firefighter",
+      "level": "entry",
+      "title": "Firefighter Recruit",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-firefighter-negative",
+      "category": "cross-sector-legal-public-service",
+      "critical": false,
+      "query": "firefighter",
+      "level": "entry",
+      "title": "Fire Safety Engineer",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-legislative-assistant-positive",
+      "category": "cross-sector-legal-public-service",
+      "critical": false,
+      "query": "legislative assistant",
+      "level": "entry",
+      "title": "Legislative Assistant",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-legislative-assistant-negative",
+      "category": "cross-sector-legal-public-service",
+      "critical": false,
+      "query": "legislative assistant",
+      "level": "entry",
+      "title": "Executive Assistant",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-court-reporter-positive",
+      "category": "cross-sector-legal-public-service",
+      "critical": false,
+      "query": "court reporter",
+      "level": "entry",
+      "title": "Court Reporter",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-court-reporter-negative",
+      "category": "cross-sector-legal-public-service",
+      "critical": false,
+      "query": "court reporter",
+      "level": "entry",
+      "title": "News Reporter",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-city-planner-positive",
+      "category": "cross-sector-legal-public-service",
+      "critical": false,
+      "query": "city planner",
+      "level": "entry",
+      "title": "City Planner",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-city-planner-negative",
+      "category": "cross-sector-legal-public-service",
+      "critical": false,
+      "query": "city planner",
+      "level": "entry",
+      "title": "Event Planner",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-attorney-positive",
+      "category": "cross-sector-legal-public-service",
+      "critical": false,
+      "query": "attorney",
+      "level": "entry",
+      "title": "Associate Attorney",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-attorney-negative",
+      "category": "cross-sector-legal-public-service",
+      "critical": false,
+      "query": "attorney",
+      "level": "entry",
+      "title": "Legal Operations Analyst",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-plumber-positive",
+      "category": "cross-sector-trades-construction-logistics",
+      "critical": true,
+      "query": "plumber",
+      "level": "entry",
+      "title": "Apprentice Plumber",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-plumber-negative",
+      "category": "cross-sector-trades-construction-logistics",
+      "critical": true,
+      "query": "plumber",
+      "level": "entry",
+      "title": "Plumbing Sales Representative",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-hvac-technician-positive",
+      "category": "cross-sector-trades-construction-logistics",
+      "critical": false,
+      "query": "hvac technician",
+      "level": "entry",
+      "title": "HVAC Technician I",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-hvac-technician-negative",
+      "category": "cross-sector-trades-construction-logistics",
+      "critical": false,
+      "query": "hvac technician",
+      "level": "entry",
+      "title": "IT Support Technician",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-automotive-technician-positive",
+      "category": "cross-sector-trades-construction-logistics",
+      "critical": false,
+      "query": "automotive technician",
+      "level": "entry",
+      "title": "Automotive Technician I",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-automotive-technician-negative",
+      "category": "cross-sector-trades-construction-logistics",
+      "critical": false,
+      "query": "automotive technician",
+      "level": "entry",
+      "title": "Sales Technician",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-machinist-positive",
+      "category": "cross-sector-trades-construction-logistics",
+      "critical": false,
+      "query": "machinist",
+      "level": "entry",
+      "title": "CNC Machinist",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-machinist-negative",
+      "category": "cross-sector-trades-construction-logistics",
+      "critical": false,
+      "query": "machinist",
+      "level": "entry",
+      "title": "Machine Learning Engineer",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-carpenter-positive",
+      "category": "cross-sector-trades-construction-logistics",
+      "critical": false,
+      "query": "carpenter",
+      "level": "entry",
+      "title": "Apprentice Carpenter",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-carpenter-negative",
+      "category": "cross-sector-trades-construction-logistics",
+      "critical": false,
+      "query": "carpenter",
+      "level": "entry",
+      "title": "Carpentry Sales Representative",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-heavy-equipment-operator-positive",
+      "category": "cross-sector-trades-construction-logistics",
+      "critical": false,
+      "query": "heavy equipment operator",
+      "level": "entry",
+      "title": "Heavy Equipment Operator",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-heavy-equipment-operator-negative",
+      "category": "cross-sector-trades-construction-logistics",
+      "critical": false,
+      "query": "heavy equipment operator",
+      "level": "entry",
+      "title": "Data Entry Operator",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-forklift-operator-positive",
+      "category": "cross-sector-trades-construction-logistics",
+      "critical": false,
+      "query": "forklift operator",
+      "level": "entry",
+      "title": "Forklift Operator",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-forklift-operator-negative",
+      "category": "cross-sector-trades-construction-logistics",
+      "critical": false,
+      "query": "forklift operator",
+      "level": "entry",
+      "title": "Machine Operator",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-maintenance-technician-positive",
+      "category": "cross-sector-trades-construction-logistics",
+      "critical": false,
+      "query": "maintenance technician",
+      "level": "entry",
+      "title": "Maintenance Technician I",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-maintenance-technician-negative",
+      "category": "cross-sector-trades-construction-logistics",
+      "critical": false,
+      "query": "maintenance technician",
+      "level": "entry",
+      "title": "IT Support Technician",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-construction-manager-positive",
+      "category": "cross-sector-trades-construction-logistics",
+      "critical": false,
+      "query": "construction manager",
+      "level": "any",
+      "title": "Construction Manager",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "General occupation match case.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-construction-manager-negative",
+      "category": "cross-sector-trades-construction-logistics",
+      "critical": false,
+      "query": "construction manager",
+      "level": "any",
+      "title": "Product Manager",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "General occupation match case.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-truck-driver-positive",
+      "category": "cross-sector-trades-construction-logistics",
+      "critical": false,
+      "query": "truck driver",
+      "level": "entry",
+      "title": "Truck Driver",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-truck-driver-negative",
+      "category": "cross-sector-trades-construction-logistics",
+      "critical": false,
+      "query": "truck driver",
+      "level": "entry",
+      "title": "Software Driver Engineer",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-warehouse-associate-positive",
+      "category": "cross-sector-trades-construction-logistics",
+      "critical": false,
+      "query": "warehouse associate",
+      "level": "entry",
+      "title": "Warehouse Associate",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-warehouse-associate-negative",
+      "category": "cross-sector-trades-construction-logistics",
+      "critical": false,
+      "query": "warehouse associate",
+      "level": "entry",
+      "title": "Sales Associate",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-copywriter-positive",
+      "category": "cross-sector-creative-communications",
+      "critical": true,
+      "query": "copywriter",
+      "level": "entry",
+      "title": "Copywriter",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-copywriter-negative",
+      "category": "cross-sector-creative-communications",
+      "critical": true,
+      "query": "copywriter",
+      "level": "entry",
+      "title": "Technical Writer",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-video-editor-positive",
+      "category": "cross-sector-creative-communications",
+      "critical": false,
+      "query": "video editor",
+      "level": "entry",
+      "title": "Video Editor",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-video-editor-negative",
+      "category": "cross-sector-creative-communications",
+      "critical": false,
+      "query": "video editor",
+      "level": "entry",
+      "title": "Data Editor",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-photographer-positive",
+      "category": "cross-sector-creative-communications",
+      "critical": false,
+      "query": "photographer",
+      "level": "entry",
+      "title": "Staff Photographer",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-photographer-negative",
+      "category": "cross-sector-creative-communications",
+      "critical": false,
+      "query": "photographer",
+      "level": "entry",
+      "title": "Photo Editor",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-interior-designer-positive",
+      "category": "cross-sector-creative-communications",
+      "critical": false,
+      "query": "interior designer",
+      "level": "entry",
+      "title": "Interior Designer",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-interior-designer-negative",
+      "category": "cross-sector-creative-communications",
+      "critical": false,
+      "query": "interior designer",
+      "level": "entry",
+      "title": "UX Designer",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-communications-specialist-positive",
+      "category": "cross-sector-creative-communications",
+      "critical": false,
+      "query": "communications specialist",
+      "level": "entry",
+      "title": "Communications Specialist",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-communications-specialist-negative",
+      "category": "cross-sector-creative-communications",
+      "critical": false,
+      "query": "communications specialist",
+      "level": "entry",
+      "title": "IT Specialist",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-public-relations-specialist-positive",
+      "category": "cross-sector-creative-communications",
+      "critical": false,
+      "query": "public relations specialist",
+      "level": "entry",
+      "title": "Public Relations Specialist",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-public-relations-specialist-negative",
+      "category": "cross-sector-creative-communications",
+      "critical": false,
+      "query": "public relations specialist",
+      "level": "entry",
+      "title": "HR Specialist",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-translator-positive",
+      "category": "cross-sector-creative-communications",
+      "critical": false,
+      "query": "translator",
+      "level": "entry",
+      "title": "Spanish Translator",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-translator-negative",
+      "category": "cross-sector-creative-communications",
+      "critical": false,
+      "query": "translator",
+      "level": "entry",
+      "title": "Language Model Engineer",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-interpreter-positive",
+      "category": "cross-sector-creative-communications",
+      "critical": false,
+      "query": "interpreter",
+      "level": "entry",
+      "title": "Medical Interpreter",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-interpreter-negative",
+      "category": "cross-sector-creative-communications",
+      "critical": false,
+      "query": "interpreter",
+      "level": "entry",
+      "title": "Compiler Engineer",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-historian-positive",
+      "category": "cross-sector-creative-communications",
+      "critical": false,
+      "query": "historian",
+      "level": "entry",
+      "title": "Historian",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-historian-negative",
+      "category": "cross-sector-creative-communications",
+      "critical": false,
+      "query": "historian",
+      "level": "entry",
+      "title": "History Teacher",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-economist-positive",
+      "category": "cross-sector-creative-communications",
+      "critical": false,
+      "query": "economist",
+      "level": "entry",
+      "title": "Economist I",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-economist-negative",
+      "category": "cross-sector-creative-communications",
+      "critical": false,
+      "query": "economist",
+      "level": "entry",
+      "title": "Financial Analyst",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-urban-planner-positive",
+      "category": "cross-sector-creative-communications",
+      "critical": false,
+      "query": "urban planner",
+      "level": "entry",
+      "title": "Urban Planner",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-urban-planner-negative",
+      "category": "cross-sector-creative-communications",
+      "critical": false,
+      "query": "urban planner",
+      "level": "entry",
+      "title": "Event Planner",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-chef-positive",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "chef",
+      "level": "entry",
+      "title": "Line Chef",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-chef-negative",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "chef",
+      "level": "entry",
+      "title": "Sales Manager",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-hotel-manager-positive",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "hotel manager",
+      "level": "any",
+      "title": "Hotel Manager",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "General occupation match case.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-hotel-manager-negative",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "hotel manager",
+      "level": "any",
+      "title": "Product Manager",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "General occupation match case.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-guest-services-representative-positive",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "guest services representative",
+      "level": "entry",
+      "title": "Guest Services Representative",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-guest-services-representative-negative",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "guest services representative",
+      "level": "entry",
+      "title": "Sales Representative",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-restaurant-manager-positive",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "restaurant manager",
+      "level": "any",
+      "title": "Restaurant Manager",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "General occupation match case.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-restaurant-manager-negative",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "restaurant manager",
+      "level": "any",
+      "title": "Marketing Manager",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "General occupation match case.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-flight-attendant-positive",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "flight attendant",
+      "level": "entry",
+      "title": "Flight Attendant",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-flight-attendant-negative",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "flight attendant",
+      "level": "entry",
+      "title": "Administrative Assistant",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-security-guard-positive",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": true,
+      "query": "security guard",
+      "level": "entry",
+      "title": "Security Guard",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-security-guard-negative",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": true,
+      "query": "security guard",
+      "level": "entry",
+      "title": "Security Engineer",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-custodian-positive",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "custodian",
+      "level": "entry",
+      "title": "Custodian",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-custodian-negative",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "custodian",
+      "level": "entry",
+      "title": "Custodial Sales Representative",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-childcare-worker-positive",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "childcare worker",
+      "level": "entry",
+      "title": "Childcare Worker",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-childcare-worker-negative",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "childcare worker",
+      "level": "entry",
+      "title": "Social Worker",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-retail-associate-positive",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "retail associate",
+      "level": "entry",
+      "title": "Retail Associate",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-retail-associate-negative",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "retail associate",
+      "level": "entry",
+      "title": "Software Associate",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-cashier-positive",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "cashier",
+      "level": "entry",
+      "title": "Cashier",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-cashier-negative",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "cashier",
+      "level": "entry",
+      "title": "Financial Analyst",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-food-service-worker-positive",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "food service worker",
+      "level": "entry",
+      "title": "Food Service Worker",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-food-service-worker-negative",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "food service worker",
+      "level": "entry",
+      "title": "Social Worker",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-bus-driver-positive",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "bus driver",
+      "level": "entry",
+      "title": "Bus Driver",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-bus-driver-negative",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "bus driver",
+      "level": "entry",
+      "title": "Software Driver Engineer",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-delivery-driver-positive",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "delivery driver",
+      "level": "entry",
+      "title": "Delivery Driver",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-delivery-driver-negative",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "delivery driver",
+      "level": "entry",
+      "title": "Software Driver Engineer",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-aircraft-mechanic-positive",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "aircraft mechanic",
+      "level": "entry",
+      "title": "Aircraft Mechanic",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-aircraft-mechanic-negative",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "aircraft mechanic",
+      "level": "entry",
+      "title": "Automotive Mechanic",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-farm-manager-positive",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "farm manager",
+      "level": "any",
+      "title": "Farm Manager",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "General occupation match case.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-farm-manager-negative",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "farm manager",
+      "level": "any",
+      "title": "Product Manager",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "General occupation match case.",
+      "expected_match": false
+    },
+    {
+      "id": "matrix-agricultural-technician-positive",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "agricultural technician",
+      "level": "entry",
+      "title": "Agricultural Technician",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "matrix-agricultural-technician-negative",
+      "category": "cross-sector-service-hospitality-transport-agriculture",
+      "critical": false,
+      "query": "agricultural technician",
+      "level": "entry",
+      "title": "Laboratory Technician",
+      "company": "Cross-Sector Benchmark Employer",
+      "description": "Entry-level position requiring 1 year of experience.",
+      "expected_match": false
+    }
+  ],
+  "location_cases": [
+    {
+      "id": "location-philadelphia-exact",
+      "category": "location-strictness",
+      "critical": true,
+      "requested_location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "expected_match": true
+    },
+    {
+      "id": "location-philadelphia-alias",
+      "category": "location-strictness",
+      "requested_location": "Philadelphia",
+      "job_location": "Philly",
+      "expected_match": true
+    },
+    {
+      "id": "location-philadelphia-remote-us-negative",
+      "category": "location-strictness",
+      "critical": true,
+      "requested_location": "Philadelphia",
+      "job_location": "Remote - USA",
+      "expected_match": false
+    },
+    {
+      "id": "location-philadelphia-california-negative",
+      "category": "location-strictness",
+      "critical": true,
+      "requested_location": "Philadelphia",
+      "job_location": "Remote (California, United States)",
+      "expected_match": false
+    },
+    {
+      "id": "location-philadelphia-new-york-negative",
+      "category": "location-strictness",
+      "requested_location": "Philadelphia",
+      "job_location": "New York, NY",
+      "expected_match": false
+    },
+    {
+      "id": "location-remote-us-positive",
+      "category": "location-remote",
+      "critical": true,
+      "requested_location": "Remote",
+      "job_location": "Remote - USA",
+      "expected_match": true
+    },
+    {
+      "id": "location-remote-unspecified-positive",
+      "category": "location-remote",
+      "requested_location": "Remote",
+      "job_location": "Remote",
+      "expected_match": true
+    },
+    {
+      "id": "location-remote-worldwide-positive",
+      "category": "location-remote",
+      "requested_location": "Remote",
+      "job_location": "Worldwide",
+      "expected_match": true
+    },
+    {
+      "id": "location-remote-europe-negative",
+      "category": "location-remote",
+      "requested_location": "Remote",
+      "job_location": "Remote - Europe",
+      "expected_match": false
+    },
+    {
+      "id": "location-pennsylvania-philadelphia-positive",
+      "category": "location-region",
+      "requested_location": "Pennsylvania",
+      "job_location": "Philadelphia, PA",
+      "expected_match": true
+    },
+    {
+      "id": "location-philadelphia-king-of-prussia-positive",
+      "category": "location-metro",
+      "critical": true,
+      "requested_location": "Philadelphia",
+      "job_location": "King of Prussia, PA",
+      "expected_match": true
+    },
+    {
+      "id": "location-philadelphia-west-chester-positive",
+      "category": "location-metro",
+      "critical": true,
+      "requested_location": "Philadelphia",
+      "job_location": "West Chester, PA",
+      "expected_match": true
+    },
+    {
+      "id": "location-philadelphia-camden-positive",
+      "category": "location-metro",
+      "requested_location": "Philadelphia",
+      "job_location": "Camden, NJ",
+      "expected_match": true
+    },
+    {
+      "id": "location-philadelphia-wilmington-positive",
+      "category": "location-metro",
+      "requested_location": "Philadelphia",
+      "job_location": "Wilmington, DE",
+      "expected_match": true
+    },
+    {
+      "id": "location-philadelphia-pittsburgh-negative",
+      "category": "location-metro",
+      "critical": true,
+      "requested_location": "Philadelphia",
+      "job_location": "Pittsburgh, PA",
+      "expected_match": false
+    },
+    {
+      "id": "location-new-york-jersey-city-positive",
+      "category": "location-metro",
+      "requested_location": "New York",
+      "job_location": "Jersey City, NJ",
+      "expected_match": true
+    },
+    {
+      "id": "location-san-francisco-san-jose-positive",
+      "category": "location-metro",
+      "requested_location": "San Francisco",
+      "job_location": "San Jose, CA",
+      "expected_match": true
+    }
+  ],
+  "ranking_cases": [
+    {
+      "id": "ranking-electrical-engineer",
+      "category": "ranking-occupation",
+      "critical": true,
+      "query": "Electrical Engineer",
+      "level": "entry",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "Electrical Engineer I",
+          "description": "Electrical design role requiring 1 year of experience.",
+          "company": "Engineering Firm"
+        },
+        {
+          "id": "shared-head",
+          "title": "Analytics Engineer",
+          "description": "Build data pipelines with 1 year of experience.",
+          "company": "Data Company"
+        },
+        {
+          "id": "unrelated",
+          "title": "Marketing Assistant",
+          "description": "Support campaigns with 1 year of experience.",
+          "company": "Media Company"
+        }
+      ]
+    },
+    {
+      "id": "ranking-elementary-teacher",
+      "category": "ranking-occupation",
+      "query": "elementary school teacher",
+      "level": "entry",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "Elementary Teacher",
+          "description": "Teach elementary students. 0-2 years of experience.",
+          "company": "School"
+        },
+        {
+          "id": "adjacent",
+          "title": "Education Data Analyst",
+          "description": "Analyze school data with 1 year of experience.",
+          "company": "Education Company"
+        }
+      ]
+    },
+    {
+      "id": "ranking-laboratory-technician",
+      "category": "ranking-occupation",
+      "query": "laboratory technician",
+      "level": "entry",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "Lab Technician I",
+          "description": "Prepare laboratory samples. One year preferred.",
+          "company": "Lab"
+        },
+        {
+          "id": "shared-head",
+          "title": "IT Support Technician",
+          "description": "Support computers. One year preferred.",
+          "company": "IT Company"
+        }
+      ]
+    },
+    {
+      "id": "ranking-welder-over-sales",
+      "category": "ranking-occupation",
+      "query": "welding",
+      "level": "entry",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "Welder I",
+          "description": "Perform MIG welding. One year preferred.",
+          "company": "Fabricator"
+        },
+        {
+          "id": "sales",
+          "title": "Welding Sales Representative",
+          "description": "Sell welding products. One year preferred.",
+          "company": "Supplier"
+        }
+      ]
+    },
+    {
+      "id": "ranking-physical-therapist-over-sales",
+      "category": "ranking-occupation",
+      "query": "physical therapy",
+      "level": "entry",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "Physical Therapist",
+          "description": "Provide rehabilitation. One year preferred.",
+          "company": "Clinic"
+        },
+        {
+          "id": "sales",
+          "title": "Physical Therapy Sales Representative",
+          "description": "Sell rehabilitation equipment. One year preferred.",
+          "company": "Supplier"
+        }
+      ]
+    },
+    {
+      "id": "ranking-cross-sector-social-worker",
+      "category": "ranking-cross-sector",
+      "critical": true,
+      "query": "social worker",
+      "level": "entry",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "Social Worker I",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Exact Employer"
+        },
+        {
+          "id": "near-miss",
+          "title": "Social Media Manager",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Near Miss Employer"
+        }
+      ]
+    },
+    {
+      "id": "ranking-cross-sector-special-education-teacher",
+      "category": "ranking-cross-sector",
+      "critical": false,
+      "query": "special education teacher",
+      "level": "entry",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "Special Education Teacher",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Exact Employer"
+        },
+        {
+          "id": "near-miss",
+          "title": "Elementary Teacher",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Near Miss Employer"
+        }
+      ]
+    },
+    {
+      "id": "ranking-cross-sector-chemist",
+      "category": "ranking-cross-sector",
+      "critical": true,
+      "query": "chemistry",
+      "level": "entry",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "Analytical Chemist I",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Exact Employer"
+        },
+        {
+          "id": "near-miss",
+          "title": "Chemical Sales Representative",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Near Miss Employer"
+        }
+      ]
+    },
+    {
+      "id": "ranking-cross-sector-hr-specialist",
+      "category": "ranking-cross-sector",
+      "critical": false,
+      "query": "human resources specialist",
+      "level": "entry",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "HR Specialist",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Exact Employer"
+        },
+        {
+          "id": "near-miss",
+          "title": "Marketing Specialist",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Near Miss Employer"
+        }
+      ]
+    },
+    {
+      "id": "ranking-cross-sector-compliance-analyst",
+      "category": "ranking-cross-sector",
+      "critical": false,
+      "query": "compliance analyst",
+      "level": "entry",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "Compliance Analyst",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Exact Employer"
+        },
+        {
+          "id": "near-miss",
+          "title": "Financial Analyst",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Near Miss Employer"
+        }
+      ]
+    },
+    {
+      "id": "ranking-cross-sector-electrician",
+      "category": "ranking-cross-sector",
+      "critical": false,
+      "query": "electrician",
+      "level": "entry",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "Apprentice Electrician",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Exact Employer"
+        },
+        {
+          "id": "near-miss",
+          "title": "Electrical Engineer I",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Near Miss Employer"
+        }
+      ]
+    },
+    {
+      "id": "ranking-cross-sector-journalism",
+      "category": "ranking-cross-sector",
+      "critical": false,
+      "query": "journalism",
+      "level": "entry",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "Staff Reporter",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Exact Employer"
+        },
+        {
+          "id": "near-miss",
+          "title": "Marketing Coordinator",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Near Miss Employer"
+        }
+      ]
+    },
+    {
+      "id": "ranking-cross-sector-physical-therapist",
+      "category": "ranking-cross-sector",
+      "critical": false,
+      "query": "physical therapy",
+      "level": "entry",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "Physical Therapist",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Exact Employer"
+        },
+        {
+          "id": "near-miss",
+          "title": "Physical Therapy Sales Representative",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Near Miss Employer"
+        }
+      ]
+    },
+    {
+      "id": "ranking-cross-sector-architecture",
+      "category": "ranking-cross-sector",
+      "critical": true,
+      "query": "architecture",
+      "level": "entry",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "Architectural Designer",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Exact Employer"
+        },
+        {
+          "id": "near-miss",
+          "title": "Software Architect",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Near Miss Employer"
+        }
+      ]
+    },
+    {
+      "id": "ranking-cross-sector-operations-manager",
+      "category": "ranking-cross-sector",
+      "critical": false,
+      "query": "operations manager",
+      "level": "any",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "Operations Manager",
+          "description": "General role description.",
+          "company": "Exact Employer"
+        },
+        {
+          "id": "near-miss",
+          "title": "Marketing Manager",
+          "description": "General role description.",
+          "company": "Near Miss Employer"
+        }
+      ]
+    },
+    {
+      "id": "ranking-cross-sector-contract-administrator",
+      "category": "ranking-cross-sector",
+      "critical": true,
+      "query": "contract administrator",
+      "level": "entry",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "Contract Administrator",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Exact Employer"
+        },
+        {
+          "id": "near-miss",
+          "title": "System Administrator",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Near Miss Employer"
+        }
+      ]
+    },
+    {
+      "id": "ranking-cross-sector-graphic-designer",
+      "category": "ranking-cross-sector",
+      "critical": false,
+      "query": "graphic designer",
+      "level": "entry",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "Junior Graphic Designer",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Exact Employer"
+        },
+        {
+          "id": "near-miss",
+          "title": "Product Designer",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Near Miss Employer"
+        }
+      ]
+    },
+    {
+      "id": "ranking-cross-sector-lab-technician",
+      "category": "ranking-cross-sector",
+      "critical": false,
+      "query": "laboratory technician",
+      "level": "entry",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "Lab Technician I",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Exact Employer"
+        },
+        {
+          "id": "near-miss",
+          "title": "IT Support Technician",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Near Miss Employer"
+        }
+      ]
+    },
+    {
+      "id": "ranking-cross-sector-policy-analyst",
+      "category": "ranking-cross-sector",
+      "critical": false,
+      "query": "policy analyst",
+      "level": "entry",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "Policy Analyst I",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Exact Employer"
+        },
+        {
+          "id": "near-miss",
+          "title": "Data Analyst",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Near Miss Employer"
+        }
+      ]
+    },
+    {
+      "id": "ranking-cross-sector-hvac-technician",
+      "category": "ranking-cross-sector",
+      "critical": false,
+      "query": "hvac technician",
+      "level": "entry",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "HVAC Technician I",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Exact Employer"
+        },
+        {
+          "id": "near-miss",
+          "title": "IT Support Technician",
+          "description": "Entry-level role requiring 1 year of experience.",
+          "company": "Near Miss Employer"
+        }
+      ]
+    }
+  ],
+  "routing_cases": []
+}
