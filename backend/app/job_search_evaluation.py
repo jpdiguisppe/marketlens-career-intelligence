@@ -5,29 +5,75 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from app.job_search import _score_job, parse_job_search_intent
+from app.job_search import (
+    _location_score_bonus,
+    _matches_location,
+    _score_job,
+    parse_job_search_intent,
+)
 from app.job_source_registry import default_source_identifiers
 from app.job_source_routing import MAX_INDUSTRY_ROUTED_SOURCES, build_source_routing_plan
 
 DEFAULT_BENCHMARK_PATH = (
     Path(__file__).resolve().parents[1] / "evaluation" / "job_search_benchmark.json"
 )
+CORRECTNESS_BENCHMARK_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "evaluation"
+    / "job_search_correctness_cases.json"
+)
+BENCHMARK_SECTIONS = (
+    "intent_cases",
+    "candidate_cases",
+    "location_cases",
+    "ranking_cases",
+    "routing_cases",
+)
+
+
+def _load_json(path: Path) -> dict[str, Any]:
+    with path.open(encoding="utf-8") as benchmark_file:
+        benchmark = json.load(benchmark_file)
+    if benchmark.get("version") != 1:
+        raise ValueError(f"Unsupported job-search benchmark version in {path.name}.")
+    return benchmark
+
+
+def _merge_benchmarks(
+    base: dict[str, Any],
+    supplemental: dict[str, Any] | None,
+) -> dict[str, Any]:
+    merged = dict(base)
+    merged["thresholds"] = dict(base.get("thresholds", {}))
+    for section in BENCHMARK_SECTIONS:
+        merged[section] = list(base.get(section, []))
+
+    if supplemental is None:
+        return merged
+
+    merged["thresholds"].update(supplemental.get("thresholds", {}))
+    for section in BENCHMARK_SECTIONS:
+        merged[section].extend(supplemental.get(section, []))
+    return merged
 
 
 def load_job_search_benchmark(path: Path | None = None) -> dict[str, Any]:
     benchmark_path = path or DEFAULT_BENCHMARK_PATH
-    with benchmark_path.open(encoding="utf-8") as benchmark_file:
-        benchmark = json.load(benchmark_file)
+    base = _load_json(benchmark_path)
+    supplemental = None
+    if path is None and CORRECTNESS_BENCHMARK_PATH.exists():
+        supplemental = _load_json(CORRECTNESS_BENCHMARK_PATH)
 
-    if benchmark.get("version") != 1:
-        raise ValueError("Unsupported job-search benchmark version.")
+    benchmark = _merge_benchmarks(base, supplemental)
 
-    sections = ("intent_cases", "candidate_cases", "routing_cases")
+    required_sections = ("intent_cases", "candidate_cases", "routing_cases")
     all_case_ids: list[str] = []
-    for section in sections:
+    for section in BENCHMARK_SECTIONS:
         cases = benchmark.get(section)
-        if not isinstance(cases, list) or not cases:
-            raise ValueError(f"Benchmark section {section!r} must be a non-empty list.")
+        if not isinstance(cases, list):
+            raise ValueError(f"Benchmark section {section!r} must be a list.")
+        if section in required_sections and not cases:
+            raise ValueError(f"Benchmark section {section!r} must be non-empty.")
         for case in cases:
             case_id = str(case.get("id") or "").strip()
             if not case_id:
@@ -69,6 +115,67 @@ def _failure(
     }
 
 
+def _candidate_match(case: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+    role_score = _score_job(
+        title=case["title"],
+        description=case["description"],
+        query=case["query"],
+        level=case.get("level"),
+        company=case.get("company"),
+    )
+    has_location_constraint = "location" in case or "job_location" in case
+    location_match = (
+        _matches_location(case.get("job_location"), case.get("location"))
+        if has_location_constraint
+        else True
+    )
+    predicted_match = role_score > 0 and location_match
+    return predicted_match, {
+        "match": predicted_match,
+        "role_score": role_score,
+        "location_match": location_match,
+    }
+
+
+def _ranking_result(case: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+    scored: list[tuple[int, str]] = []
+    for candidate in case["candidates"]:
+        role_score = _score_job(
+            title=candidate["title"],
+            description=candidate["description"],
+            query=case["query"],
+            level=case.get("level"),
+            company=candidate.get("company"),
+        )
+        requested_location = case.get("location")
+        job_location = candidate.get("job_location")
+        if requested_location is not None and not _matches_location(
+            job_location,
+            requested_location,
+        ):
+            total_score = -1
+        else:
+            total_score = role_score + _location_score_bonus(
+                job_location,
+                requested_location,
+            )
+        scored.append((total_score, candidate["id"]))
+
+    ranked_ids = [
+        candidate_id
+        for _, candidate_id in sorted(
+            scored,
+            key=lambda item: (-item[0], item[1]),
+        )
+    ]
+    expected_best = case["expected_best"]
+    return bool(ranked_ids and ranked_ids[0] == expected_best), {
+        "best": ranked_ids[0] if ranked_ids else None,
+        "ranked_ids": ranked_ids,
+        "scores": {candidate_id: score for score, candidate_id in scored},
+    }
+
+
 def evaluate_job_search_benchmark(
     benchmark: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -105,16 +212,7 @@ def evaluate_job_search_benchmark(
 
     true_positives = false_positives = true_negatives = false_negatives = 0
     for case in benchmark_data["candidate_cases"]:
-        predicted_match = (
-            _score_job(
-                title=case["title"],
-                description=case["description"],
-                query=case["query"],
-                level=case.get("level"),
-                company=case.get("company"),
-            )
-            > 0
-        )
+        predicted_match, actual = _candidate_match(case)
         expected_match = bool(case["expected_match"])
         passed = predicted_match == expected_match
         _record_category_result(category_results, case.get("category", "candidate"), passed)
@@ -134,7 +232,42 @@ def evaluate_job_search_benchmark(
                     section="candidate",
                     case=case,
                     expected={"match": expected_match},
-                    actual={"match": predicted_match},
+                    actual=actual,
+                )
+            )
+
+    location_passes = 0
+    for case in benchmark_data["location_cases"]:
+        actual_match = _matches_location(
+            case.get("job_location"),
+            case.get("requested_location"),
+        )
+        expected_match = bool(case["expected_match"])
+        passed = actual_match == expected_match
+        location_passes += int(passed)
+        _record_category_result(category_results, case.get("category", "location"), passed)
+        if not passed:
+            failures.append(
+                _failure(
+                    section="location",
+                    case=case,
+                    expected={"match": expected_match},
+                    actual={"match": actual_match},
+                )
+            )
+
+    ranking_passes = 0
+    for case in benchmark_data["ranking_cases"]:
+        passed, actual = _ranking_result(case)
+        ranking_passes += int(passed)
+        _record_category_result(category_results, case.get("category", "ranking"), passed)
+        if not passed:
+            failures.append(
+                _failure(
+                    section="ranking",
+                    case=case,
+                    expected={"best": case["expected_best"]},
+                    actual=actual,
                 )
             )
 
@@ -203,10 +336,12 @@ def evaluate_job_search_benchmark(
 
     intent_total = len(benchmark_data["intent_cases"])
     candidate_total = len(benchmark_data["candidate_cases"])
+    location_total = len(benchmark_data["location_cases"])
+    ranking_total = len(benchmark_data["ranking_cases"])
     routing_total = len(benchmark_data["routing_cases"])
     critical_cases = sum(
         bool(case.get("critical", False))
-        for section in ("intent_cases", "candidate_cases", "routing_cases")
+        for section in BENCHMARK_SECTIONS
         for case in benchmark_data[section]
     )
     critical_failures = [failure for failure in failures if failure["critical"]]
@@ -229,6 +364,8 @@ def evaluate_job_search_benchmark(
             true_negatives,
             true_negatives + false_positives,
         ),
+        "location_accuracy": _ratio(location_passes, location_total),
+        "ranking_accuracy": _ratio(ranking_passes, ranking_total),
         "routing_accuracy": _ratio(routing_passes, routing_total),
         "critical_case_pass_rate": _ratio(
             critical_cases - len(critical_failures),
@@ -257,6 +394,8 @@ def evaluate_job_search_benchmark(
         "candidate_cases": candidate_total,
         "positive_candidate_cases": true_positives + false_negatives,
         "negative_candidate_cases": true_negatives + false_positives,
+        "location_cases": location_total,
+        "ranking_cases": ranking_total,
         "routing_cases": routing_total,
         "critical_cases": critical_cases,
         "failures": len(failures),
@@ -285,6 +424,8 @@ def format_job_search_evaluation_report(report: dict[str, Any]) -> str:
         (
             f"Cases: {report['counts']['intent_cases']} intent, "
             f"{report['counts']['candidate_cases']} candidate, "
+            f"{report['counts']['location_cases']} location, "
+            f"{report['counts']['ranking_cases']} ranking, "
             f"{report['counts']['routing_cases']} routing"
         ),
     ]
