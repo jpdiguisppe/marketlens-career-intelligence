@@ -1,4 +1,5 @@
 from app import job_search
+from app import job_search_source_expansion as source_expansion
 from app.job_search_source_expansion import (
     MAX_SOURCES_PER_SEARCH,
     SMARTRECRUITERS_SOURCES,
@@ -17,6 +18,10 @@ def test_extended_source_registry_is_unique_and_named() -> None:
     }
     assert organizations["SyngentaGroup"] == "Syngenta Group"
     assert organizations["Dominos"] == "Domino's"
+
+
+def test_detail_shortlist_keeps_bounded_level_evidence_headroom() -> None:
+    assert 16 <= source_expansion.MAX_DETAIL_REQUESTS <= 24
 
 
 def test_agriculture_search_selects_verified_public_agriculture_board() -> None:
