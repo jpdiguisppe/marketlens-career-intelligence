@@ -1,5 +1,6 @@
 import json
 from collections import Counter
+from pathlib import Path
 
 from app.job_search_evaluation import (
     evaluate_job_search_benchmark,
@@ -7,6 +8,11 @@ from app.job_search_evaluation import (
 )
 
 
+LEVEL_SCENARIO_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "evaluation"
+    / "job_search_mid_senior_scenarios.json"
+)
 REQUIRED_CROSS_SECTOR_CATEGORIES = {
     "cross-sector-business-finance-operations",
     "cross-sector-creative-communications",
@@ -82,12 +88,18 @@ def test_each_required_sector_has_diverse_positive_negative_and_critical_cases()
         assert len(critical_cases) >= 2, category
 
 
-def test_benchmark_preserves_level_and_location_contracts() -> None:
+def test_validation_suite_preserves_level_and_location_contracts() -> None:
     benchmark = load_job_search_benchmark()
+    with LEVEL_SCENARIO_PATH.open(encoding="utf-8") as scenario_file:
+        level_scenarios = json.load(scenario_file)
 
     candidate_levels = {
         str(case.get("level") or "any") for case in benchmark["candidate_cases"]
     }
+    candidate_levels.update(
+        str(case.get("level") or "any")
+        for case in level_scenarios["candidate_cases"]
+    )
     assert {"any", "intern", "entry", "mid", "senior"}.issubset(candidate_levels)
 
     location_constrained_candidates = [
@@ -102,6 +114,11 @@ def test_benchmark_preserves_level_and_location_contracts() -> None:
         "correctness-electrical-engineer-remote-negative",
         "correctness-electrical-engineer-marketing-negative",
     }.issubset({case["id"] for case in location_constrained_candidates})
+
+    assert all(
+        case.get("location") and case.get("job_location")
+        for case in level_scenarios["candidate_cases"]
+    )
 
 
 def test_job_search_benchmark_meets_recall_precision_and_routing_thresholds() -> None:
