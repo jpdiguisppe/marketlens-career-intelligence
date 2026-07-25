@@ -1,0 +1,49 @@
+name: PR 40 Search Hardening Debug
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  focused-search-gates:
+    if: github.head_ref == 'issue-39-search-correctness-hardening'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run focused search-hardening tests
+        id: focused_tests
+        continue-on-error: true
+        working-directory: backend
+        run: |
+          set -o pipefail
+          python -m pytest -vv \
+            tests/test_job_search_evaluation.py \
+            tests/test_job_search_integrated_scenarios.py \
+            tests/test_job_search_metro_locations.py \
+            | tee focused-search-gates.log
+
+      - name: Upload focused test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr40-focused-search-gates
+          path: backend/focused-search-gates.log
+          if-no-files-found: error
+
+      - name: Fail when focused tests fail
+        if: steps.focused_tests.outcome == 'failure'
+        run: exit 1
