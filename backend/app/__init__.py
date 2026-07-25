@@ -13,11 +13,15 @@ from .job_search_intent_patch import apply_job_search_intent_patch
 from .job_search_level_patch import apply_job_search_level_patch
 from .job_search_location_patch import apply_job_search_location_patch
 from .job_search_occupation_overrides import apply_job_search_occupation_overrides
+from .job_search_specific_occupation_patch import (
+    apply_job_search_specific_occupation_patch,
+)
 from .smartrecruiters_source_extensions import apply_smartrecruiters_source_extensions
 
 apply_job_search_intent_patch(_job_search)
 apply_job_search_occupation_overrides(_job_search)
 apply_job_search_correctness_patch(_job_search)
+apply_job_search_specific_occupation_patch(_job_search)
 apply_job_search_level_patch(_job_search)
 apply_job_search_location_patch(_job_search)
 apply_smartrecruiters_source_extensions(
