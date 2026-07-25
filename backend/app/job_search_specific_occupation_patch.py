@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from . import job_search_intent_patch as intent_patch
+
 
 ELEMENTARY_QUERY_TERMS = {
     "elementary school teacher",
@@ -88,6 +90,7 @@ def apply_job_search_specific_occupation_patch(job_search: Any) -> None:
         return
 
     original_matches_requested_role = job_search._matches_requested_role
+    original_occupation_match_strength = intent_patch._occupation_match_strength
 
     def _matches_requested_role(
         title: str,
@@ -119,5 +122,20 @@ def apply_job_search_specific_occupation_patch(job_search: Any) -> None:
 
         return True
 
+    def _occupation_match_strength(title: str, query: str) -> int:
+        if (
+            _query_contains_any(job_search, query, ELEMENTARY_QUERY_TERMS)
+            and _elementary_title_match(job_search, title)
+        ):
+            # Exact elementary phrases receive the generic matcher’s stronger
+            # score. Grade-level aliases receive a deliberately smaller but still
+            # substantial score so exact titles continue to rank first.
+            title_lower = title.lower()
+            if job_search._contains_any(title_lower, ELEMENTARY_TITLE_TERMS):
+                return max(45, original_occupation_match_strength(title, query))
+            return 40
+        return original_occupation_match_strength(title, query)
+
     job_search._matches_requested_role = _matches_requested_role
+    intent_patch._occupation_match_strength = _occupation_match_strength
     job_search._SPECIFIC_OCCUPATION_PATCH_APPLIED = True
