@@ -10,7 +10,9 @@ def test_job_search_benchmark_has_meaningful_minimum_coverage() -> None:
     benchmark = load_job_search_benchmark()
 
     assert len(benchmark["intent_cases"]) >= 20
-    assert len(benchmark["candidate_cases"]) >= 40
+    assert len(benchmark["candidate_cases"]) >= 250
+    assert len(benchmark["location_cases"]) >= 15
+    assert len(benchmark["ranking_cases"]) >= 15
     assert len(benchmark["routing_cases"]) >= 9
 
     positive_candidates = sum(
@@ -19,13 +21,36 @@ def test_job_search_benchmark_has_meaningful_minimum_coverage() -> None:
     negative_candidates = len(benchmark["candidate_cases"]) - positive_candidates
     critical_cases = sum(
         bool(case.get("critical", False))
-        for section in ("intent_cases", "candidate_cases", "routing_cases")
+        for section in (
+            "intent_cases",
+            "candidate_cases",
+            "location_cases",
+            "ranking_cases",
+            "routing_cases",
+        )
         for case in benchmark[section]
     )
 
-    assert positive_candidates >= 20
-    assert negative_candidates >= 20
-    assert critical_cases >= 10
+    assert positive_candidates >= 125
+    assert negative_candidates >= 125
+    assert critical_cases >= 50
+
+    cross_sector_categories = {
+        case.get("category")
+        for case in benchmark["candidate_cases"]
+        if str(case.get("category") or "").startswith("cross-sector-")
+    }
+    assert cross_sector_categories == {
+        "cross-sector-business-finance-operations",
+        "cross-sector-creative-communications",
+        "cross-sector-education-liberal-arts",
+        "cross-sector-engineering-built-environment",
+        "cross-sector-healthcare",
+        "cross-sector-legal-public-service",
+        "cross-sector-science-research",
+        "cross-sector-service-hospitality-transport-agriculture",
+        "cross-sector-trades-construction-logistics",
+    }
 
 
 def test_job_search_benchmark_meets_recall_precision_and_routing_thresholds() -> None:

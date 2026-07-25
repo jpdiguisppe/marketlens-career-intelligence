@@ -146,6 +146,9 @@ OCCUPATION_ALIASES: dict[str, set[str]] = {
         "environmental science",
     },
     "geology": {"geologist", "geoscientist", "geology"},
+    "geologist": {"geologist", "geoscientist"},
+    "physicist": {"physicist"},
+    "photographer": {"photographer", "photojournalist"},
     "laboratory": {"laboratory technician", "lab technician", "laboratory assistant"},
     "research": {"researcher", "research assistant", "research associate", "scientist"},
     # Engineering

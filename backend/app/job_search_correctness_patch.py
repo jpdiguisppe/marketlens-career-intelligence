@@ -32,6 +32,10 @@ NON_SENIOR_STAFF_OCCUPATIONS = {
     "auditor",
     "nurse",
     "pharmacist",
+    "photographer",
+    "physicist",
+    "geologist",
+    "editor",
     "reporter",
     "scientist",
     "social worker",
@@ -68,6 +72,46 @@ GENERIC_ENTRY_NUMBERED_TITLE_PATTERN = re.compile(
 )
 
 
+BROAD_FAMILY_ONLY_TERMS = {
+    "analytics",
+    "compliance",
+    "computer science",
+    "contracts",
+    "cyber security",
+    "cybersecurity",
+    "data",
+    "design",
+    "finance",
+    "financial",
+    "health care",
+    "healthcare",
+    "information security",
+    "legal",
+    "legal operations",
+    "legal ops",
+    "marketing",
+    "operations",
+    "policy",
+    "product management",
+    "public policy",
+    "software",
+    "swe",
+    "technology",
+}
+
+LEGAL_CREDENTIAL_CONTEXT_TERMS = {
+    "1l",
+    "2l",
+    "3l",
+    "j.d. candidate",
+    "jd candidate",
+    "judicial extern",
+    "judicial internship",
+    "law student",
+    "summer associate",
+}
+
+
 def _strict_occupation_match_strength(title: str, query: str) -> int:
     """Return title-only occupation relevance; zero means reject."""
 
@@ -90,11 +134,24 @@ def _strict_occupation_match_strength(title: str, query: str) -> int:
     if compact_query and intent_patch._contains_phrase(title_lower, compact_query):
         return 50
 
-    matched_aliases = [
-        alias
-        for alias in signature.aliases
-        if intent_patch._contains_phrase(title_lower, alias)
-    ]
+    matched_aliases: list[str] = []
+    for alias in signature.aliases:
+        if not intent_patch._contains_phrase(title_lower, alias):
+            continue
+        alias_variants = intent_patch._title_token_variants(alias)
+        # Multi-word aliases are explicit curated bridges between degree/field
+        # language and real job titles (for example political science -> policy
+        # analyst). Single-word aliases may express an occupation head, but they
+        # must not erase modifiers from a specific query such as special
+        # education teacher -> any teacher.
+        if len(alias.split()) == 1 and signature.head_groups:
+            if not all(
+                alias_variants & head_group for head_group in signature.head_groups
+            ):
+                continue
+            if signature.modifier_tokens:
+                continue
+        matched_aliases.append(alias)
     if matched_aliases:
         return 45 + min(5, max(len(alias.split()) for alias in matched_aliases))
 
@@ -114,6 +171,9 @@ def _strict_occupation_match_strength(title: str, query: str) -> int:
         coverage = matched_modifiers / len(signature.modifier_tokens)
         return 30 + round(15 * coverage)
 
+    if signature.aliases and not signature.head_groups:
+        return 0
+
     matched_tokens = sum(
         intent_patch._modifier_matches_title(token, title_variants)
         for token in signature.meaningful_tokens
@@ -126,6 +186,66 @@ def _strict_occupation_match_strength(title: str, query: str) -> int:
     # worker" from matching "social media manager".
     required = len(signature.meaningful_tokens)
     return 20 + matched_tokens * 5 if matched_tokens >= required else 0
+
+
+def _function_guard_query(
+    job_search: Any,
+    query: str,
+    canonical_family: str | None,
+) -> str:
+    """Remove level and industry-only context from a concrete function query."""
+
+    meaningful_tokens = intent_patch._meaningful_query_tokens(query)
+    if not meaningful_tokens or canonical_family is None:
+        return " ".join(meaningful_tokens)
+
+    normalized = query.lower()
+    industry = job_search._query_industry(query)
+    industry_words: set[str] = set()
+    if industry is not None:
+        for phrase in job_search.INDUSTRY_QUERY_TERMS.get(industry, set()):
+            if job_search._contains_phrase(normalized, phrase):
+                industry_words.update(intent_patch.TOKEN_PATTERN.findall(phrase.lower()))
+
+    family_words: set[str] = set()
+    for phrase in job_search.ROLE_FAMILY_QUERY_TERMS.get(canonical_family, set()):
+        if job_search._contains_phrase(normalized, phrase):
+            family_words.update(intent_patch.TOKEN_PATTERN.findall(phrase.lower()))
+
+    filtered = [
+        token
+        for token in meaningful_tokens
+        if token not in industry_words or token in family_words
+    ]
+    return " ".join(filtered or meaningful_tokens)
+
+
+def _should_guard_known_family(
+    job_search: Any,
+    query: str,
+    canonical_family: str | None,
+) -> tuple[bool, str]:
+    guard_query = _function_guard_query(job_search, query, canonical_family)
+    signature = intent_patch._occupation_signature(guard_query)
+    if not signature.is_specific:
+        return False, guard_query
+
+    normalized_guard = guard_query.lower().strip()
+    broad_family_terms = job_search.ROLE_FAMILY_QUERY_TERMS.get(
+        canonical_family,
+        set(),
+    )
+    if normalized_guard in BROAD_FAMILY_ONLY_TERMS:
+        return False, guard_query
+    if (
+        len(signature.meaningful_tokens) <= 1
+        and not signature.head_groups
+        and not signature.aliases
+        and normalized_guard in broad_family_terms
+    ):
+        return False, guard_query
+
+    return intent_patch._should_apply_specific_occupation_guard(guard_query), guard_query
 
 
 def _is_entry_training_title(job_search: Any, title: str) -> bool:
@@ -188,11 +308,26 @@ def apply_job_search_correctness_patch(job_search: Any) -> None:
         )
         strength = _strict_occupation_match_strength(title, query)
 
-        # Known families keep their existing broad and early-career recall. An
-        # exact alias can additionally rescue a title such as HR Specialist when
-        # the legacy family list lacks that synonym.
+        if canonical_family == "legal" and any(
+            job_search._contains_phrase(query.lower(), term)
+            for term in LEGAL_CREDENTIAL_CONTEXT_TERMS
+        ):
+            return base_match
+
+        # Known families keep broad and description-backed recall, but concrete
+        # occupations inside those families still preserve their full title. A
+        # medical-assistant search cannot become every healthcare role, and a
+        # marketing-analyst search cannot become every analyst role.
         if canonical_family is not None or classified_family is not None:
-            return base_match or strength >= 45
+            should_guard, guard_query = _should_guard_known_family(
+                job_search,
+                query,
+                canonical_family or classified_family,
+            )
+            guard_strength = _strict_occupation_match_strength(title, guard_query)
+            if should_guard:
+                return (base_match or guard_strength >= 45) and guard_strength > 0
+            return base_match or guard_strength >= 45
 
         if not base_match:
             return False
