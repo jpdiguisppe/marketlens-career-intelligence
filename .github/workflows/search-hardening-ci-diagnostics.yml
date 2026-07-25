@@ -1,0 +1,42 @@
+name: Search hardening CI diagnostics
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        run: python -m pip install -r backend/requirements.txt
+      - name: Capture complete backend reports
+        id: reports
+        shell: bash
+        run: |
+          set +e
+          cd backend
+          python -m pytest -q --tb=short > ../pytest-full-report.txt 2>&1
+          pytest_status=$?
+          python scripts/run_job_search_evaluation.py > ../benchmark-full-report.txt 2>&1
+          benchmark_status=$?
+          echo "pytest_status=$pytest_status" >> "$GITHUB_OUTPUT"
+          echo "benchmark_status=$benchmark_status" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: search-hardening-ci-diagnostics
+          path: |
+            pytest-full-report.txt
+            benchmark-full-report.txt
+          if-no-files-found: error
+      - name: Fail when validation failed
+        if: steps.reports.outputs.pytest_status != '0' || steps.reports.outputs.benchmark_status != '0'
+        run: exit 1
