@@ -8,8 +8,10 @@ across sectors (for example, apprentice trades and staff accountants).
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
+from . import job_intent_engine as intent_engine
 from . import job_search_intent_patch as intent_patch
 
 
@@ -42,6 +44,28 @@ ENTRY_TRAINING_TITLE_TERMS = {
     "recruit",
     "trainee",
 }
+
+EXPERIENCE_WORD_VALUES = {
+    "zero": 0,
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+}
+EXPERIENCE_WORD_PATTERN = re.compile(
+    r"\b(" + "|".join(EXPERIENCE_WORD_VALUES) + r")\s*\+?\s*(?:years?|yrs?)\b",
+    re.IGNORECASE,
+)
+GENERIC_ENTRY_NUMBERED_TITLE_PATTERN = re.compile(
+    r"(?:^|[\s,()/-])(?:i|1)(?:$|[\s,()/-])",
+    re.IGNORECASE,
+)
 
 
 def _strict_occupation_match_strength(title: str, query: str) -> int:
@@ -134,6 +158,15 @@ def apply_job_search_correctness_patch(job_search: Any) -> None:
     original_matches_requested_role = job_search._matches_requested_role
     original_matches_level = job_search._matches_level
     original_level_score_bonus = job_search._level_score_bonus
+    original_max_required_years = job_search._max_required_years
+
+    def _max_required_years(description: str) -> int:
+        numeric_years = original_max_required_years(description)
+        word_years = [
+            EXPERIENCE_WORD_VALUES[match.group(1).lower()]
+            for match in EXPERIENCE_WORD_PATTERN.finditer(description)
+        ]
+        return max([numeric_years, *word_years])
 
     def _matches_requested_role(
         title: str,
@@ -141,10 +174,30 @@ def apply_job_search_correctness_patch(job_search: Any) -> None:
         query: str,
         level: str | None = None,
     ) -> bool:
-        if not original_matches_requested_role(title, description, query, level):
+        resolved_level = level or job_search.resolve_job_level(query)
+        canonical_family = job_search._query_job_function(query)
+        classified_family = intent_engine.classify_search_intent(
+            query,
+            resolved_level,
+        ).role_family
+        base_match = original_matches_requested_role(
+            title,
+            description,
+            query,
+            resolved_level,
+        )
+        strength = _strict_occupation_match_strength(title, query)
+
+        # Known families keep their existing broad and early-career recall. An
+        # exact alias can additionally rescue a title such as HR Specialist when
+        # the legacy family list lacks that synonym.
+        if canonical_family is not None or classified_family is not None:
+            return base_match or strength >= 45
+
+        if not base_match:
             return False
         if intent_patch._should_apply_specific_occupation_guard(query):
-            return _strict_occupation_match_strength(title, query) > 0
+            return strength > 0
         return True
 
     def _matches_level(title: str, description: str, level: str) -> bool:
@@ -157,7 +210,18 @@ def apply_job_search_correctness_patch(job_search: Any) -> None:
                 job_search._title_has_mid_signal(title)
                 or job_search.SENIOR_NUMBERED_TITLE_PATTERN.search(title)
             )
-        return _is_non_senior_staff_title(job_search, title, description)
+        if _is_non_senior_staff_title(job_search, title, description):
+            return True
+        if GENERIC_ENTRY_NUMBERED_TITLE_PATTERN.search(title):
+            return not (
+                job_search._title_has_mid_signal(title)
+                or job_search._title_has_senior_signal(title)
+            )
+        max_years = _max_required_years(description)
+        return 0 < max_years <= 3 and not (
+            job_search._title_has_mid_signal(title)
+            or job_search._title_has_senior_signal(title)
+        )
 
     def _level_score_bonus(title: str, description: str, level: str) -> int:
         if level == "entry" and _matches_level(title, description, level):
@@ -199,6 +263,7 @@ def apply_job_search_correctness_patch(job_search: Any) -> None:
             return 0
         return 10 if requested_location.lower().strip() == "remote" else 12
 
+    job_search._max_required_years = _max_required_years
     job_search._matches_requested_role = _matches_requested_role
     job_search._matches_level = _matches_level
     job_search._level_score_bonus = _level_score_bonus

@@ -133,6 +133,7 @@ OCCUPATION_ALIASES: dict[str, set[str]] = {
     "history": {"historian", "history teacher", "archivist", "museum educator"},
     "english": {"english teacher", "writer", "editor", "copywriter"},
     "journalism": {"journalist", "reporter", "editor", "editorial", "journalism"},
+    "architecture": {"architect", "architecture", "architectural designer"},
     "communications": {"communications", "public relations", "pr specialist"},
     "public relations": {"public relations", "communications", "pr specialist"},
     # Science and research
@@ -535,6 +536,10 @@ def apply_job_search_intent_patch(job_search: Any) -> None:
     ) -> bool:
         resolved_level = level or job_search.resolve_job_level(query)
         canonical_family = job_search._query_job_function(query)
+        classified_intent = intent_engine.classify_search_intent(
+            query,
+            resolved_level,
+        )
         strict_families = getattr(
             job_search,
             "STRICT_DESCRIPTION_ONLY_ROLE_FAMILIES",
@@ -542,49 +547,38 @@ def apply_job_search_intent_patch(job_search: Any) -> None:
         )
 
         if canonical_family in strict_families:
-            base_match = original_matches_requested_role(
+            return original_matches_requested_role(
                 title,
                 description,
                 query,
                 resolved_level,
             )
-        else:
-            intent = intent_engine.classify_search_intent(query, resolved_level)
-            if intent.role_family in intent_engine.ENGINE_HANDLED_FAMILIES:
-                base_match = intent_engine.job_matches_search_intent(
-                    title,
-                    description,
-                    intent,
-                )
-            elif intent.role_family is None:
-                return _generic_title_matches_query(
-                    title,
-                    description,
-                    query,
-                    resolved_level,
-                )
-            else:
-                base_match = original_matches_requested_role(
-                    title,
-                    description,
-                    query,
-                    resolved_level,
-                )
 
-        if not base_match:
-            return False
+        if classified_intent.role_family in intent_engine.ENGINE_HANDLED_FAMILIES:
+            return intent_engine.job_matches_search_intent(
+                title,
+                description,
+                classified_intent,
+            )
 
-        # A broad family match is not enough for a specific occupation phrase.
-        # "Electrical Engineer" cannot degrade into any title containing engineer,
-        # and "Data Analyst" cannot degrade into an unrelated analyst role.
-        if _should_apply_specific_occupation_guard(query):
+        if classified_intent.role_family is None and canonical_family is None:
             return _generic_title_matches_query(
                 title,
                 description,
                 query,
                 resolved_level,
             )
-        return True
+
+        # Known role families retain their tuned family/description behavior. The
+        # strict occupation fallback exists for careers outside that taxonomy; it
+        # must not turn broad searches such as sports marketing, computer science,
+        # or law-student programs into literal all-token title searches.
+        return original_matches_requested_role(
+            title,
+            description,
+            query,
+            resolved_level,
+        )
 
     def _query_terms(query: str) -> list[str]:
         return sorted(
@@ -652,7 +646,15 @@ def apply_job_search_intent_patch(job_search: Any) -> None:
         if base_score <= 0:
             return 0
 
-        if not _should_apply_specific_occupation_guard(query):
+        classified_intent = intent_engine.classify_search_intent(
+            query,
+            level or job_search.resolve_job_level(query),
+        )
+        if (
+            classified_intent.role_family is not None
+            or job_search._query_job_function(query) is not None
+            or not _should_apply_specific_occupation_guard(query)
+        ):
             return base_score
 
         strength = _occupation_match_strength(title, query)

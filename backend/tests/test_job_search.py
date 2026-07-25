@@ -401,12 +401,13 @@ def test_remote_filter_excludes_country_specific_non_us_remote_roles() -> None:
     assert _matches_location("Remote (USA Only)", "Remote") is True
 
 
-def test_us_city_search_includes_exact_aliases_and_us_remote_roles() -> None:
+def test_us_city_search_includes_exact_aliases_but_excludes_remote_roles() -> None:
     assert _matches_location("Philadelphia, PA", "Philadelphia") is True
-    assert _matches_location("Remote, United States", "Philadelphia") is True
-    assert _matches_location("Remote-US", "Philadelphia") is True
-    assert _matches_location("Remote (Worldwide)", "Philadelphia") is True
-    assert _matches_location("Remote (USA Only)", "Philadelphia") is True
+    assert _matches_location("Philly", "Philadelphia") is True
+    assert _matches_location("Remote, United States", "Philadelphia") is False
+    assert _matches_location("Remote-US", "Philadelphia") is False
+    assert _matches_location("Remote (Worldwide)", "Philadelphia") is False
+    assert _matches_location("Remote (USA Only)", "Philadelphia") is False
     assert _matches_location("Remote, Brazil", "Philadelphia") is False
     assert _matches_location("New York, NY", "Philadelphia") is False
     assert _matches_location("Pittsburgh, PA", "Philadelphia") is False
