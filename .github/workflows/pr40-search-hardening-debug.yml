@@ -4,14 +4,19 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   focused-search-gates:
     if: github.head_ref == 'issue-39-search-correctness-hardening'
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out repository
+      - name: Check out source branch
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -35,6 +40,7 @@ jobs:
             tests/test_job_search_integrated_scenarios.py \
             tests/test_job_search_metro_locations.py \
             tests/test_job_search_live_precision_regressions.py \
+            tests/test_job_search_unleveled_entry.py \
             tests/test_smartrecruiters_source_extensions.py \
             | tee focused-search-gates.log
 
@@ -51,7 +57,6 @@ jobs:
         run: |
           python - <<'PY' | tee kipp-entry-diagnostic.log
           import json
-          import re
 
           from app import job_search
           from app import job_search_source_expansion as expansion
@@ -72,32 +77,87 @@ jobs:
           raw = {"id": posting_id, "name": details.get("name")}
           job = expansion._normalize_posting(job_search, source, raw, details)
           assert job is not None
-
-          patterns = [
-              job_search.EXPERIENCE_YEARS_PATTERN,
-              re.compile(r"\\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten)\\s*\\+?\\s*(?:years?|yrs?)\\b", re.IGNORECASE),
-          ]
-          matches = []
-          for pattern in patterns:
-              for match in pattern.finditer(job.description):
-                  start = max(0, match.start() - 100)
-                  end = min(len(job.description), match.end() + 140)
-                  matches.append({
-                      "match": match.group(0),
-                      "context": job.description[start:end],
-                  })
-
           print(json.dumps({
               "title": job.title,
               "location": job.location,
               "experience_level_metadata": details.get("experienceLevel"),
               "max_required_years": job_search._max_required_years(job.description),
-              "matches_entry": job_search._matches_level(job.title, job.description, "entry"),
               "score_any": job_search._score_job(job.title, job.description, "elementary school teacher", "any", company=job.company),
               "score_entry": job_search._score_job(job.title, job.description, "elementary school teacher", "entry", company=job.company),
-              "year_matches": matches,
           }, indent=2, sort_keys=True))
           PY
+
+      - name: Refresh README search documentation
+        if: steps.focused_tests.outcome == 'success' && steps.full_backend.outcome == 'success'
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("README.md")
+          text = path.read_text(encoding="utf-8")
+
+          replacements = {
+              "- **Online + manual workflows:** Users can search public Greenhouse, Lever, Remote OK, and Remotive sources or paste outside postings manually.":
+                  "- **Online + manual workflows:** Users can search public Greenhouse, Lever, named SmartRecruiters employer boards, Remote OK, and Remotive sources or paste outside postings manually.",
+              "- **Quality coverage:** Backend tests cover API behavior, job search filtering, Smart Fit analysis, and a 74-case offline recall/precision benchmark with critical safety guardrails.":
+                  "- **Quality coverage:** 290 backend tests, a 273-candidate formal search benchmark, integrated occupation/level/location matrices, frontend and Docker builds, and live cross-sector provider smokes.",
+              "| Job sources | Greenhouse Job Board API, Lever Postings API, Remote OK, Remotive |":
+                  "| Job sources | Greenhouse, Lever, named SmartRecruiters employer boards, Remote OK, Remotive |",
+              "- **Milestone 7 completion:** [Production-verified job-source coverage record](docs/milestone-7-completion.md)":
+                  "- **Milestone 7 completion:** [Production-verified job-source coverage record](docs/milestone-7-completion.md)\n- **Search correctness hardening:** [Cross-sector search contract](docs/search-correctness-hardening.md)",
+              "- search configured public Greenhouse, Lever, Remote OK, and Remotive sources":
+                  "- search configured public Greenhouse, Lever, named SmartRecruiters employer boards, Remote OK, and Remotive sources",
+              "- **Lever Postings API** — company-specific ATS boards\n- **Remote OK public JSON feed** — remote-first job feed":
+                  "- **Lever Postings API** — company-specific ATS boards\n- **SmartRecruiters Posting API** — a bounded, intent-selected set of named public employer boards across education, science, engineering, healthcare, public service, media, trades, agriculture, service work, business, and technology\n- **Remote OK public JSON feed** — remote-first job feed",
+              "- `Philadelphia` means Philadelphia/Philly plus U.S.-remote fallback; it does not include Pittsburgh.\n- `PA` or `Pennsylvania` can include Philadelphia, Pittsburgh, PA-wide, and U.S.-remote roles.\n- `Remote` means U.S.-remote or worldwide-remote roles unless the source clearly labels a non-U.S. country-specific remote role.\n- Blank location means broad U.S./U.S.-remote matching.":
+                  "- `Philadelphia` means Philadelphia plus recognized metro-area locations such as King of Prussia, Malvern, West Chester, Camden, Cherry Hill, and Wilmington; it excludes remote-only roles and unrelated cities.\n- `PA` or `Pennsylvania` broadens to Pennsylvania locations rather than silently changing the search to remote.\n- `Remote` deliberately requests U.S.-remote or worldwide-remote roles unless the source clearly labels a non-U.S. country-specific remote role.\n- Blank location means broad U.S./U.S.-remote matching.",
+              "Public remote-job APIs are stronger for remote/general roles than for campus internships. Finance/accounting internships are especially likely to appear on Handshake, Workday-backed company career pages, LinkedIn, Indeed, school portals, and company internship pages. MarketLens handles that honestly by surfacing no-result explanations and fallback links rather than pretending those sources were searched.":
+                  "Configured public APIs and named employer boards still do not cover every employer or posting. Campus internships and some local roles are especially likely to appear on Handshake, Workday-backed company career pages, LinkedIn, Indeed, school portals, and other company sites. MarketLens handles that honestly by reporting exactly what it searched and surfacing no-result explanations and external continuation links rather than pretending those sources were queried.",
+              "JOB_SEARCH_LEVER_SITES=github,postman,benchling\nJOB_SEARCH_REMOTEOK_ENABLED=true":
+                  "JOB_SEARCH_LEVER_SITES=github,postman,benchling\nJOB_SEARCH_SMARTRECRUITERS_ENABLED=true\nJOB_SEARCH_REMOTEOK_ENABLED=true",
+              "- deterministic 74-case job-search benchmark covering intent, recall, precision, negative rejection, source routing, and critical credential/industry guardrails":
+                  "- deterministic search evaluation with 20 intent, 273 candidate, 17 location, 20 ranking, 9 routing, and 55 critical cases, plus integrated cross-sector level/location matrices",
+              "- deterministic 74-case recall/precision/routing benchmark with enforced thresholds and critical guardrails":
+                  "- deterministic benchmark with 273 candidate cases plus enforced cross-sector occupation, level, location, ranking, routing, and critical guardrails",
+          }
+          for old, new in replacements.items():
+              if old in text:
+                  text = text.replace(old, new)
+              elif new not in text:
+                  raise SystemExit(f"README replacement target missing:\n{old}")
+
+          milestone_8 = "### Milestone 8 — Optional AI-Assisted Analysis: partially started"
+          search_hardening = """### Milestone 7.1 — Cross-Sector Search Correctness Hardening: complete
+
+- phrase-first occupation matching beyond the predefined role-family taxonomy
+- strict city/metro searches with deliberate remote inclusion
+- exact and near-exact occupation ranking plus wrong-occupation rejection
+- entry, internship, mid, and senior behavior across professional, public-service, creative, healthcare, education, science, engineering, trade, agriculture, and service work
+- bounded named SmartRecruiters source expansion, including agriculture and delivery/service boards
+- 290 backend tests plus formal, integrated, Docker, and reviewed live-provider validation
+
+See [`docs/search-correctness-hardening.md`](docs/search-correctness-hardening.md) and [`docs/search-hardening-validation-log.md`](docs/search-hardening-validation-log.md).
+
+"""
+          if search_hardening.strip() not in text:
+              if milestone_8 not in text:
+                  raise SystemExit("Milestone 8 heading missing")
+              text = text.replace(milestone_8, search_hardening + milestone_8)
+
+          path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Commit README refresh
+        if: steps.focused_tests.outcome == 'success' && steps.full_backend.outcome == 'success'
+        run: |
+          if git diff --quiet -- README.md; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "Update README for search correctness hardening"
+          git push origin HEAD:${{ github.head_ref }}
 
       - name: Upload diagnostic logs
         if: always()
