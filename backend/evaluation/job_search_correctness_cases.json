@@ -1,0 +1,582 @@
+{
+  "version": 1,
+  "description": "Issue #39 cross-sector occupation, location, and ranking regressions.",
+  "thresholds": {
+    "location_accuracy": 1.0,
+    "ranking_accuracy": 1.0
+  },
+  "intent_cases": [],
+  "candidate_cases": [
+    {
+      "id": "correctness-electrical-engineer-local-positive",
+      "category": "engineering-correctness",
+      "critical": true,
+      "query": "Electrical Engineer",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Electrical Engineer I",
+      "company": "Regional Engineering",
+      "description": "Entry-level electrical design role requiring 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-electrical-engineer-analytics-negative",
+      "category": "engineering-correctness",
+      "critical": true,
+      "query": "Electrical Engineer",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "title": "Analytics Engineer",
+      "company": "Data Company",
+      "description": "Build analytics pipelines with SQL. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-electrical-engineer-remote-negative",
+      "category": "location-correctness",
+      "critical": true,
+      "query": "Electrical Engineer",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Remote - USA",
+      "title": "Electrical Engineer I",
+      "company": "Remote Engineering",
+      "description": "Entry-level electrical engineering role requiring 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-electrical-engineer-marketing-negative",
+      "category": "engineering-correctness",
+      "critical": true,
+      "query": "Electrical Engineer",
+      "level": "entry",
+      "location": "Philadelphia",
+      "job_location": "Remote (California, United States)",
+      "title": "Marketing Assistant",
+      "company": "Venture Media",
+      "description": "Support social media and content. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-mechanical-engineer-positive",
+      "category": "engineering-correctness",
+      "query": "mechanical engineer",
+      "level": "entry",
+      "title": "Mechanical Design Engineer I",
+      "company": "Industrial Systems",
+      "description": "Design mechanical assemblies. One year of experience preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-civil-engineer-positive",
+      "category": "engineering-correctness",
+      "query": "civil engineering",
+      "level": "entry",
+      "title": "Civil Engineer I",
+      "company": "Infrastructure Group",
+      "description": "Support roadway and site design with 1 year of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-elementary-teacher-positive",
+      "category": "education-correctness",
+      "critical": true,
+      "query": "elementary school teacher",
+      "level": "entry",
+      "title": "Elementary Teacher",
+      "company": "Public School",
+      "description": "Teach elementary students. Candidates may have 0-2 years of experience.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-elementary-teacher-data-negative",
+      "category": "education-correctness",
+      "critical": true,
+      "query": "elementary school teacher",
+      "level": "entry",
+      "title": "Education Data Analyst",
+      "company": "Learning Analytics",
+      "description": "Analyze K-12 performance data with 1 year of experience.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-chemist-positive",
+      "category": "science-correctness",
+      "critical": true,
+      "query": "chemistry",
+      "level": "entry",
+      "title": "Analytical Chemist I",
+      "company": "Research Laboratory",
+      "description": "Perform chemical testing. One year of laboratory experience preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-chemist-sales-negative",
+      "category": "science-correctness",
+      "query": "chemistry",
+      "level": "entry",
+      "title": "Chemical Sales Representative",
+      "company": "Chemical Supplier",
+      "description": "Sell laboratory products. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-lab-technician-positive",
+      "category": "science-correctness",
+      "query": "laboratory technician",
+      "level": "entry",
+      "title": "Lab Technician I",
+      "company": "Research Laboratory",
+      "description": "Prepare samples and maintain laboratory equipment. One year preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-lab-technician-it-negative",
+      "category": "science-correctness",
+      "query": "laboratory technician",
+      "level": "entry",
+      "title": "IT Support Technician",
+      "company": "Technology Services",
+      "description": "Support laptops and user accounts. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-accountant-positive",
+      "category": "business-correctness",
+      "critical": true,
+      "query": "accountant",
+      "level": "entry",
+      "title": "Staff Accountant",
+      "company": "Regional Business",
+      "description": "Prepare reconciliations. One year of accounting experience preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-accountant-marketing-negative",
+      "category": "business-correctness",
+      "query": "accountant",
+      "level": "entry",
+      "title": "Marketing Analyst",
+      "company": "Consumer Brand",
+      "description": "Analyze campaigns. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-human-resources-positive",
+      "category": "business-correctness",
+      "query": "human resources specialist",
+      "level": "entry",
+      "title": "HR Specialist",
+      "company": "Regional Employer",
+      "description": "Support employee onboarding. One year of HR experience preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-human-resources-software-negative",
+      "category": "business-correctness",
+      "query": "human resources specialist",
+      "level": "entry",
+      "title": "Software Engineer I",
+      "company": "HR Technology",
+      "description": "Build human resources software. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-social-worker-positive",
+      "category": "liberal-arts-correctness",
+      "critical": true,
+      "query": "social worker",
+      "level": "entry",
+      "title": "Social Worker I",
+      "company": "Community Services",
+      "description": "Provide case management. One year of experience preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-social-worker-media-negative",
+      "category": "liberal-arts-correctness",
+      "query": "social worker",
+      "level": "entry",
+      "title": "Social Media Manager",
+      "company": "Media Agency",
+      "description": "Manage social channels. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-journalism-positive",
+      "category": "liberal-arts-correctness",
+      "query": "journalism",
+      "level": "entry",
+      "title": "Staff Reporter",
+      "company": "Local Newspaper",
+      "description": "Report and write local news. One year of experience preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-journalism-marketing-negative",
+      "category": "liberal-arts-correctness",
+      "query": "journalism",
+      "level": "entry",
+      "title": "Marketing Coordinator",
+      "company": "Media Company",
+      "description": "Coordinate campaigns. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-librarian-positive",
+      "category": "education-correctness",
+      "query": "librarian",
+      "level": "entry",
+      "title": "Assistant Librarian",
+      "company": "County Library",
+      "description": "Support reference services. One year of experience preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-librarian-software-negative",
+      "category": "education-correctness",
+      "query": "librarian",
+      "level": "entry",
+      "title": "Library Software Engineer",
+      "company": "Library Technology",
+      "description": "Build catalog software. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-electrician-positive",
+      "category": "trades-correctness",
+      "critical": true,
+      "query": "electrician",
+      "level": "entry",
+      "title": "Apprentice Electrician",
+      "company": "Electrical Contractor",
+      "description": "Assist licensed electricians in an apprenticeship program.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-electrician-engineer-negative",
+      "category": "trades-correctness",
+      "query": "electrician",
+      "level": "entry",
+      "title": "Electrical Engineer I",
+      "company": "Engineering Firm",
+      "description": "Design electrical systems. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-welder-positive",
+      "category": "trades-correctness",
+      "query": "welding",
+      "level": "entry",
+      "title": "Welder I",
+      "company": "Fabrication Shop",
+      "description": "Perform MIG welding. One year of experience preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-welding-sales-negative",
+      "category": "trades-correctness",
+      "query": "welding",
+      "level": "entry",
+      "title": "Welding Sales Representative",
+      "company": "Equipment Supplier",
+      "description": "Sell welding equipment. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-carpenter-positive",
+      "category": "trades-correctness",
+      "query": "carpentry",
+      "level": "entry",
+      "title": "Apprentice Carpenter",
+      "company": "Construction Company",
+      "description": "Learn framing and finish carpentry through an apprenticeship.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-hvac-positive",
+      "category": "trades-correctness",
+      "query": "hvac technician",
+      "level": "entry",
+      "title": "HVAC Technician I",
+      "company": "Mechanical Services",
+      "description": "Install and service HVAC equipment. One year preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-graphic-designer-positive",
+      "category": "creative-correctness",
+      "critical": true,
+      "query": "graphic designer",
+      "level": "entry",
+      "title": "Junior Graphic Designer",
+      "company": "Creative Studio",
+      "description": "Create visual assets. One year of design experience preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-graphic-designer-product-negative",
+      "category": "creative-correctness",
+      "query": "graphic designer",
+      "level": "entry",
+      "title": "Product Manager",
+      "company": "Design Software",
+      "description": "Manage a design product. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-physical-therapist-positive",
+      "category": "healthcare-correctness",
+      "critical": true,
+      "query": "physical therapy",
+      "level": "entry",
+      "title": "Physical Therapist",
+      "company": "Rehabilitation Center",
+      "description": "Provide patient rehabilitation. One year of experience preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-physical-therapy-sales-negative",
+      "category": "healthcare-correctness",
+      "query": "physical therapy",
+      "level": "entry",
+      "title": "Physical Therapy Sales Representative",
+      "company": "Medical Supplier",
+      "description": "Sell rehabilitation equipment. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-pharmacist-positive",
+      "category": "healthcare-correctness",
+      "query": "pharmacy",
+      "level": "entry",
+      "title": "Staff Pharmacist",
+      "company": "Community Pharmacy",
+      "description": "Dispense medications. One year of experience preferred.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-pharmacy-sales-negative",
+      "category": "healthcare-correctness",
+      "query": "pharmacy",
+      "level": "entry",
+      "title": "Pharmacy Sales Specialist",
+      "company": "Medical Supplier",
+      "description": "Sell pharmacy software. One year of experience preferred.",
+      "expected_match": false
+    },
+    {
+      "id": "correctness-police-officer-positive",
+      "category": "public-service-correctness",
+      "query": "criminal justice",
+      "level": "entry",
+      "title": "Police Officer Recruit",
+      "company": "City Government",
+      "description": "Entry-level public safety role with academy training.",
+      "expected_match": true
+    },
+    {
+      "id": "correctness-policy-analyst-positive",
+      "category": "public-service-correctness",
+      "query": "political science",
+      "level": "entry",
+      "title": "Policy Analyst I",
+      "company": "State Government",
+      "description": "Research public policy. One year of experience preferred.",
+      "expected_match": true
+    }
+  ],
+  "location_cases": [
+    {
+      "id": "location-philadelphia-exact",
+      "category": "location-strictness",
+      "critical": true,
+      "requested_location": "Philadelphia",
+      "job_location": "Philadelphia, PA",
+      "expected_match": true
+    },
+    {
+      "id": "location-philadelphia-alias",
+      "category": "location-strictness",
+      "requested_location": "Philadelphia",
+      "job_location": "Philly",
+      "expected_match": true
+    },
+    {
+      "id": "location-philadelphia-remote-us-negative",
+      "category": "location-strictness",
+      "critical": true,
+      "requested_location": "Philadelphia",
+      "job_location": "Remote - USA",
+      "expected_match": false
+    },
+    {
+      "id": "location-philadelphia-california-negative",
+      "category": "location-strictness",
+      "critical": true,
+      "requested_location": "Philadelphia",
+      "job_location": "Remote (California, United States)",
+      "expected_match": false
+    },
+    {
+      "id": "location-philadelphia-new-york-negative",
+      "category": "location-strictness",
+      "requested_location": "Philadelphia",
+      "job_location": "New York, NY",
+      "expected_match": false
+    },
+    {
+      "id": "location-remote-us-positive",
+      "category": "location-remote",
+      "critical": true,
+      "requested_location": "Remote",
+      "job_location": "Remote - USA",
+      "expected_match": true
+    },
+    {
+      "id": "location-remote-unspecified-positive",
+      "category": "location-remote",
+      "requested_location": "Remote",
+      "job_location": "Remote",
+      "expected_match": true
+    },
+    {
+      "id": "location-remote-worldwide-positive",
+      "category": "location-remote",
+      "requested_location": "Remote",
+      "job_location": "Worldwide",
+      "expected_match": true
+    },
+    {
+      "id": "location-remote-europe-negative",
+      "category": "location-remote",
+      "requested_location": "Remote",
+      "job_location": "Remote - Europe",
+      "expected_match": false
+    },
+    {
+      "id": "location-pennsylvania-philadelphia-positive",
+      "category": "location-region",
+      "requested_location": "Pennsylvania",
+      "job_location": "Philadelphia, PA",
+      "expected_match": true
+    }
+  ],
+  "ranking_cases": [
+    {
+      "id": "ranking-electrical-engineer",
+      "category": "ranking-occupation",
+      "critical": true,
+      "query": "Electrical Engineer",
+      "level": "entry",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "Electrical Engineer I",
+          "description": "Electrical design role requiring 1 year of experience.",
+          "company": "Engineering Firm"
+        },
+        {
+          "id": "shared-head",
+          "title": "Analytics Engineer",
+          "description": "Build data pipelines with 1 year of experience.",
+          "company": "Data Company"
+        },
+        {
+          "id": "unrelated",
+          "title": "Marketing Assistant",
+          "description": "Support campaigns with 1 year of experience.",
+          "company": "Media Company"
+        }
+      ]
+    },
+    {
+      "id": "ranking-elementary-teacher",
+      "category": "ranking-occupation",
+      "query": "elementary school teacher",
+      "level": "entry",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "Elementary Teacher",
+          "description": "Teach elementary students. 0-2 years of experience.",
+          "company": "School"
+        },
+        {
+          "id": "adjacent",
+          "title": "Education Data Analyst",
+          "description": "Analyze school data with 1 year of experience.",
+          "company": "Education Company"
+        }
+      ]
+    },
+    {
+      "id": "ranking-laboratory-technician",
+      "category": "ranking-occupation",
+      "query": "laboratory technician",
+      "level": "entry",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "Lab Technician I",
+          "description": "Prepare laboratory samples. One year preferred.",
+          "company": "Lab"
+        },
+        {
+          "id": "shared-head",
+          "title": "IT Support Technician",
+          "description": "Support computers. One year preferred.",
+          "company": "IT Company"
+        }
+      ]
+    },
+    {
+      "id": "ranking-welder-over-sales",
+      "category": "ranking-occupation",
+      "query": "welding",
+      "level": "entry",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "Welder I",
+          "description": "Perform MIG welding. One year preferred.",
+          "company": "Fabricator"
+        },
+        {
+          "id": "sales",
+          "title": "Welding Sales Representative",
+          "description": "Sell welding products. One year preferred.",
+          "company": "Supplier"
+        }
+      ]
+    },
+    {
+      "id": "ranking-physical-therapist-over-sales",
+      "category": "ranking-occupation",
+      "query": "physical therapy",
+      "level": "entry",
+      "expected_best": "exact",
+      "candidates": [
+        {
+          "id": "exact",
+          "title": "Physical Therapist",
+          "description": "Provide rehabilitation. One year preferred.",
+          "company": "Clinic"
+        },
+        {
+          "id": "sales",
+          "title": "Physical Therapy Sales Representative",
+          "description": "Sell rehabilitation equipment. One year preferred.",
+          "company": "Supplier"
+        }
+      ]
+    }
+  ],
+  "routing_cases": []
+}
