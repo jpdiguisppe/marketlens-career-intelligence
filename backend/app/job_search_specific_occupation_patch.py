@@ -1,0 +1,109 @@
+"""Precision guards discovered through live cross-sector search review."""
+
+from __future__ import annotations
+
+import re
+from typing import Any
+
+
+ELEMENTARY_QUERY_TERMS = {
+    "elementary school teacher",
+    "elementary teacher",
+    "primary school teacher",
+    "primary teacher",
+}
+ELEMENTARY_TITLE_TERMS = {
+    "elementary",
+    "primary school",
+    "grade school",
+    "kindergarten",
+    "k-5",
+    "k–5",
+}
+ELEMENTARY_GRADE_PATTERN = re.compile(
+    r"\b(?:grades?\s*[1-5]|[1-5](?:st|nd|rd|th)\s+grade)\b",
+    re.IGNORECASE,
+)
+
+JOURNALISM_QUERY_TERMS = {
+    "journalism",
+    "journalist",
+    "news reporter",
+}
+NON_JOURNALISM_EDITOR_TERMS = {
+    "cinematic",
+    "film editor",
+    "motion graphics",
+    "video editor",
+    "video editing",
+}
+JOURNALISM_CONTEXT_TERMS = {
+    "assignment desk",
+    "assignment editor",
+    "broadcast",
+    "correspondent",
+    "editorial",
+    "journalism",
+    "journalist",
+    "news",
+    "newsroom",
+    "reporter",
+}
+
+
+def _query_contains_any(job_search: Any, query: str, terms: set[str]) -> bool:
+    normalized = query.lower()
+    return any(job_search._contains_phrase(normalized, term) for term in terms)
+
+
+def _elementary_title_match(job_search: Any, title: str) -> bool:
+    title_lower = title.lower()
+    return bool(
+        job_search._contains_any(title_lower, ELEMENTARY_TITLE_TERMS)
+        or ELEMENTARY_GRADE_PATTERN.search(title_lower)
+    )
+
+
+def _is_non_journalism_editor_title(job_search: Any, title: str) -> bool:
+    title_lower = title.lower()
+    if not job_search._contains_any(title_lower, NON_JOURNALISM_EDITOR_TERMS):
+        return False
+    return not job_search._contains_any(title_lower, JOURNALISM_CONTEXT_TERMS)
+
+
+def apply_job_search_specific_occupation_patch(job_search: Any) -> None:
+    """Apply title-level precision without narrowing broad career searches."""
+
+    if getattr(job_search, "_SPECIFIC_OCCUPATION_PATCH_APPLIED", False):
+        return
+
+    original_matches_requested_role = job_search._matches_requested_role
+
+    def _matches_requested_role(
+        title: str,
+        description: str,
+        query: str,
+        level: str | None = None,
+    ) -> bool:
+        base_match = original_matches_requested_role(
+            title,
+            description,
+            query,
+            level,
+        )
+        if not base_match:
+            return False
+
+        if _query_contains_any(job_search, query, ELEMENTARY_QUERY_TERMS):
+            return _elementary_title_match(job_search, title)
+
+        if (
+            _query_contains_any(job_search, query, JOURNALISM_QUERY_TERMS)
+            and _is_non_journalism_editor_title(job_search, title)
+        ):
+            return False
+
+        return True
+
+    job_search._matches_requested_role = _matches_requested_role
+    job_search._SPECIFIC_OCCUPATION_PATCH_APPLIED = True
