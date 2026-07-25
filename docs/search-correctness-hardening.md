@@ -4,16 +4,16 @@ Issue [#39](https://github.com/jpdiguisppe/marketlens-career-intelligence/issues
 
 ## Search contract
 
-MarketLens now separates four concerns that previously leaked into one another:
+MarketLens separates four concerns that previously leaked into one another:
 
 1. **Occupation relevance** — specific occupations require title-level evidence for the requested work. A shared generic word such as `engineer`, `analyst`, `assistant`, `technician`, or `manager` is not enough.
-2. **Career level** — internship, entry, mid, and senior filters are evaluated independently from occupation relevance, including apprenticeships, trainee roles, numbered levels, written experience requirements, and non-senior uses of `Staff`.
+2. **Career level** — internship, entry, mid, and senior filters are evaluated independently from occupation relevance, including apprenticeships, trainee roles, numbered levels, written experience requirements, unlabeled entry-compatible occupations, and non-senior uses of `Staff`.
 3. **Location** — an explicit city search includes recognized metro-area locations but excludes remote-only roles. Remote work must be requested deliberately.
 4. **Source coverage** — provider routing can expand the public employer boards searched, but provider breadth never overrides occupation, level, or location filters.
 
 ## Occupation matching
 
-Known role families retain their tuned recall behavior for broad searches such as software, data, marketing, operations, finance, healthcare, and legal work.
+Known role families retain tuned recall behavior for broad searches such as software, data, marketing, operations, finance, healthcare, and legal work.
 
 Queries outside that taxonomy use an occupation signature composed of:
 
@@ -24,13 +24,31 @@ Queries outside that taxonomy use an occupation signature composed of:
 
 Exact and near-exact occupation titles receive ranking bonuses. Candidates with conflicting occupations are rejected instead of being admitted because the description happens to contain a query word.
 
-The original regression is now critical benchmark coverage:
+Live review added specific precision guards where generic language was insufficient:
+
+- elementary-school searches preserve elementary/K-5/grade-level evidence and reject middle-school titles;
+- journalism searches reject cinematic, film, and video-editor titles without newsroom/editorial/reporting context;
+- broad teacher, editor, and video-editor searches remain available when the user actually asks for those broader occupations.
+
+The original regression is critical benchmark coverage:
 
 - query: `Electrical Engineer`
 - level: `Entry level`
 - location: `Philadelphia`
 - accepted: Philadelphia-area electrical-engineering titles
 - rejected: analytics engineers, marketing assistants, remote-only U.S. roles, California roles, and other locations
+
+## Career-level behavior
+
+Explicit level evidence remains strongest:
+
+- internships, co-ops, apprenticeships, fellowships, and student programs
+- `I`, `junior`, `associate`, `entry-level`, recent-graduate, and rotational-program signals
+- `II`/`III`, mid-level, senior, principal, lead, managerial, and written experience requirements
+
+A specific occupation search may also include an unlabeled title when the posting contains no evidence that contradicts entry-level compatibility. For example, an unqualified `Elementary School Teacher`, `Electrical Engineer`, or `Policy Analyst` with no stated experience requirement may remain visible in an entry search. These titles receive a smaller level bonus than explicitly labeled entry roles.
+
+This fallback does not apply to broad family searches such as `computer science`, and it does not admit senior, numbered mid-level, managerial, qualitative-experience, or four-plus-year roles.
 
 ## Location behavior
 
@@ -56,13 +74,19 @@ The curated source set broadens representation across:
 - media, communications, and creative work;
 - government and public service;
 - real estate, facilities, operations, and technical work;
-- business, finance, data, and technology.
+- business, finance, data, and technology;
+- agriculture, agronomy, plant science, and seed production;
+- delivery, restaurant, hospitality, and service work.
 
-Source requests and posting-detail requests are bounded, cached, and concurrent so broader coverage does not create unbounded latency. Provider failures degrade to the remaining providers and external continuation links.
+Verified additions include Syngenta Group for agriculture and Domino's for delivery/service coverage. Existing named boards include employers such as KIPP, AECOM, CRB, Bosch, Eurofins, City of Philadelphia, US Physical Therapy, and NBCUniversal.
+
+Source requests and posting-detail requests are bounded, cached, and concurrent. Up to four intent-selected SmartRecruiters employers and sixteen fully detailed candidate postings are evaluated per search. The wider detail shortlist prevents later-rejected lead/senior titles from crowding valid entry roles out before their requirements can be read.
+
+Provider failures degrade to the remaining providers and external continuation links.
 
 ## Evaluation matrix
 
-The deterministic benchmark now evaluates combined behavior rather than scoring occupation relevance without location:
+The formal deterministic benchmark evaluates:
 
 - 20 intent cases
 - 273 candidate cases
@@ -83,6 +107,14 @@ Candidate coverage contains positive and negative examples across nine required 
 8. creative and communications
 9. service, hospitality, transportation, and agriculture
 
+Additional matrices enforce combined behavior:
+
+- 27 occupation + entry-level + location candidate cases across all nine groups
+- 9 exact-local versus remote/wrong-occupation ranking cases
+- 14 mid/senior occupation + location cases across seven groups
+
+The complete hosted suite contains 290 passing backend tests.
+
 Run the benchmark from `backend`:
 
 ```bash
@@ -95,14 +127,26 @@ Run the full backend suite:
 python -m pytest
 ```
 
+## Live validation
+
+The final branch passed two public-provider runs:
+
+- ten strict `entry` + `Philadelphia` searches across the sector matrix;
+- ten broadened U.S.-wide searches using the same occupations.
+
+The strict run returned the current KIPP Philadelphia elementary-school posting and a Telemundo Philadelphia multimedia-journalist posting while excluding remote-only and wrong-occupation results. The broadened run returned 55 valid jobs across nine of ten searches, including all nine required sector groups.
+
+See [`search-hardening-validation-log.md`](search-hardening-validation-log.md) for the full results and discovered regressions.
+
 ## Completion standard
 
-Issue #39 is not complete merely because the deterministic benchmark passes. Before the issue is closed and Milestone 8 resumes, the pull request must also pass:
+Issue #39 is not complete merely because the deterministic benchmark passes. Closure requires:
 
 - the complete backend test suite;
 - the frontend TypeScript/Vite build;
 - backend and frontend Docker builds;
 - live public-provider smoke tests across representative sectors;
-- product-level validation of strict role, level, and location behavior.
+- product-level validation of strict role, level, and location behavior;
+- final verification in the deployed Railway application.
 
-Zero results are acceptable when the currently searched public employers do not have a valid match. Irrelevant results are not used to fill the page.
+Zero results are acceptable when the currently searched public employers do not have a valid match. Irrelevant results are not used to fill the page. MarketLens does not claim to cover every employer or scrape LinkedIn, Indeed, Handshake, Workday search pages, school portals, or every company career site.
