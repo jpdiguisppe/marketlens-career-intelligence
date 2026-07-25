@@ -1,16 +1,16 @@
 # MarketLens Career Intelligence
 
-MarketLens is a deployed full-stack career-intelligence platform that compares resume evidence against real job descriptions, ranks role fit, and turns noisy postings into clearer skill gaps, capability gaps, and learning priorities.
+MarketLens is a deployed full-stack career-intelligence platform that searches configured public job sources, compares resume evidence against real job descriptions, ranks role fit, and turns noisy postings into clearer skill gaps, capability gaps, and learning priorities.
 
 ## Project Highlights
 
 - **Deployed full-stack app:** React + TypeScript frontend, FastAPI backend, SQLAlchemy persistence, and Railway deployment.
-- **Resume-to-job comparison:** Users can upload or paste a resume, search configured public job sources, select jobs, and compare fit.
-- **Role-aware Smart Fit:** The app ranks jobs using resume-backed evidence, role-family context, capability gaps, and coaching actions.
-- **Online + manual workflows:** Users can search public Greenhouse, Lever, Remote OK, and Remotive sources or paste outside postings manually.
-- **Private career workspace:** Clerk-authenticated users can save jobs and reduced Smart Fit report summaries with server-side ownership checks.
-- **Portfolio-ready packaging:** The repo now includes screenshots, a guided demo walkthrough, README highlights, and a resume/interview summary.
-- **Quality coverage:** Backend tests cover API behavior, job search filtering, Smart Fit analysis, and a 74-case offline recall/precision benchmark with critical safety guardrails.
+- **Cross-sector job search:** Occupation-aware matching supports careers across technology, business, education, science, engineering, healthcare, public service, creative work, trades, agriculture, hospitality, transportation, and service work.
+- **Strict search semantics:** Occupation, experience level, industry, and location are evaluated separately; explicit city searches exclude remote-only roles.
+- **Role-aware Smart Fit:** Users can compare a resume against one or more jobs and review evidence, requirement coverage, capability gaps, ranking explanations, and coaching actions.
+- **Online + manual workflows:** MarketLens searches public Greenhouse, Lever, named SmartRecruiters employer boards, Remote OK, and Remotive sources; outside postings can still be pasted into Smart Fit manually.
+- **Private career workspace:** Clerk-authenticated users can save searched jobs and reduced Smart Fit report summaries with server-side ownership checks.
+- **Quality coverage:** 290 backend tests, a 273-candidate formal job-search benchmark, integrated occupation/level/location matrices, frontend and Docker builds, and reviewed live-provider smoke tests.
 
 ## Tech Stack
 
@@ -18,20 +18,11 @@ MarketLens is a deployed full-stack career-intelligence platform that compares r
 | --- | --- |
 | Frontend | React, TypeScript, Vite, CSS |
 | Backend | Python, FastAPI, Pydantic, SQLAlchemy |
-| Database | SQLite locally, PostgreSQL-ready deployment through `DATABASE_URL` |
-| Job sources | Greenhouse Job Board API, Lever Postings API, Remote OK, Remotive |
-| Testing / Quality | pytest, frontend production build, GitHub Actions, Dependabot |
-| Deployment | Railway frontend, Railway backend, Railway/PostgreSQL-ready backend configuration |
-
-## Resume / Interview Summary
-
-MarketLens is a deployed full-stack career-intelligence app that compares resume evidence against real job postings, ranks job fit, and explains role-specific gaps. I built the React frontend, FastAPI backend, job-search normalization layer, Smart Fit analysis workflow, role-aware scoring logic, security controls, tests, deployment pipeline, and portfolio-ready documentation.
-
-Resume bullet version:
-
-```text
-Built and deployed MarketLens, a full-stack React/FastAPI career-intelligence app that searches public job APIs, compares resumes against multiple postings, ranks role fit, identifies role-specific capability gaps, and explains recommendations with tested backend analysis logic.
-```
+| Database | SQLite locally; PostgreSQL-ready through `DATABASE_URL` |
+| Authentication | Clerk frontend sessions with backend token verification |
+| Job sources | Greenhouse, Lever, named SmartRecruiters employer boards, Remote OK, Remotive |
+| Testing / Quality | pytest, deterministic search evaluation, GitHub Actions, Docker builds, Dependabot |
+| Deployment | Railway frontend and backend |
 
 ## Live Demo
 
@@ -40,9 +31,11 @@ Built and deployed MarketLens, a full-stack React/FastAPI career-intelligence ap
 - **Backend health check:** [API health endpoint](https://marketlens-career-intelligence-production.up.railway.app/health)
 - **Portfolio demo walkthrough:** [How to demo MarketLens](docs/portfolio-demo-walkthrough.md)
 - **Milestone 6 completion:** [Private workspace completion record](docs/milestone-6-completion.md)
-- **Milestone 7 completion:** [Production-verified job-source coverage record](docs/milestone-7-completion.md)
+- **Milestone 7 completion:** [Job-source coverage completion record](docs/milestone-7-completion.md)
+- **Milestone 7.1:** [Cross-sector search correctness contract](docs/search-correctness-hardening.md)
+- **Validation record:** [Search-hardening validation log](docs/search-hardening-validation-log.md)
 
-The deployed version is a secured portfolio application. Visitors can search configured public sources and run Smart Fit without saving. Signed-in users can privately save searched jobs and reduced Smart Fit report summaries. Creating shared demo postings, importing CSV files, and deleting shared postings remain admin-only actions protected by an `X-Admin-API-Key` header.
+The deployed version is a secured portfolio application. Visitors can search configured public sources and run Smart Fit without saving. Signed-in users can privately save searched jobs and reduced Smart Fit report summaries. Shared posting creation, CSV import, and deletion remain admin-only actions protected by an `X-Admin-API-Key` header.
 
 Do not upload sensitive personal information, secrets, API keys, database URLs, or confidential employer/customer data.
 
@@ -50,13 +43,13 @@ Do not upload sensitive personal information, secrets, API keys, database URLs, 
 
 ### Online job search
 
-MarketLens searches configured public job sources and normalizes postings into selectable cards.
+MarketLens searches configured public sources and normalizes postings into selectable cards.
 
 ![Online job search results](docs/screenshots/online-job-search.png)
 
 ### Ranked Smart Fit comparison
 
-Users can select multiple jobs and compare them against the same resume. The ranking explains score gaps, resume evidence, and runner-up gaps.
+Users can select multiple jobs and compare them against the same resume. The ranking explains score gaps, resume evidence, and runner-up differences.
 
 ![Ranked Smart Fit comparison](docs/screenshots/job-fit-ranking.png)
 
@@ -74,59 +67,114 @@ The report prioritizes next actions and keeps hard requirements separate from br
 
 ## Problem
 
-Career advice is often vague, and job descriptions are noisy. Students and career-switchers are told to “learn cloud,” “build projects,” or “get better at AI,” but it is hard to know which skills are actually showing up in the roles they want or which roles fit their current resume best.
+Career advice is often vague, and job descriptions are noisy. Students and career-switchers are told to “learn cloud,” “build projects,” or “get better at AI,” but it is hard to know which skills actually appear in the roles they want or which jobs fit their current evidence best.
 
-MarketLens turns messy job postings into evidence. Instead of guessing what to learn next, users can compare their resume against real job descriptions, rank roles by fit, and see which missing skills matter most.
+MarketLens turns postings into evidence. Instead of guessing what to learn next, users can compare a resume against real job descriptions, rank opportunities, and see which missing capabilities matter most.
 
 ## Current Product Workflow
 
 ```text
 Open MarketLens
-Sign in when private saving is needed
+Optionally sign in for private saving
 Upload or paste a resume
 Search configured public job sources
-Filter by level and optionally location
-Review source coverage and search notes
-Select one or more returned jobs
-Compare selected jobs with role-aware Smart Fit
-Save promising searched jobs
-Explicitly save reduced Smart Fit report summaries
+Choose an experience level and optional location
+Review exactly which providers were searched
+Inspect ranked and filtered job results
+Select one or more jobs
+Run role-aware Smart Fit
+Explicitly save promising jobs or reduced report summaries
 Revisit or delete private records from dedicated tabs
 ```
 
-Manual pasted-job comparison remains available for jobs outside the configured online sources:
+Manual pasted-job comparison remains available for postings outside the configured online sources:
 
 ```text
-Upload or paste resume
+Upload or paste a resume
 Paste one or more job descriptions
-Separate multiple pasted jobs with ---
+Separate multiple jobs with ---
 Analyze and rank each job independently
-Explicitly save a reduced report summary when signed in
+Optionally save a reduced report summary when signed in
 ```
 
 The interface is organized into **Smart Fit**, **Saved Jobs**, **Saved Reports**, and **Market Data**. Smart Fit remains mounted while switching tabs so in-progress search and analysis state is preserved.
 
-Demo and smoke-test docs:
+## Search Correctness Contract
 
-- [`docs/portfolio-demo-walkthrough.md`](docs/portfolio-demo-walkthrough.md)
-- [`docs/portfolio-screenshot-guide.md`](docs/portfolio-screenshot-guide.md)
-- [`docs/milestone-1-manual-comparison-smoke-test.md`](docs/milestone-1-manual-comparison-smoke-test.md)
-- [`docs/milestone-2-online-job-search-smoke-test.md`](docs/milestone-2-online-job-search-smoke-test.md)
-- [`docs/milestone-6-completion.md`](docs/milestone-6-completion.md)
-- [`docs/milestone-7-completion.md`](docs/milestone-7-completion.md)
+MarketLens evaluates four concerns separately.
+
+### 1. Occupation relevance
+
+Specific occupations require title-level evidence for the requested work. A shared word such as `engineer`, `analyst`, `assistant`, `technician`, `editor`, or `manager` is not enough by itself.
+
+Exact and near-exact titles receive ranking bonuses. Unknown occupations use phrase-first signatures, curated aliases, occupation heads, and meaningful modifiers instead of defaulting to broad role-family acceptance.
+
+Examples of protected distinctions include:
+
+- electrical engineer vs. analytics engineer
+- elementary teacher vs. middle-school teacher
+- electrician vs. electrical engineer
+- medical assistant vs. registered nurse
+- policy analyst vs. data analyst
+- journalism editor/reporter vs. cinematic video editor
+- social worker vs. social-media manager
+
+### 2. Experience level
+
+Supported levels are `any`, `intern`, `entry`, `mid`, and `senior`.
+
+- Internship matching recognizes internships, co-ops, apprenticeships, fellowships, student programs, and guarded seasonal roles.
+- Entry matching recognizes explicit junior/new-grad/`I`/rotational evidence and written requirements of up to three years.
+- A specific occupation search may also include a plain title with no contradictory experience or seniority evidence. These unlabeled compatible roles rank below explicitly labeled entry jobs.
+- Broad family searches such as `computer science` still require actual entry evidence.
+- Mid and senior matching uses numbered titles, seniority language, and written experience requirements.
+- Occupational uses of `Staff`, such as Staff Reporter or Staff Accountant, are not automatically treated as senior.
+
+### 3. Location
+
+An explicit city search is strict.
+
+- `Philadelphia` includes recognized metro locations such as King of Prussia, Malvern, West Chester, Camden, Cherry Hill, Mount Laurel, and Wilmington.
+- It excludes Pittsburgh, New York, California, and remote-only postings.
+- `PA` or `Pennsylvania` deliberately broadens the local region.
+- `Remote` deliberately requests remote work.
+- Blank location keeps a broad U.S./U.S.-remote search.
+
+Recognized metro expansions also exist for New York City, Washington DC, San Francisco, Boston, Chicago, Seattle, and Los Angeles.
+
+### 4. Source coverage
+
+MarketLens uses public APIs instead of scraping closed job boards.
+
+Configured source types:
+
+- **Greenhouse Job Board API** — company-specific public ATS boards
+- **Lever Postings API** — company-specific public ATS boards
+- **SmartRecruiters Posting API** — a bounded, intent-selected set of named public employer boards
+- **Remote OK public JSON feed** — remote-first jobs
+- **Remotive public API** — remote-first jobs with search/category support
+
+Named SmartRecruiters boards broaden representation across education, science, engineering, healthcare, government, media, trades, agriculture, delivery/service work, business, and technology. Verified examples include KIPP, AECOM, CRB, Bosch, Eurofins, City of Philadelphia, US Physical Therapy, NBCUniversal, Syngenta Group, and Domino's.
+
+SmartRecruiters is not treated as a universal job board. MarketLens queries a bounded set of intent-selected employers, reports the exact providers searched, and evaluates a bounded number of fully detailed postings.
+
+MarketLens does **not** claim to search all of LinkedIn, Indeed, Handshake, Workday search pages, school portals, or every company career site. Those services remain clearly labeled external continuation options; their results are not scraped or imported.
+
+Zero results are acceptable when the currently searched public employers do not have a valid posting. Irrelevant jobs are not used to fill the page.
+
 ## Current Demo Capabilities
 
 All visitors can:
 
 - view the clearly labeled sample Market Data tab
-- upload `.txt`, `.md`, `.pdf`, or `.docx` resumes for request-time text extraction
+- upload `.txt`, `.md`, `.pdf`, or `.docx` resumes for request-time extraction
 - paste resume text manually
-- search configured public Greenhouse, Lever, Remote OK, and Remotive sources
-- search with separate job-function, industry, experience-level, and location intent
-- inspect provider-by-provider coverage, routing notes, warnings, suggestions, and responsible external fallback links
+- search configured public Greenhouse, Lever, SmartRecruiters, Remote OK, and Remotive sources
+- search with separate occupation, industry, experience-level, and location intent
+- inspect provider-by-provider fetched/matched coverage, routing notes, warnings, suggestions, and external continuation links
 - compare one to ten searched or manually pasted jobs through Smart Fit
 - view ranked results, requirement coverage, matches, gaps, limitations, and coaching actions
-- run deterministic analysis when model-assisted extraction is unavailable
+- use deterministic analysis when model-assisted extraction is unavailable
 
 Signed-in users can additionally:
 
@@ -135,274 +183,229 @@ Signed-in users can additionally:
 - reopen and delete saved jobs
 - explicitly save reduced Smart Fit report summaries
 - revisit and delete private saved reports
-- move between Smart Fit, Saved Jobs, Saved Reports, and Market Data without losing active Smart Fit state
+- switch between tabs without losing active Smart Fit state
 
-MarketLens does not automatically save analysis inputs. Raw resume text and full job descriptions are not persisted inside saved-report records. Saved reports do contain derived fit summaries, skill names, gaps, coaching guidance, and job metadata.
+MarketLens does not automatically save analysis inputs. Raw resume text and full job descriptions are not persisted inside saved-report records. Saved reports contain reduced derived summaries, skill names, gaps, coaching guidance, and job metadata.
 
-Admin-only shared-data actions require the `X-Admin-API-Key` header:
-
-- `POST /postings`
-- `POST /import/csv`
-- `DELETE /postings/{posting_id}`
-## Backend Features
+## Backend API
 
 The FastAPI backend currently supports:
 
 - `GET /health` — health check
-- `GET /me` — return the verified authenticated user
-- `GET /postings` and `GET /postings/{posting_id}` — read shared sample postings
-- `GET /jobs/search` — normalize configured public job sources with role, industry evidence, level, location, coverage, and fallback metadata
-- `POST /skills/extract` — extract recognized skills from text
-- `GET /skills/top`, `GET /skills/by-company`, and `GET /skills/by-role` — aggregate the shared sample dataset
-- `POST /analysis/resume` — compare resume skills against shared sample postings
-- `POST /analysis/custom` — run the simpler skill-gap engine against pasted descriptions
-- `POST /analysis/resume-file/extract` — extract request-time resume text from supported files
-- `POST /analysis/smart` — run evidence-aware Smart Fit against one job
+- `GET /me` — verified authenticated user
+- `GET /postings` and `GET /postings/{posting_id}` — shared sample postings
+- `GET /jobs/search` — normalized public-source search with occupation, industry, level, location, coverage, and fallback metadata
+- `POST /skills/extract` — recognized skill extraction
+- `GET /skills/top`, `GET /skills/by-company`, and `GET /skills/by-role` — sample dataset aggregates
+- `POST /analysis/resume` — compare a resume against shared sample postings
+- `POST /analysis/custom` — simpler skill-gap analysis for pasted descriptions
+- `POST /analysis/resume-file/extract` — request-time resume extraction
+- `POST /analysis/smart` — evidence-aware Smart Fit for one job
 - `POST /analysis/smart/batch` — analyze and rank one to ten jobs
-- `GET /analysis/model-status` — report optional model configuration without exposing secrets
-- authenticated saved-job create/list/delete endpoints with user ownership filtering
-- authenticated saved-report create/list/read/delete endpoints with user ownership filtering
+- `GET /analysis/model-status` — optional model configuration without secret exposure
+- authenticated saved-job create/list/read/delete endpoints
+- authenticated saved-report create/list/read/delete endpoints
 - admin-protected shared posting creation, CSV import, and deletion
-## Online Job Search Sources
 
-MarketLens uses public job APIs instead of scraping closed job boards.
+## Frontend Features
 
-Configured source types:
+- Clerk sign-in, sign-up, sign-out, and user controls
+- resume upload and manual resume text entry
+- online job search with separate occupation, industry, level, and location intent
+- provider-by-provider source transparency
+- searched-job cards with source, company, location, safe application link, and extracted skills
+- multi-job selection and Smart Fit comparison
+- manual one-job or multi-job entry using `---`
+- ranked Smart Fit reports with evidence, capability gaps, limitations, and coaching actions
+- explicit save controls for jobs and reduced reports
+- private Saved Jobs and Saved Reports workspaces
+- tabbed responsive layout with preserved in-progress Smart Fit state
+- deterministic fallback and optional model-assisted status messaging
 
-- **Greenhouse Job Board API** — company-specific ATS boards
-- **Lever Postings API** — company-specific ATS boards
-- **Remote OK public JSON feed** — remote-first job feed
-- **Remotive public API** — remote-first job feed with search/category support
+## Security and Privacy
 
-MarketLens does **not** claim to search all of LinkedIn, Indeed, Handshake, Workday, company career pages, or school career portals. After a search, the product separates sources it actually queried from external continuation links, returns provider-by-provider coverage and routing notes, and guides users to paste outside postings back into Smart Fit.
+MarketLens is a portfolio application, not a service for highly sensitive data.
 
-### Role-family search behavior
+Current controls include:
 
-Search is no longer software-only. The backend detects role-family intent from the query and uses family-specific title matching.
+- Clerk-managed authentication instead of custom password storage
+- backend verification of Clerk session tokens
+- authorized frontend-origin and CORS restrictions
+- server-side user ownership filters for every private read/delete operation
+- cross-user private-record requests returning `404`
+- analysis remaining non-persistent unless the user explicitly saves a result
+- raw resume text and full job descriptions excluded from saved-report persistence
+- backend-only model-provider keys and model-status transparency
+- redaction of obvious contact details before configured model-provider calls
+- admin API key protection for shared posting write/delete endpoints
+- request-size, CSV, provider-request, and public-analysis limits
+- allowlisted ATS identifiers and safe HTTPS application-link validation
+- no automatic redirects to unexpected provider hosts
+- SQLAlchemy ORM usage instead of string-built SQL queries
+- Dependabot and GitHub Actions checks
 
-Currently supported families include:
+See [`SECURITY.md`](SECURITY.md) for the security policy and known limitations.
 
-```text
-technology, software, finance, data, cybersecurity, product, marketing, operations, healthcare, design, legal, compliance, policy, legal_operations, contracts
+## Quality and CI
+
+The final search-hardening branch passed:
+
+- **290 backend tests**
+- **20 intent cases**
+- **273 candidate cases**
+- **17 location cases**
+- **20 ranking cases**
+- **9 routing cases**
+- **55 critical cases**
+- **27 integrated occupation + entry + location cases** across nine sector groups
+- **9 integrated local/remote/wrong-occupation ranking cases**
+- **14 mid/senior occupation + location cases** across seven sector groups
+- frontend TypeScript/Vite production build
+- backend Docker image build
+- frontend Docker image build
+- strict Philadelphia live-provider smoke across ten representative occupations
+- broadened U.S.-wide live-provider smoke across the same occupations
+
+The formal benchmark passes at 100% for intent accuracy, candidate accuracy, recall, precision, negative rejection, location accuracy, ranking accuracy, routing accuracy, and critical-case pass rate. The benchmark also enforces category breadth so a convenient narrow test set cannot silently replace the cross-sector matrix.
+
+See [`docs/search-hardening-validation-log.md`](docs/search-hardening-validation-log.md) for the exact live results and the defects discovered during validation.
+
+## Running Locally
+
+### Backend
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m uvicorn app.main:app --reload
 ```
 
-Examples:
+### Frontend
 
-```text
-finance internship
-accounting internship
-financial analyst internship
-data analyst internship
-cybersecurity internship
-marketing intern
-software engineer intern
-backend developer
-sports marketing internship
-healthcare compliance analyst entry level
-legal internship
-law student judicial internship
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
-For finance/accounting, the matcher recognizes signals such as:
+The frontend reads its API base URL from `VITE_API_BASE_URL`. Clerk-enabled builds also require `VITE_CLERK_PUBLISHABLE_KEY`.
 
-```text
-finance, financial analyst, accounting, accountant, audit, tax, FP&A, treasury,
-investment banking, valuation, credit analyst, portfolio analyst, summer analyst
-```
-
-It also protects against level-only false positives. For example, `finance internship` should match `Finance Intern` or `Accounting Intern`, but not `Sales Intern` or `Software Engineer Intern` merely because those titles contain `Intern`.
-
-### Experience level behavior
-
-- `level=any` keeps the search general-purpose and can return senior, mid-level, entry-level, or internship roles.
-- `level=intern` recognizes internships, co-ops, fellowships, apprenticeships, student programs, and guarded seasonal early-career titles.
-- `level=entry` recognizes new-grad, recent-graduate, Engineer I/Analyst I, rotational-program, low-experience, and no-experience-required signals.
-- `level=mid` and `level=senior` filter by title and experience signals while protecting early-career searches from experienced-role false positives.
-- Query text can infer level intent, such as `SWE Intern`, `entry level finance`, or `senior product manager`.
-
-### Location behavior
-
-- `Philadelphia` means Philadelphia/Philly plus U.S.-remote fallback; it does not include Pittsburgh.
-- `PA` or `Pennsylvania` can include Philadelphia, Pittsburgh, PA-wide, and U.S.-remote roles.
-- `Remote` means U.S.-remote or worldwide-remote roles unless the source clearly labels a non-U.S. country-specific remote role.
-- Blank location means broad U.S./U.S.-remote matching.
-
-### Source coverage limitations
-
-Public remote-job APIs are stronger for remote/general roles than for campus internships. Finance/accounting internships are especially likely to appear on Handshake, Workday-backed company career pages, LinkedIn, Indeed, school portals, and company internship pages. MarketLens handles that honestly by surfacing no-result explanations and fallback links rather than pretending those sources were searched.
-
-Manual pasted-job analysis remains available for any posting copied from outside the configured sources.
-
-Source coverage is configurable through backend environment variables:
+### Optional job-source configuration
 
 ```text
 JOB_SEARCH_GREENHOUSE_BOARDS=datadog,airbnb,figma
 JOB_SEARCH_LEVER_SITES=github,postman,benchling
+JOB_SEARCH_SMARTRECRUITERS_ENABLED=true
 JOB_SEARCH_REMOTEOK_ENABLED=true
 JOB_SEARCH_REMOTIVE_ENABLED=true
 ```
 
-## Frontend Features
+Only enabled, registered provider identifiers are accepted.
 
-The React frontend currently supports:
+## Running Quality Checks
 
-- Clerk sign-in, sign-up, sign-out, and user controls
-- resume upload and manual resume text entry
-- online job search with separate function, industry, level, and optional location intent
-- provider-by-provider searched/fetched/matched coverage, routing notes, suggestions, and external continuation links
-- searched-job cards with source, company, location, link, and extracted skills
-- selection and Smart Fit comparison for searched jobs
-- manual one-job or multi-job description entry using `---`
-- ranked Smart Fit reports with role-aware evidence, capability gaps, and coaching actions
-- explicit save controls for searched jobs and reduced Smart Fit report summaries
-- private Saved Jobs and Saved Reports workspaces with deletion
-- a tabbed layout for Smart Fit, Saved Jobs, Saved Reports, and Market Data
-- preserved Smart Fit state while switching tabs
-- clearly labeled sample market analytics and the secondary sample-dataset comparison tool
-- visible model-assisted availability and deterministic fallback messaging
-- responsive layouts plus loading, empty, warning, and error states
-## Security and Privacy Notes
-
-MarketLens is a portfolio application, not a service for highly sensitive personal data.
-
-Current security and privacy controls include:
-
-- Clerk-managed authentication instead of custom password storage
-- backend verification of Clerk session tokens
-- authorized frontend-origin restrictions and CORS configuration
-- server-side ownership filters on every private saved-job and saved-report read/delete operation
-- cross-user private-record requests returning `404`
-- analysis remaining non-persistent unless the user explicitly saves a result
-- raw resume text and full job descriptions excluded from saved-report persistence
-- backend-only model provider keys and model-status transparency
-- redaction of obvious contact details before configured model-provider calls
-- admin API key protection for shared posting write/delete endpoints
-- request size limits, CSV limits, and public analysis rate limiting
-- SQLAlchemy ORM usage instead of raw string-built SQL queries
-- Dependabot and GitHub Actions checks
-
-Derived saved-report data can include fit summaries, skill names, gaps, coaching recommendations, and job metadata. Users should still avoid uploading Social Security numbers, medical or financial details, API keys, passwords, confidential employer information, or other unnecessary sensitive data.
-
-See [`SECURITY.md`](SECURITY.md) for the security policy and known limitations.
-## Quality and CI
-
-Current checks include:
-
-- backend API tests for job posting creation, CSV import, admin API key protection, input validation, resume extraction, model status, and Smart Fit batch comparison
-- backend unit tests for skill extraction, job search normalization/filtering, role-family search, and Smart Fit analysis behavior
-- backend role-aware Smart Fit tests across software, data, cybersecurity, finance, product, healthcare, operations, and admin-style roles
-- backend evaluation cases for Smart Fit analysis
-- deterministic 74-case job-search benchmark covering intent, recall, precision, negative rejection, source routing, and critical credential/industry guardrails
-- frontend production build validation
-- Docker image build validation for the backend and frontend
-- GitHub Actions continuous integration on pushes and pull requests to `main`
-- weekly Dependabot dependency checks
-
-## Running Quality Checks Locally
-
-Run backend tests:
+Backend suite:
 
 ```bash
 cd backend
-source .venv/bin/activate
-python -m pip install -r requirements.txt
 python -m pytest
 ```
 
-Run the formal job-search evaluation:
+Formal search evaluation:
 
 ```bash
 cd backend
 python scripts/run_job_search_evaluation.py
 ```
 
-Run the frontend production build:
+Frontend production build:
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run build
 ```
 
-Run both apps locally:
+Docker images:
 
 ```bash
-# terminal 1
-cd backend
-source .venv/bin/activate
-python -m uvicorn app.main:app --reload
+docker build -t marketlens-backend ./backend
+docker build --build-arg VITE_API_BASE_URL=http://localhost:8000 -t marketlens-frontend ./frontend
+```
 
-# terminal 2
-cd frontend
-npm run dev
+## Resume / Interview Summary
+
+MarketLens is a deployed full-stack career-intelligence application that searches public job APIs, compares resume evidence against multiple postings, ranks role fit, identifies capability gaps, and explains recommendations. The project includes a React frontend, FastAPI backend, secure authentication, private persistence, cross-sector occupation matching, source routing, deterministic evaluation, Docker packaging, CI, and Railway deployment.
+
+Resume bullet:
+
+```text
+Built and deployed MarketLens, a full-stack React/FastAPI career-intelligence app that searches public job APIs, compares resumes against multiple postings, ranks role fit, identifies role-specific capability gaps, and validates cross-sector search relevance with deterministic and live-provider test suites.
 ```
 
 ## Roadmap
 
-### Milestone 1 — Manual Job Comparison Workflow: complete
+### Milestone 1 — Manual Job Comparison: complete
 
 - resume upload and paste
-- manual job-description comparison
-- multi-job splitting and Smart Fit ranking
-- detailed per-job reports
+- multi-job description splitting
+- Smart Fit ranking and detailed reports
 
-### Milestone 2 — Online Job Search + Smart Fit Comparison: complete
+### Milestone 2 — Online Job Search: complete
 
-- normalized Greenhouse, Lever, Remote OK, and Remotive search
+- normalized public job-source search
 - level and location filtering
 - selected-job Smart Fit comparison
-- source coverage metadata, warnings, and fallback links
+- source coverage metadata and fallback links
 
-### Milestone 3 — Role-Aware Smart Fit Intelligence: complete
+### Milestone 3 — Role-Aware Smart Fit: complete
 
-- role-aware scoring across job families
+- role-aware evidence and scoring
 - capability-gap detection beyond exact keywords
-- requirement coverage, ranking explanations, and coaching actions
-- deterministic and optional model-assisted extraction paths
+- requirement coverage and coaching actions
+- deterministic and optional model-assisted paths
 
-### Milestone 4 — Portfolio/Demo Packaging: complete
+### Milestone 4 — Portfolio Packaging: complete
 
 - Railway deployment
 - Docker and GitHub Actions CI
-- demo walkthroughs, screenshots, and repository presentation
+- screenshots, walkthroughs, and repository presentation
 
-### Milestone 5 — Authentication + Private Data Foundation: complete
+### Milestone 5 — Authentication and Private Data: complete
 
-- Clerk authentication UI
+- Clerk authentication
 - verified backend sessions
-- user-owned private database records
-- authorization and ownership-isolation tests
-- analyze-without-saving as the default
+- user-owned private records
+- ownership-isolation tests
 
-### Milestone 6 — Saved Jobs, Saved Reports, and Private Dashboard: complete
+### Milestone 6 — Saved Jobs, Reports, and Dashboard: complete
 
-- private saved searched jobs with duplicate prevention and deletion
-- explicitly saved reduced Smart Fit report summaries
-- private report history with read and delete controls
-- tabbed Smart Fit, Saved Jobs, Saved Reports, and Market Data interface
-- Smart Fit state preservation while switching tabs
-- production smoke test covering authentication, saving, refresh persistence, deletion, privacy visibility, and tab state
-
-Deferred optional additions:
-
-- saved searches, alerts, collections, or folders
-- saving a manually pasted job as a standalone Saved Job record; its Smart Fit report can already be saved
-
-See [`docs/milestone-6-completion.md`](docs/milestone-6-completion.md).
+- private saved jobs
+- explicitly saved reduced reports
+- dedicated private tabs and deletion controls
+- production authentication and persistence smoke tests
 
 ### Milestone 7 — Better Job Source Coverage: complete
 
-- separate job-function, industry, experience-level, and location intent
-- reusable industry taxonomy plus a typed, allowlisted Greenhouse/Lever source registry
-- primary and industry-only source pools with bounded intent-aware routing
-- broader sports, nonprofit, healthcare, education, media, legal, public-interest, policy, and financial-services coverage
-- stronger internship, co-op, fellowship, apprenticeship, seasonal, rotational, and new-grad recall
-- credential-aware separation of undergraduate legal, law-student, and licensed-attorney roles
-- transparent provider coverage, routing notes, suggestions, and responsible LinkedIn/Indeed/Handshake/Workday continuation links without scraping
-- deterministic 74-case recall/precision/routing benchmark with enforced thresholds and critical guardrails
-- live Railway smoke test covering the deployed frontend bundle, API health, model status, intent dimensions, source reporting, credential behavior, and external-link safety
+- multidimensional job-search intent
+- typed and allowlisted source registry
+- intent-aware source routing
+- stronger early-career and legal credential behavior
+- honest provider reporting and external continuation workflow
 
-See [`docs/milestone-7-completion.md`](docs/milestone-7-completion.md), [`docs/milestone-7-recall-precision-evaluation.md`](docs/milestone-7-recall-precision-evaluation.md), and [`docs/milestone-7-source-coverage-plan.md`](docs/milestone-7-source-coverage-plan.md).
+### Milestone 7.1 — Cross-Sector Search Correctness: complete
+
+- phrase-first occupation matching beyond predefined role families
+- strict city/metro behavior with deliberate remote inclusion
+- exact/near-exact ranking and conflicting-occupation rejection
+- representative validation across nine sector groups
+- bounded named SmartRecruiters source expansion
+- formal, integrated, full-suite, Docker, and live-provider validation
+
+See [`docs/search-correctness-hardening.md`](docs/search-correctness-hardening.md).
 
 ### Milestone 8 — Optional AI-Assisted Analysis: partially started
 
@@ -412,7 +415,7 @@ Already implemented:
 - model-status transparency
 - optional model-assisted extraction
 - obvious contact-detail redaction
-- deterministic fallback when model assistance is unavailable
+- deterministic fallback
 
 Potential later work:
 
