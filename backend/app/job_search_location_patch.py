@@ -88,6 +88,7 @@ def apply_job_search_location_patch(job_search: Any) -> None:
         job_search.LOCATION_ALIASES.setdefault(location_name, set()).update(aliases)
 
     original_search_suggestions = job_search._search_suggestions
+    original_warnings_for_no_results = job_search._warnings_for_no_results
 
     def _search_suggestions(
         query: str,
@@ -107,5 +108,23 @@ def apply_job_search_location_patch(job_search: Any) -> None:
         )
         return [corrected_text if suggestion == stale_text else suggestion for suggestion in suggestions]
 
+    def _warnings_for_no_results(
+        query: str,
+        location: str | None,
+        level: str,
+        role_family: str | None,
+    ) -> list[str]:
+        warnings = original_warnings_for_no_results(query, location, level, role_family)
+        stale_text = (
+            " U.S.-remote roles are included for city searches, but no matching "
+            "results were found."
+        )
+        corrected_text = (
+            " Remote-only roles were excluded because this was an explicit "
+            "city/metro search."
+        )
+        return [warning.replace(stale_text, corrected_text) for warning in warnings]
+
     job_search._search_suggestions = _search_suggestions
+    job_search._warnings_for_no_results = _warnings_for_no_results
     job_search._LOCATION_PATCH_APPLIED = True
