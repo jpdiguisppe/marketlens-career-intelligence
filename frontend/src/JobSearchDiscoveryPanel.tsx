@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { SafeExternalLink } from "./SafeExternalLink";
 import type { ExternalSearchLink, SourceCoverage } from "./types";
+import "./JobSearchDiscoveryPanel.css";
 
 type DiscoveryTab = "external" | "details";
 
