@@ -29,7 +29,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          python scripts/run_smart_fit_evaluation.py | tee smart-fit-evaluation.txt
+          python scripts/run_smart_fit_evaluation.py 2>&1 | tee smart-fit-evaluation.txt
       - name: Upload Smart Fit report
         if: always()
         uses: actions/upload-artifact@v4
