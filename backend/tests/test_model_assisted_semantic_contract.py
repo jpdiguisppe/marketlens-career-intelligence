@@ -117,7 +117,7 @@ def test_provider_fixture_uses_strict_schema_redaction_and_no_storage(
     assert payload["store"] is False
     assert payload["text"]["format"]["strict"] is True
     assert "james@example.com" not in user_prompt
-    assert "[REDACTED EMAIL]" in user_prompt
+    assert "[REDACTED_EMAIL]" in user_prompt
 
 
 def test_ungrounded_source_text_is_rejected() -> None:
