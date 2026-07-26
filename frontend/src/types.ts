@@ -191,6 +191,32 @@ export type CoachingActionType =
   | "lower_priority"
   | "hard_requirement_check";
 
+export type ProvenanceSource = "deterministic" | "model_assisted" | "merged";
+
+export type SectionKind =
+  | "summary"
+  | "skills"
+  | "experience"
+  | "projects"
+  | "education"
+  | "coursework"
+  | "certifications"
+  | "awards"
+  | "responsibilities"
+  | "required_qualifications"
+  | "preferred_qualifications"
+  | "company_description"
+  | "benefits"
+  | "other";
+
+export type EvidenceCitation = {
+  document_kind: "resume" | "job_posting";
+  source: ProvenanceSource;
+  quote: string;
+  section: SectionKind;
+  grounded: boolean;
+};
+
 export type FitSummary = {
   score: number;
   band: FitBand;
@@ -211,6 +237,8 @@ export type HardRequirementAssessment = {
   source_text: string;
   resume_evidence: string | null;
   explanation: string;
+  source_origin: ProvenanceSource;
+  grounded: boolean;
 };
 
 export type RequirementAssessment = {
@@ -222,6 +250,10 @@ export type RequirementAssessment = {
   resume_evidence: string[];
   job_evidence: string;
   explanation: string;
+  job_provenance: EvidenceCitation | null;
+  resume_provenance: EvidenceCitation[];
+  conclusion_source: ProvenanceSource;
+  grounded: boolean;
 };
 
 export type CategoryCoverage = {
@@ -239,6 +271,7 @@ export type GapGroup = {
   priority: string;
   skills: string[];
   summary: string;
+  job_evidence: string[];
 };
 
 export type CoachingAction = {
@@ -275,6 +308,8 @@ export type SmartFitAnalysisResponse = {
   limitations: string[];
   analysis_engine: AnalysisEngine;
   model_assisted_status: string;
+  provenance_version: string;
+  grounding_warnings: string[];
 };
 
 export type SmartFitBatchResult = {
