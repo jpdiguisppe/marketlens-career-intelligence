@@ -9,7 +9,11 @@ from __future__ import annotations
 import re
 
 import app.analysis.service as _service
-from app.analysis.model_extractor import ModelAssistedExtraction
+from app.analysis.model_extractor import (
+    ModelAssistedExtraction,
+    ModelSkillSignal,
+    ResumeEvidenceBasis,
+)
 from app.analysis.schemas import (
     EvidenceStatus,
     JobRequirement,
@@ -26,17 +30,35 @@ _MODEL_REQUIREMENT_WEIGHTS: dict[RequirementType, float] = {
 }
 
 _WHITESPACE = re.compile(r"\s+")
+_ACTION_VERB = re.compile(
+    r"^[^A-Za-z]*(?:architected|automated|built|configured|created|deployed|"
+    r"designed|developed|implemented|improved|integrated|maintained|managed|"
+    r"migrated|optimized|programmed|refactored|tested|troubleshot)\b",
+    re.IGNORECASE,
+)
 
 
 def _key(value: str) -> str:
     return _WHITESPACE.sub(" ", value.strip()).casefold()
 
 
-def _model_only_evidence_status(status: EvidenceStatus) -> EvidenceStatus:
-    """Prevent provider output from claiming direct proof on its own."""
+def _model_only_evidence_status(signal: ModelSkillSignal) -> EvidenceStatus:
+    """Accept strong proof only when deterministic syntax verifies application.
 
-    if status in {EvidenceStatus.IMPLIED, EvidenceStatus.RELATED}:
-        return status
+    Provider output is source-grounded before this merge in production. This
+    second check requires an application-oriented evidence basis and an action
+    verb before a new skill can count as demonstrated.
+    """
+
+    if (
+        signal.evidence_basis == ResumeEvidenceBasis.DIRECT_APPLICATION
+        and signal.evidence_status
+        in {EvidenceStatus.DEMONSTRATED, EvidenceStatus.EXPLICIT}
+        and _ACTION_VERB.search(signal.source_text)
+    ):
+        return EvidenceStatus.DEMONSTRATED
+    if signal.evidence_status in {EvidenceStatus.IMPLIED, EvidenceStatus.RELATED}:
+        return signal.evidence_status
     return EvidenceStatus.MENTIONED
 
 
@@ -82,7 +104,7 @@ def _merge_semantic_model_extraction(
             # not upgrade, replace, or relabel it.
             continue
 
-        status = _model_only_evidence_status(signal.evidence_status)
+        status = _model_only_evidence_status(signal)
         candidate = ResumeEvidence(
             skill=skill,
             status=status,
@@ -90,9 +112,10 @@ def _merge_semantic_model_extraction(
             source_text=signal.source_text,
             source_section=SectionKind.OTHER,
             explanation=(
-                "Model-assisted extraction surfaced this resume signal, but "
-                "MarketLens caps model-only evidence conservatively until the "
-                "deterministic evidence layer verifies stronger proof."
+                "Model-assisted extraction surfaced this resume signal. "
+                "MarketLens accepted strong proof only when the grounded source "
+                "also passed deterministic action-language verification; other "
+                "model-only signals remain conservatively capped."
             ),
         )
         evidence_by_key[key] = candidate
