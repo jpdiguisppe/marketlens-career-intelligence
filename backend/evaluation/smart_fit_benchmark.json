@@ -1,0 +1,247 @@
+{
+  "version": 1,
+  "minimums": {"cases": 10, "sectors": 9, "critical_cases": 5},
+  "thresholds": {
+    "requirement_recall": 1.0,
+    "requirement_precision": 1.0,
+    "requirement_type_accuracy": 1.0,
+    "evidence_status_accuracy": 0.95,
+    "evidence_link_rate": 1.0,
+    "gap_recall": 0.95,
+    "false_gap_rejection_rate": 1.0,
+    "unsupported_strength_rejection_rate": 1.0,
+    "hard_requirement_accuracy": 1.0,
+    "fallback_accuracy": 1.0,
+    "fit_score_range_accuracy": 1.0,
+    "critical_case_pass_rate": 1.0
+  },
+  "cases": [
+    {
+      "id": "software-backend-required-preferred",
+      "sector": "software",
+      "critical": true,
+      "resume_text": "SKILLS\nGit\nPROJECTS\nBuilt Python REST APIs and SQL data models for a career intelligence platform.",
+      "job_description": "Backend Software Engineer\nRESPONSIBILITIES\nBuild REST APIs using Python and SQL.\nREQUIRED QUALIFICATIONS\nPython and SQL are required.\nDocker experience is required.\nPREFERRED QUALIFICATIONS\nAWS is preferred.",
+      "expected": {
+        "requirements": [
+          {"skill": "Python", "type": "required_qualification"},
+          {"skill": "SQL", "type": "required_qualification"},
+          {"skill": "REST APIs", "type": "core_responsibility"},
+          {"skill": "Docker", "type": "required_qualification"},
+          {"skill": "AWS", "type": "preferred_qualification"}
+        ],
+        "evidence": [
+          {"skill": "Python", "allowed_statuses": ["demonstrated"], "require_resume_evidence": true},
+          {"skill": "SQL", "allowed_statuses": ["demonstrated"], "require_resume_evidence": true},
+          {"skill": "REST APIs", "allowed_statuses": ["demonstrated"], "require_resume_evidence": true},
+          {"skill": "Docker", "allowed_statuses": ["missing"]},
+          {"skill": "AWS", "allowed_statuses": ["missing"]}
+        ],
+        "gaps": ["Docker"],
+        "forbidden_gaps": ["Python", "SQL", "REST APIs"],
+        "forbidden_strengths": ["Docker", "AWS"],
+        "analysis_engine": "deterministic",
+        "model_assisted_status_prefix": "not_requested",
+        "fit_score_min": 35,
+        "fit_score_max": 80
+      }
+    },
+    {
+      "id": "data-ai-pipeline-gap",
+      "sector": "data_ai",
+      "critical": true,
+      "resume_text": "PROJECTS\nDeveloped a Python machine learning classifier and tested model performance.\nBuilt a SQL database for an application tracker.",
+      "job_description": "Data Scientist\nRESPONSIBILITIES\nDevelop machine learning models in Python and build data pipelines using SQL.\nREQUIRED QUALIFICATIONS\nPython, SQL, and machine learning are required.\nPREFERRED QUALIFICATIONS\nAWS is preferred.",
+      "expected": {
+        "requirements": [
+          {"skill": "Python", "type": "required_qualification"},
+          {"skill": "SQL", "type": "required_qualification"},
+          {"skill": "Machine Learning", "type": "required_qualification"},
+          {"skill": "Data Pipelines", "type": "core_responsibility"},
+          {"skill": "AWS", "type": "preferred_qualification"}
+        ],
+        "evidence": [
+          {"skill": "Python", "allowed_statuses": ["demonstrated"], "require_resume_evidence": true},
+          {"skill": "SQL", "allowed_statuses": ["demonstrated"], "require_resume_evidence": true},
+          {"skill": "Machine Learning", "allowed_statuses": ["demonstrated"], "require_resume_evidence": true},
+          {"skill": "Data Pipelines", "allowed_statuses": ["missing"]},
+          {"skill": "AWS", "allowed_statuses": ["missing"]}
+        ],
+        "gaps": ["Data Pipelines"],
+        "forbidden_gaps": ["Python", "SQL", "Machine Learning"],
+        "forbidden_strengths": ["Data Pipelines", "AWS"],
+        "analysis_engine": "deterministic",
+        "model_assisted_status_prefix": "not_requested",
+        "fit_score_min": 40,
+        "fit_score_max": 85
+      }
+    },
+    {
+      "id": "systems-cloud-related-provider-gap",
+      "sector": "systems_cloud",
+      "critical": true,
+      "resume_text": "EXPERIENCE\nConfigured Linux servers and Azure resources and automated routine support scripts.",
+      "job_description": "Cloud Systems Engineer\nRESPONSIBILITIES\nDeploy Docker workloads and maintain Linux servers.\nREQUIRED QUALIFICATIONS\nLinux and AWS experience required.\nPREFERRED QUALIFICATIONS\nAzure preferred.",
+      "expected": {
+        "requirements": [
+          {"skill": "Docker", "type": "core_responsibility"},
+          {"skill": "Linux", "type": "required_qualification"},
+          {"skill": "AWS", "type": "required_qualification"},
+          {"skill": "Azure", "type": "preferred_qualification"}
+        ],
+        "evidence": [
+          {"skill": "Linux", "allowed_statuses": ["demonstrated"], "require_resume_evidence": true},
+          {"skill": "Azure", "allowed_statuses": ["demonstrated"], "require_resume_evidence": true},
+          {"skill": "Docker", "allowed_statuses": ["missing"]},
+          {"skill": "AWS", "allowed_statuses": ["missing"]}
+        ],
+        "gaps": ["Docker", "AWS"],
+        "forbidden_gaps": ["Linux", "Azure"],
+        "forbidden_strengths": ["Docker", "AWS"],
+        "analysis_engine": "deterministic",
+        "model_assisted_status_prefix": "not_requested",
+        "fit_score_min": 25,
+        "fit_score_max": 75
+      }
+    },
+    {
+      "id": "frontend-typescript-proof-gap",
+      "sector": "frontend",
+      "critical": true,
+      "resume_text": "PROJECTS\nBuilt a React web application using JavaScript, HTML, and CSS.",
+      "job_description": "Frontend Developer\nRESPONSIBILITIES\nBuild responsive web applications with React.\nREQUIRED QUALIFICATIONS\nReact and TypeScript are required.\nPREFERRED QUALIFICATIONS\nAutomated testing is preferred.",
+      "expected": {
+        "requirements": [
+          {"skill": "Responsive Web Apps", "type": "core_responsibility"},
+          {"skill": "React", "type": "required_qualification"},
+          {"skill": "TypeScript", "type": "required_qualification"},
+          {"skill": "Testing", "type": "preferred_qualification"}
+        ],
+        "evidence": [
+          {"skill": "React", "allowed_statuses": ["demonstrated"], "require_resume_evidence": true},
+          {"skill": "Responsive Web Apps", "allowed_statuses": ["missing"]},
+          {"skill": "TypeScript", "allowed_statuses": ["missing"]},
+          {"skill": "Testing", "allowed_statuses": ["missing"]}
+        ],
+        "gaps": ["Responsive Web Apps", "TypeScript"],
+        "forbidden_gaps": ["React"],
+        "forbidden_strengths": ["TypeScript", "Testing"],
+        "analysis_engine": "deterministic",
+        "model_assisted_status_prefix": "not_requested",
+        "fit_score_min": 20,
+        "fit_score_max": 70
+      }
+    },
+    {
+      "id": "cybersecurity-capability-only",
+      "sector": "cybersecurity",
+      "critical": false,
+      "resume_text": "EXPERIENCE\nTroubleshot Active Directory account lockouts and reviewed Change Auditor event records for support tickets.",
+      "job_description": "Security Analyst\nRESPONSIBILITIES\nMonitor SIEM alerts, perform incident response, analyze security logs, and coordinate vulnerability remediation.",
+      "expected": {
+        "requirements": [],
+        "evidence": [],
+        "gaps": ["Security operations and incident response", "Detection tooling and log analysis", "Vulnerability response and remediation"],
+        "forbidden_strengths": ["security operations", "incident response", "SIEM"],
+        "analysis_engine": "deterministic",
+        "model_assisted_status_prefix": "not_requested",
+        "fit_score_min": 10,
+        "fit_score_max": 10
+      }
+    },
+    {
+      "id": "finance-domain-capability-gap",
+      "sector": "finance",
+      "critical": false,
+      "resume_text": "PROJECTS\nBuilt a Python web service and a SQL application tracker for internship data.",
+      "job_description": "Financial Analyst\nRESPONSIBILITIES\nBuild financial models, forecasts, budgets, and variance analysis reports for business leaders.",
+      "expected": {
+        "requirements": [],
+        "evidence": [],
+        "gaps": ["Financial modeling and analysis"],
+        "forbidden_strengths": ["financial modeling", "forecasting", "variance analysis"],
+        "analysis_engine": "deterministic",
+        "model_assisted_status_prefix": "not_requested",
+        "fit_score_min": 10,
+        "fit_score_max": 10
+      }
+    },
+    {
+      "id": "healthcare-context-capability-gaps",
+      "sector": "healthcare",
+      "critical": false,
+      "resume_text": "EXPERIENCE\nConfigured Windows Server systems and automated account support tasks for an enterprise IT team.",
+      "job_description": "Clinical Systems Analyst\nRESPONSIBILITIES\nSupport EHR workflows, patient data, HIPAA compliance, and clinical users across hospital departments.",
+      "expected": {
+        "requirements": [],
+        "evidence": [],
+        "gaps": ["Healthcare systems and clinical workflow context", "Healthcare privacy, compliance, and data handling"],
+        "forbidden_strengths": ["HIPAA", "clinical workflows", "patient data"],
+        "analysis_engine": "deterministic",
+        "model_assisted_status_prefix": "not_requested",
+        "fit_score_min": 10,
+        "fit_score_max": 10
+      }
+    },
+    {
+      "id": "marketing-capability-gap",
+      "sector": "sales_marketing",
+      "critical": false,
+      "resume_text": "PROJECTS\nDeveloped a backend API and relational database for a career application.",
+      "job_description": "Marketing Coordinator\nRESPONSIBILITIES\nPlan campaigns, create content, manage social media channels, and support brand initiatives.",
+      "expected": {
+        "requirements": [],
+        "evidence": [],
+        "gaps": ["Marketing channels and campaign execution"],
+        "forbidden_strengths": ["campaigns", "content", "marketing channels"],
+        "analysis_engine": "deterministic",
+        "model_assisted_status_prefix": "not_requested",
+        "fit_score_min": 10,
+        "fit_score_max": 10
+      }
+    },
+    {
+      "id": "operations-admin-capability-gaps",
+      "sector": "operations_admin",
+      "critical": false,
+      "resume_text": "PROJECTS\nBuilt a Java application and tested database features for a class project.",
+      "job_description": "Administrative Assistant\nRESPONSIBILITIES\nCoordinate scheduling and calendars, maintain records, complete data entry, and ensure documentation accuracy.",
+      "expected": {
+        "requirements": [],
+        "evidence": [],
+        "gaps": ["Administrative coordination and scheduling", "Records, data entry, and process accuracy"],
+        "forbidden_strengths": ["administrative coordination", "scheduling", "data entry"],
+        "analysis_engine": "deterministic",
+        "model_assisted_status_prefix": "not_requested",
+        "fit_score_min": 10,
+        "fit_score_max": 10
+      }
+    },
+    {
+      "id": "regulated-technical-hard-constraints-and-fallback",
+      "sector": "regulated_technical",
+      "critical": true,
+      "use_model_assisted": true,
+      "resume_text": "SUMMARY\nU.S. Citizen.\nEDUCATION\nBachelor of Science in Computer Science, Widener University.\nPROJECTS\nBuilt Python services for a career intelligence platform.",
+      "job_description": "Software Engineer\nRESPONSIBILITIES\nBuild Python services.\nREQUIRED QUALIFICATIONS\nPython is required.\nU.S. citizenship required.\nActive Secret clearance required.\nBachelor's degree in Computer Science required.\n3 years of relevant experience required.\nUp to 20% travel.",
+      "expected": {
+        "requirements": [{"skill": "Python", "type": "required_qualification"}],
+        "evidence": [{"skill": "Python", "allowed_statuses": ["demonstrated"], "require_resume_evidence": true}],
+        "gaps": [],
+        "forbidden_gaps": ["Python"],
+        "forbidden_strengths": ["security clearance"],
+        "hard_requirements": [
+          {"category": "citizenship", "status": "meets"},
+          {"category": "security_clearance", "status": "unclear"},
+          {"category": "degree", "status": "meets"},
+          {"category": "years_experience", "status": "unclear"},
+          {"category": "travel", "status": "unclear"}
+        ],
+        "analysis_engine": "deterministic",
+        "model_assisted_status_prefix": "fallback_unavailable:",
+        "fit_score_min": 90,
+        "fit_score_max": 100
+      }
+    }
+  ]
+}
