@@ -22,6 +22,7 @@ from pydantic import ValidationError
 from app.analysis.redaction import redact_sensitive_text
 from app.analysis.semantic_contract import (
     MODEL_ASSISTED_SCHEMA_VERSION,
+    STRICT_PROVIDER_CONTEXT,
     ModelAssistedExtraction,
     ModelHardConstraintSignal,
     ModelJobRequirementSignal,
@@ -151,7 +152,10 @@ def _validate_provider_extraction(
     job_description: str,
 ) -> ModelAssistedExtraction:
     try:
-        extraction = ModelAssistedExtraction.model_validate_json(output_text)
+        extraction = ModelAssistedExtraction.model_validate_json(
+            output_text,
+            context=STRICT_PROVIDER_CONTEXT,
+        )
     except ValidationError as exc:
         raise ModelAssistedExtractionError(
             "Provider output did not match the versioned extraction schema."
