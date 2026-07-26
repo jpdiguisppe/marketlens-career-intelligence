@@ -9,6 +9,7 @@ from app.analysis.model_extractor import ModelAssistedExtraction
 from app.analysis.schemas import (
     EvidenceStatus,
     JobRequirement,
+    ProvenanceSource,
     RequirementType,
     ResumeEvidence,
     SectionKind,
@@ -58,7 +59,11 @@ def test_model_cannot_upgrade_existing_deterministic_resume_evidence() -> None:
         _extraction(),
     )
 
-    assert evidence["Python"] == deterministic
+    merged = evidence["Python"]
+    assert merged.model_copy(
+        update={"source_origin": ProvenanceSource.DETERMINISTIC}
+    ) == deterministic
+    assert merged.source_origin == ProvenanceSource.MERGED
 
 
 def test_model_only_resume_signal_is_capped_at_mentioned() -> None:
@@ -90,4 +95,8 @@ def test_model_requirement_cannot_downgrade_stronger_deterministic_priority() ->
     )
     by_skill = {item.skill: item for item in requirements}
 
-    assert by_skill["Kubernetes"] == deterministic
+    merged = by_skill["Kubernetes"]
+    assert merged.model_copy(
+        update={"source_origin": ProvenanceSource.DETERMINISTIC}
+    ) == deterministic
+    assert merged.source_origin == ProvenanceSource.MERGED

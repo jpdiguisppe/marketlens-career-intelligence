@@ -2,10 +2,19 @@
 
 from app.analysis.schemas import SmartFitAnalysisRequest, SmartFitAnalysisResponse
 from app.analysis.service import AnalysisInputError
-from app.analysis.role_aware_stable import analyze_smart_fit
-from app.analysis.role_domain_priority_patch import install_role_domain_priority_patch
-from app.analysis.semantic_merge_patch import install_semantic_merge_patch
+from app.analysis.provenance_patch import install_provenance_patch
 import app.analysis.service as _service
+
+# Request-scoped provenance must wrap the base service before the role-aware
+# layer captures it. This ensures every exact requirement assessment is grounded
+# before role and capability summaries are derived.
+install_provenance_patch()
+
+from app.analysis.role_aware_stable import analyze_smart_fit  # noqa: E402
+from app.analysis.role_domain_priority_patch import (  # noqa: E402
+    install_role_domain_priority_patch,
+)
+from app.analysis.semantic_merge_patch import install_semantic_merge_patch  # noqa: E402
 
 # A specific job-function signal such as ``marketing`` must win over a generic
 # shared title token such as ``coordinator``.
