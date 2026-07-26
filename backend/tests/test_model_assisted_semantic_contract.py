@@ -90,6 +90,9 @@ def test_semantic_contract_is_versioned_and_forbids_extra_fields() -> None:
     assert extraction.job_requirements[0].semantic_category.value == "tool_technology"
     assert extraction.resume_skills[0].evidence_basis.value == "direct_application"
 
+    schema = model_extractor._structured_output_schema()
+    assert "schema_version" in schema["required"]
+
     fixture["unexpected"] = True
     with pytest.raises(ValidationError):
         ModelAssistedExtraction.model_validate(fixture)
@@ -118,6 +121,22 @@ def test_provider_fixture_uses_strict_schema_redaction_and_no_storage(
     assert payload["text"]["format"]["strict"] is True
     assert "james@example.com" not in user_prompt
     assert "[REDACTED_EMAIL]" in user_prompt
+
+
+def test_legacy_internal_payload_is_not_accepted_as_provider_output() -> None:
+    legacy = _fixture()
+    legacy.pop("schema_version")
+    legacy["resume_skills"][0].pop("semantic_category")
+    legacy["resume_skills"][0].pop("evidence_basis")
+    legacy["job_requirements"][0].pop("semantic_category")
+    legacy["job_requirements"][0]["weight"] = 1.0
+
+    with pytest.raises(ModelAssistedExtractionError, match="versioned extraction schema"):
+        model_extractor._validate_provider_extraction(
+            json.dumps(legacy),
+            resume_text=RESUME_TEXT,
+            job_description=JOB_TEXT,
+        )
 
 
 def test_ungrounded_source_text_is_rejected() -> None:
