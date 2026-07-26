@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import re
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.analysis.redaction import redact_sensitive_text
 from app.analysis.schemas import EvidenceStatus, RequirementType
@@ -38,6 +38,17 @@ class ResumeEvidenceBasis(str, Enum):
     RELATED_EXPERIENCE = "related_experience"
 
 
+def _legacy_evidence_basis(value: Any) -> ResumeEvidenceBasis:
+    status = str(getattr(value, "value", value or "")).casefold()
+    if status in {EvidenceStatus.DEMONSTRATED.value, EvidenceStatus.EXPLICIT.value}:
+        return ResumeEvidenceBasis.DIRECT_APPLICATION
+    if status == EvidenceStatus.IMPLIED.value:
+        return ResumeEvidenceBasis.IMPLIED_BY_TOOL
+    if status == EvidenceStatus.RELATED.value:
+        return ResumeEvidenceBasis.RELATED_EXPERIENCE
+    return ResumeEvidenceBasis.EXPLICIT_MENTION
+
+
 class ModelSkillSignal(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -50,6 +61,22 @@ class ModelSkillSignal(BaseModel):
     context: str | None = Field(default=None, max_length=120)
     source_text: str = Field(min_length=1, max_length=500)
 
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_legacy_fixture(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+        migrated = dict(value)
+        migrated.setdefault(
+            "semantic_category",
+            SemanticRequirementCategory.TOOL_TECHNOLOGY.value,
+        )
+        migrated.setdefault(
+            "evidence_basis",
+            _legacy_evidence_basis(migrated.get("evidence_status")).value,
+        )
+        return migrated
+
 
 class ModelJobRequirementSignal(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -61,6 +88,22 @@ class ModelJobRequirementSignal(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
     context: str | None = Field(default=None, max_length=120)
     source_text: str = Field(min_length=1, max_length=500)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_legacy_fixture(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+        migrated = dict(value)
+        # Pre-8B internal fixtures supplied provider-selected weights. The
+        # versioned provider schema does not expose this field; MarketLens now
+        # derives weight from requirement_type.
+        migrated.pop("weight", None)
+        migrated.setdefault(
+            "semantic_category",
+            SemanticRequirementCategory.TOOL_TECHNOLOGY.value,
+        )
+        return migrated
 
 
 class ModelHardConstraintSignal(BaseModel):
@@ -80,6 +123,18 @@ class ModelHardConstraintSignal(BaseModel):
     source_text: str = Field(min_length=1, max_length=500)
     confidence: float = Field(ge=0.0, le=1.0)
 
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_legacy_fixture(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+        migrated = dict(value)
+        migrated.setdefault(
+            "semantic_category",
+            SemanticRequirementCategory.HARD_CONSTRAINT.value,
+        )
+        return migrated
+
 
 class ModelAssistedExtraction(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -91,6 +146,15 @@ class ModelAssistedExtraction(BaseModel):
     unknown_resume_skills: list[str] = Field(default_factory=list)
     unknown_job_skills: list[str] = Field(default_factory=list)
     uncertainty_notes: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_legacy_fixture(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+        migrated = dict(value)
+        migrated.setdefault("schema_version", MODEL_ASSISTED_SCHEMA_VERSION)
+        return migrated
 
 
 _WHITESPACE = re.compile(r"\s+")
