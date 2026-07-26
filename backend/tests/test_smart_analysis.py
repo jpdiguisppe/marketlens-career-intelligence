@@ -278,7 +278,7 @@ def test_model_assisted_extraction_can_surface_unknown_skills(monkeypatch) -> No
     monkeypatch.setattr("app.analysis.service.extract_model_assisted_signals", fake_model_extractor)
 
     analysis = analyze_smart_fit(
-        resume_text="PROJECTS\n- Built a worker service with message queues for async jobs.",
+        resume_text="PROJECTS\n- Built a RabbitMQ worker service for async jobs.",
         job_description="Required Qualifications\nBuild RabbitMQ messaging workers for backend systems.",
         use_model_assisted=True,
     )
