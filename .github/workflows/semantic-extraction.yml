@@ -35,10 +35,18 @@ jobs:
             tests/test_model_assisted_semantic_contract.py \
             tests/test_semantic_merge_safeguards.py \
             2>&1 | tee semantic-extraction-tests.txt
-      - name: Upload semantic extraction report
+      - name: Run full backend compatibility suite
+        if: always()
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pytest -q 2>&1 | tee backend-compatibility-tests.txt
+      - name: Upload semantic extraction reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: semantic-extraction-test-report
-          path: backend/semantic-extraction-tests.txt
+          path: |
+            backend/semantic-extraction-tests.txt
+            backend/backend-compatibility-tests.txt
           if-no-files-found: error
