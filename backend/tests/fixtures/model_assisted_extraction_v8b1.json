@@ -1,0 +1,66 @@
+{
+  "schema_version": "8b.1",
+  "resume_skills": [
+    {
+      "name": "Python",
+      "category": "programming_language",
+      "semantic_category": "tool_technology",
+      "evidence_basis": "direct_application",
+      "evidence_status": "demonstrated",
+      "confidence": 0.98,
+      "context": "backend",
+      "source_text": "Built a FastAPI service in Python"
+    },
+    {
+      "name": "Terraform",
+      "category": "devops",
+      "semantic_category": "tool_technology",
+      "evidence_basis": "explicit_mention",
+      "evidence_status": "demonstrated",
+      "confidence": 0.9,
+      "context": "cloud",
+      "source_text": "Terraform"
+    }
+  ],
+  "job_requirements": [
+    {
+      "skill": "Python",
+      "category": "programming_language",
+      "semantic_category": "tool_technology",
+      "requirement_type": "required_qualification",
+      "confidence": 0.99,
+      "context": "backend",
+      "source_text": "Python is required"
+    },
+    {
+      "skill": "Kubernetes",
+      "category": "devops",
+      "semantic_category": "tool_technology",
+      "requirement_type": "preferred_qualification",
+      "confidence": 0.92,
+      "context": "cloud",
+      "source_text": "Kubernetes is preferred"
+    },
+    {
+      "skill": "Data Pipelines",
+      "category": "data",
+      "semantic_category": "responsibility",
+      "requirement_type": "core_responsibility",
+      "confidence": 0.94,
+      "context": "data engineering",
+      "source_text": "Build reliable data pipelines"
+    }
+  ],
+  "hard_constraints": [
+    {
+      "category": "degree",
+      "semantic_category": "hard_constraint",
+      "requirement": "Bachelor's degree in computer science",
+      "source_text": "Bachelor's degree in computer science",
+      "confidence": 0.98
+    }
+  ],
+  "unknown_resume_skills": [],
+  "unknown_job_skills": [],
+  "uncertainty_notes": []
+}

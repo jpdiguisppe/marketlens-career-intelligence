@@ -6,6 +6,7 @@ This module is deliberately safe-by-default:
 - does not write resume/job text to the database
 - redacts obvious contact details before provider transmission
 - sends requests with store=false
+- validates a versioned strict schema and quoted source grounding
 - raises typed errors so the service can fall back to deterministic analysis
 """
 
@@ -13,13 +14,23 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any, Literal
+from typing import Any
 
 import httpx
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import ValidationError
 
 from app.analysis.redaction import redact_sensitive_text
-from app.analysis.schemas import EvidenceStatus, RequirementType
+from app.analysis.semantic_contract import (
+    MODEL_ASSISTED_SCHEMA_VERSION,
+    STRICT_PROVIDER_CONTEXT,
+    ModelAssistedExtraction,
+    ModelHardConstraintSignal,
+    ModelJobRequirementSignal,
+    ModelSkillSignal,
+    ResumeEvidenceBasis,
+    SemanticRequirementCategory,
+    validate_extraction_grounding,
+)
 
 AI_ANALYSIS_ENABLED_ENV = "AI_ANALYSIS_ENABLED"
 OPENAI_API_KEY_ENV = "OPENAI_API_KEY"
@@ -29,6 +40,7 @@ OPENAI_TIMEOUT_SECONDS_ENV = "OPENAI_TIMEOUT_SECONDS"
 
 DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1"
 DEFAULT_TIMEOUT_SECONDS = 12.0
+MODEL_ASSISTED_PROMPT_VERSION = "8b.1"
 
 
 class ModelAssistedUnavailable(RuntimeError):
@@ -37,57 +49,6 @@ class ModelAssistedUnavailable(RuntimeError):
 
 class ModelAssistedExtractionError(RuntimeError):
     """Raised when a configured provider fails or returns invalid extraction output."""
-
-
-class ModelSkillSignal(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    name: str = Field(min_length=1, max_length=100)
-    category: str | None = Field(default=None, max_length=80)
-    evidence_status: EvidenceStatus
-    confidence: float = Field(ge=0.0, le=1.0)
-    context: str | None = Field(default=None, max_length=120)
-    source_text: str = Field(min_length=1, max_length=500)
-
-
-class ModelJobRequirementSignal(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    skill: str = Field(min_length=1, max_length=100)
-    category: str | None = Field(default=None, max_length=80)
-    requirement_type: RequirementType
-    weight: float = Field(ge=0.0, le=1.0)
-    confidence: float = Field(ge=0.0, le=1.0)
-    context: str | None = Field(default=None, max_length=120)
-    source_text: str = Field(min_length=1, max_length=500)
-
-
-class ModelHardConstraintSignal(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    category: Literal[
-        "citizenship",
-        "security_clearance",
-        "degree",
-        "work_authorization",
-        "years_experience",
-        "travel",
-        "other",
-    ]
-    requirement: str = Field(min_length=1, max_length=300)
-    source_text: str = Field(min_length=1, max_length=500)
-    confidence: float = Field(ge=0.0, le=1.0)
-
-
-class ModelAssistedExtraction(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    resume_skills: list[ModelSkillSignal] = Field(default_factory=list)
-    job_requirements: list[ModelJobRequirementSignal] = Field(default_factory=list)
-    hard_constraints: list[ModelHardConstraintSignal] = Field(default_factory=list)
-    unknown_resume_skills: list[str] = Field(default_factory=list)
-    unknown_job_skills: list[str] = Field(default_factory=list)
-    uncertainty_notes: list[str] = Field(default_factory=list)
 
 
 def _env_enabled(value: str | None) -> bool:
@@ -121,6 +82,9 @@ def _require_provider_config() -> tuple[str, str, str, float]:
     except ValueError as exc:
         raise ModelAssistedUnavailable("OPENAI_TIMEOUT_SECONDS must be a number.") from exc
 
+    if timeout_seconds <= 0:
+        raise ModelAssistedUnavailable("OPENAI_TIMEOUT_SECONDS must be greater than zero.")
+
     return api_key, model, base_url, timeout_seconds
 
 
@@ -128,17 +92,24 @@ def _structured_output_schema() -> dict[str, Any]:
     return ModelAssistedExtraction.model_json_schema()
 
 
-_SYSTEM_PROMPT = """You extract structured career-fit signals from resume text and job descriptions.
+_SYSTEM_PROMPT = f"""You extract structured career-fit signals from resume text and job descriptions.
+
+Contract version: {MODEL_ASSISTED_SCHEMA_VERSION}
+Prompt version: {MODEL_ASSISTED_PROMPT_VERSION}
 
 Rules:
-- Extract skills, tools, platforms, frameworks, methodologies, and hard constraints.
-- Do not invent skills or experience that are not supported by the text.
-- Preserve unknown technologies as skill names instead of dropping them.
-- Separate direct evidence from mentioned, academic, implied, or related evidence.
-- Distinguish context: frontend, backend, database, devops, systems, cloud, data, AI/ML, productivity tools, academic, IT support, security, process.
-- Keep source_text short and quote only the smallest useful phrase.
+- Return schema_version exactly as {MODEL_ASSISTED_SCHEMA_VERSION!r}.
+- Extract the smallest useful requirement or resume signal; do not write a fit score.
+- Classify job signals as required qualification, preferred qualification, core responsibility, or supporting context.
+- Classify semantic_category as tool_technology, credential_education, years_experience, responsibility, domain_knowledge, implied_capability, methodology_process, hard_constraint, or other.
+- For resume skills, classify evidence_basis as direct_application, explicit_mention, academic_context, implied_by_tool, or related_experience.
+- Do not invent skills, credentials, years of experience, responsibilities, or evidence that are not supported by the text.
+- Preserve unknown technologies as named signals instead of dropping them.
+- Never treat a technology mention as proof of a credential, years of experience, or domain expertise.
+- Keep source_text to the smallest exact phrase copied from the corresponding document.
+- Hard constraints include citizenship, clearance, degree, work authorization, years of experience, and travel. Do not guess whether the candidate meets them.
 - Do not output names, emails, phone numbers, addresses, or other contact details.
-- Return only schema-valid JSON.
+- Return only schema-valid JSON with no extra fields.
 """
 
 
@@ -174,8 +145,41 @@ def _extract_output_text(response_json: dict[str, Any]) -> str:
     raise ModelAssistedExtractionError("Provider response did not include parseable output text.")
 
 
-def extract_model_assisted_signals(resume_text: str, job_description: str) -> ModelAssistedExtraction:
-    """Call the configured model provider and return schema-validated extraction output."""
+def _validate_provider_extraction(
+    output_text: str,
+    *,
+    resume_text: str,
+    job_description: str,
+) -> ModelAssistedExtraction:
+    try:
+        extraction = ModelAssistedExtraction.model_validate_json(
+            output_text,
+            context=STRICT_PROVIDER_CONTEXT,
+        )
+    except ValidationError as exc:
+        raise ModelAssistedExtractionError(
+            "Provider output did not match the versioned extraction schema."
+        ) from exc
+
+    grounding_errors = validate_extraction_grounding(
+        extraction,
+        resume_text=resume_text,
+        job_description=job_description,
+    )
+    if grounding_errors:
+        detail = "; ".join(grounding_errors[:3])
+        raise ModelAssistedExtractionError(
+            f"Provider output included ungrounded source evidence: {detail}."
+        )
+
+    return extraction
+
+
+def extract_model_assisted_signals(
+    resume_text: str,
+    job_description: str,
+) -> ModelAssistedExtraction:
+    """Call the configured provider and return grounded, schema-validated output."""
 
     api_key, model, base_url, timeout_seconds = _require_provider_config()
 
@@ -188,7 +192,7 @@ def extract_model_assisted_signals(resume_text: str, job_description: str) -> Mo
         "text": {
             "format": {
                 "type": "json_schema",
-                "name": "marketlens_model_assisted_extraction",
+                "name": f"marketlens_semantic_extraction_{MODEL_ASSISTED_SCHEMA_VERSION.replace('.', '_')}",
                 "schema": _structured_output_schema(),
                 "strict": True,
             }
@@ -207,6 +211,8 @@ def extract_model_assisted_signals(resume_text: str, job_description: str) -> Mo
                 json=payload,
             )
             response.raise_for_status()
+    except httpx.TimeoutException as exc:
+        raise ModelAssistedExtractionError("Provider request timed out.") from exc
     except httpx.HTTPStatusError as exc:
         raise ModelAssistedExtractionError(
             f"Provider returned HTTP {exc.response.status_code}."
@@ -220,7 +226,24 @@ def extract_model_assisted_signals(resume_text: str, job_description: str) -> Mo
         raise ModelAssistedExtractionError("Provider response was not valid JSON.") from exc
 
     output_text = _extract_output_text(response_json)
-    try:
-        return ModelAssistedExtraction.model_validate_json(output_text)
-    except ValidationError as exc:
-        raise ModelAssistedExtractionError("Provider output did not match the extraction schema.") from exc
+    return _validate_provider_extraction(
+        output_text,
+        resume_text=resume_text,
+        job_description=job_description,
+    )
+
+
+__all__ = [
+    "MODEL_ASSISTED_PROMPT_VERSION",
+    "MODEL_ASSISTED_SCHEMA_VERSION",
+    "ModelAssistedExtraction",
+    "ModelAssistedExtractionError",
+    "ModelAssistedUnavailable",
+    "ModelHardConstraintSignal",
+    "ModelJobRequirementSignal",
+    "ModelSkillSignal",
+    "ResumeEvidenceBasis",
+    "SemanticRequirementCategory",
+    "extract_model_assisted_signals",
+    "is_model_assisted_configured",
+]
