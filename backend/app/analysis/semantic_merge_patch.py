@@ -17,6 +17,7 @@ from app.analysis.model_extractor import (
 from app.analysis.schemas import (
     EvidenceStatus,
     JobRequirement,
+    ProvenanceSource,
     RequirementType,
     ResumeEvidence,
     SectionKind,
@@ -63,6 +64,18 @@ def _model_only_evidence_status(signal: ModelSkillSignal) -> EvidenceStatus:
     return EvidenceStatus.MENTIONED
 
 
+def _merge_requirement_with_provenance(
+    existing: JobRequirement | None,
+    candidate: JobRequirement,
+) -> JobRequirement:
+    selected = _service._merge_requirement(existing, candidate)
+    if existing is None:
+        return selected
+    if existing.source_origin != candidate.source_origin:
+        return selected.model_copy(update={"source_origin": ProvenanceSource.MERGED})
+    return selected
+
+
 def _merge_semantic_model_extraction(
     requirements: list[JobRequirement],
     resume_evidence: dict[str, ResumeEvidence],
@@ -83,9 +96,10 @@ def _merge_semantic_model_extraction(
             source_text=signal.source_text,
             source_section=SectionKind.OTHER,
             confidence=signal.confidence,
+            source_origin=ProvenanceSource.MODEL_ASSISTED,
         )
         key = _key(skill)
-        requirements_by_key[key] = _service._merge_requirement(
+        requirements_by_key[key] = _merge_requirement_with_provenance(
             requirements_by_key.get(key),
             candidate,
         )
@@ -102,7 +116,11 @@ def _merge_semantic_model_extraction(
         key = _key(skill)
         if key in evidence_by_key:
             # Deterministic parsing already found grounded evidence. The model may
-            # not upgrade, replace, or relabel it.
+            # not upgrade, replace, or relabel it, but the audit trail records that
+            # both extraction paths identified the same signal.
+            evidence_by_key[key] = evidence_by_key[key].model_copy(
+                update={"source_origin": ProvenanceSource.MERGED}
+            )
             continue
 
         status = _model_only_evidence_status(signal)
@@ -118,6 +136,7 @@ def _merge_semantic_model_extraction(
                 "also passed deterministic action-language verification; other "
                 "model-only signals remain conservatively capped."
             ),
+            source_origin=ProvenanceSource.MODEL_ASSISTED,
         )
         evidence_by_key[key] = candidate
 
