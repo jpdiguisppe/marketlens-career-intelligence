@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 SMART_RESUME_MAX_LENGTH = 25_000
 SMART_JOB_MAX_LENGTH = 50_000
+PROVENANCE_SCHEMA_VERSION = "8c.1"
 
 
 class DocumentKind(str, Enum):
@@ -44,6 +45,12 @@ class EvidenceStatus(str, Enum):
     MISSING = "missing"
 
 
+class ProvenanceSource(str, Enum):
+    DETERMINISTIC = "deterministic"
+    MODEL_ASSISTED = "model_assisted"
+    MERGED = "merged"
+
+
 class HardRequirementStatus(str, Enum):
     MEETS = "meets"
     DOES_NOT_MEET = "does_not_meet"
@@ -73,6 +80,14 @@ class ParsedSection(BaseModel):
     end_line: int
 
 
+class EvidenceCitation(BaseModel):
+    document_kind: DocumentKind
+    source: ProvenanceSource
+    quote: str
+    section: SectionKind
+    grounded: bool
+
+
 class JobRequirement(BaseModel):
     skill: str
     requirement_type: RequirementType
@@ -81,6 +96,7 @@ class JobRequirement(BaseModel):
     source_section: SectionKind
     mention_count: int = Field(default=1, ge=1)
     confidence: float = Field(default=0.8, ge=0.0, le=1.0)
+    source_origin: ProvenanceSource = ProvenanceSource.DETERMINISTIC
 
 
 class ResumeEvidence(BaseModel):
@@ -90,6 +106,7 @@ class ResumeEvidence(BaseModel):
     source_text: str
     source_section: SectionKind
     explanation: str
+    source_origin: ProvenanceSource = ProvenanceSource.DETERMINISTIC
 
 
 class RequirementAssessment(BaseModel):
@@ -101,6 +118,10 @@ class RequirementAssessment(BaseModel):
     resume_evidence: list[str] = Field(default_factory=list)
     job_evidence: str
     explanation: str
+    job_provenance: EvidenceCitation | None = None
+    resume_provenance: list[EvidenceCitation] = Field(default_factory=list)
+    conclusion_source: ProvenanceSource = ProvenanceSource.DETERMINISTIC
+    grounded: bool = True
 
 
 class HardRequirementAssessment(BaseModel):
@@ -110,6 +131,8 @@ class HardRequirementAssessment(BaseModel):
     source_text: str
     resume_evidence: str | None = None
     explanation: str
+    source_origin: ProvenanceSource = ProvenanceSource.DETERMINISTIC
+    grounded: bool = True
 
 
 class DocumentQuality(BaseModel):
@@ -140,6 +163,7 @@ class GapGroup(BaseModel):
     priority: str
     skills: list[str] = Field(default_factory=list)
     summary: str
+    job_evidence: list[str] = Field(default_factory=list)
 
 
 class CoachingAction(BaseModel):
@@ -193,3 +217,5 @@ class SmartFitAnalysisResponse(BaseModel):
     limitations: list[str]
     analysis_engine: str = "deterministic"
     model_assisted_status: str = "not_requested"
+    provenance_version: str = PROVENANCE_SCHEMA_VERSION
+    grounding_warnings: list[str] = Field(default_factory=list)
