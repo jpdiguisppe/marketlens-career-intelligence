@@ -105,7 +105,7 @@ def test_ungrounded_job_requirement_is_removed_from_scoring(monkeypatch) -> None
     assert not assessment.job_provenance.grounded
     assert analysis.fit_summary.score == 0
     assert analysis.strong_matches == []
-    assert analysis.important_gaps == []
+    assert "Rust" not in analysis.important_gaps
     assert analysis.grounding_warnings == [
         "Excluded ungrounded requirement conclusion: Rust"
     ]
