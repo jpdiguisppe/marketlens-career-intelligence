@@ -1,0 +1,200 @@
+{
+  "version": 1,
+  "contract_version": "8b.1",
+  "cases": [
+    {
+      "id": "data-known-tools-plus-semantic-context",
+      "sector": "data",
+      "critical": false,
+      "resume_text": "PROJECTS\nBuilt Python and SQL data pipelines for reporting workflows.",
+      "job_description": "Data Engineer\nREQUIRED QUALIFICATIONS\nPython and SQL are required.\nBachelor's degree in computer science is required.\nPREFERRED QUALIFICATIONS\ndbt experience is preferred.\nRESPONSIBILITIES\nMonitor data quality and pipeline reliability.",
+      "provider_output": {
+        "schema_version": "8b.1",
+        "resume_skills": [
+          {
+            "name": "Python",
+            "category": "programming_language",
+            "semantic_category": "tool_technology",
+            "evidence_basis": "direct_application",
+            "evidence_status": "demonstrated",
+            "confidence": 0.99,
+            "context": "data engineering",
+            "source_text": "Built Python and SQL data pipelines for reporting workflows"
+          },
+          {
+            "name": "SQL",
+            "category": "database",
+            "semantic_category": "tool_technology",
+            "evidence_basis": "direct_application",
+            "evidence_status": "demonstrated",
+            "confidence": 0.99,
+            "context": "data engineering",
+            "source_text": "Built Python and SQL data pipelines for reporting workflows"
+          }
+        ],
+        "job_requirements": [
+          {
+            "skill": "Python",
+            "category": "programming_language",
+            "semantic_category": "tool_technology",
+            "requirement_type": "required_qualification",
+            "confidence": 0.99,
+            "context": "data engineering",
+            "source_text": "Python and SQL are required"
+          },
+          {
+            "skill": "SQL",
+            "category": "database",
+            "semantic_category": "tool_technology",
+            "requirement_type": "required_qualification",
+            "confidence": 0.99,
+            "context": "data engineering",
+            "source_text": "Python and SQL are required"
+          },
+          {
+            "skill": "dbt",
+            "category": "data",
+            "semantic_category": "tool_technology",
+            "requirement_type": "preferred_qualification",
+            "confidence": 0.98,
+            "context": "analytics engineering",
+            "source_text": "dbt experience is preferred"
+          },
+          {
+            "skill": "Data quality monitoring",
+            "category": "data",
+            "semantic_category": "responsibility",
+            "requirement_type": "core_responsibility",
+            "confidence": 0.97,
+            "context": "pipeline operations",
+            "source_text": "Monitor data quality and pipeline reliability"
+          }
+        ],
+        "hard_constraints": [
+          {
+            "category": "degree",
+            "semantic_category": "hard_constraint",
+            "requirement": "Bachelor's degree in computer science",
+            "source_text": "Bachelor's degree in computer science is required",
+            "confidence": 0.99
+          }
+        ],
+        "unknown_resume_skills": [],
+        "unknown_job_skills": [],
+        "uncertainty_notes": []
+      },
+      "expected": {
+        "requirements": [
+          {"skill": "Python", "type": "required_qualification", "semantic_category": "tool_technology"},
+          {"skill": "SQL", "type": "required_qualification", "semantic_category": "tool_technology"},
+          {"skill": "dbt", "type": "preferred_qualification", "semantic_category": "tool_technology"},
+          {"skill": "Data quality monitoring", "type": "core_responsibility", "semantic_category": "responsibility"}
+        ],
+        "evidence": [
+          {"skill": "Python", "status": "demonstrated"},
+          {"skill": "SQL", "status": "demonstrated"}
+        ],
+        "hard_constraints": [
+          {"category": "degree"}
+        ]
+      }
+    },
+    {
+      "id": "devops-known-platform-plus-semantic-context",
+      "sector": "devops",
+      "critical": true,
+      "resume_text": "PROJECTS\nDeployed Docker services on Linux and automated builds with GitHub Actions.",
+      "job_description": "Platform Engineer\nREQUIRED QUALIFICATIONS\nDocker and Linux experience are required.\nPREFERRED QUALIFICATIONS\nTerraform experience is preferred.\nRESPONSIBILITIES\nAutomate infrastructure-as-code delivery.\nUp to 20% travel is required.",
+      "provider_output": {
+        "schema_version": "8b.1",
+        "resume_skills": [
+          {
+            "name": "Docker",
+            "category": "devops",
+            "semantic_category": "tool_technology",
+            "evidence_basis": "direct_application",
+            "evidence_status": "demonstrated",
+            "confidence": 0.99,
+            "context": "deployment",
+            "source_text": "Deployed Docker services on Linux and automated builds with GitHub Actions"
+          },
+          {
+            "name": "Linux",
+            "category": "systems",
+            "semantic_category": "tool_technology",
+            "evidence_basis": "direct_application",
+            "evidence_status": "demonstrated",
+            "confidence": 0.98,
+            "context": "deployment",
+            "source_text": "Deployed Docker services on Linux and automated builds with GitHub Actions"
+          }
+        ],
+        "job_requirements": [
+          {
+            "skill": "Docker",
+            "category": "devops",
+            "semantic_category": "tool_technology",
+            "requirement_type": "required_qualification",
+            "confidence": 0.99,
+            "context": "container deployment",
+            "source_text": "Docker and Linux experience are required"
+          },
+          {
+            "skill": "Linux",
+            "category": "systems",
+            "semantic_category": "tool_technology",
+            "requirement_type": "required_qualification",
+            "confidence": 0.99,
+            "context": "platform operations",
+            "source_text": "Docker and Linux experience are required"
+          },
+          {
+            "skill": "Terraform",
+            "category": "devops",
+            "semantic_category": "tool_technology",
+            "requirement_type": "preferred_qualification",
+            "confidence": 0.98,
+            "context": "infrastructure as code",
+            "source_text": "Terraform experience is preferred"
+          },
+          {
+            "skill": "Infrastructure-as-code delivery",
+            "category": "devops",
+            "semantic_category": "responsibility",
+            "requirement_type": "core_responsibility",
+            "confidence": 0.97,
+            "context": "platform automation",
+            "source_text": "Automate infrastructure-as-code delivery"
+          }
+        ],
+        "hard_constraints": [
+          {
+            "category": "travel",
+            "semantic_category": "hard_constraint",
+            "requirement": "Up to 20% travel",
+            "source_text": "Up to 20% travel is required",
+            "confidence": 0.99
+          }
+        ],
+        "unknown_resume_skills": [],
+        "unknown_job_skills": [],
+        "uncertainty_notes": []
+      },
+      "expected": {
+        "requirements": [
+          {"skill": "Docker", "type": "required_qualification", "semantic_category": "tool_technology"},
+          {"skill": "Linux", "type": "required_qualification", "semantic_category": "tool_technology"},
+          {"skill": "Terraform", "type": "preferred_qualification", "semantic_category": "tool_technology"},
+          {"skill": "Infrastructure-as-code delivery", "type": "core_responsibility", "semantic_category": "responsibility"}
+        ],
+        "evidence": [
+          {"skill": "Docker", "status": "demonstrated"},
+          {"skill": "Linux", "status": "demonstrated"}
+        ],
+        "hard_constraints": [
+          {"category": "travel"}
+        ]
+      }
+    }
+  ]
+}
