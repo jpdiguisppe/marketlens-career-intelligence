@@ -31,9 +31,10 @@ _MODEL_REQUIREMENT_WEIGHTS: dict[RequirementType, float] = {
 
 _WHITESPACE = re.compile(r"\s+")
 _ACTION_VERB = re.compile(
-    r"^[^A-Za-z]*(?:architected|automated|built|configured|created|deployed|"
-    r"designed|developed|implemented|improved|integrated|maintained|managed|"
-    r"migrated|optimized|programmed|refactored|tested|troubleshot)\b",
+    r"^[^A-Za-z]*(?:analyzed|architected|assessed|automated|built|configured|"
+    r"created|deployed|designed|developed|evaluated|implemented|improved|"
+    r"integrated|maintained|managed|migrated|optimized|programmed|refactored|"
+    r"tested|troubleshot)\b",
     re.IGNORECASE,
 )
 
