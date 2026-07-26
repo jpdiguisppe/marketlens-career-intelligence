@@ -10,12 +10,13 @@ import re
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, model_validator
 
 from app.analysis.redaction import redact_sensitive_text
 from app.analysis.schemas import EvidenceStatus, RequirementType
 
 MODEL_ASSISTED_SCHEMA_VERSION = "8b.1"
+STRICT_PROVIDER_CONTEXT = {"strict_provider": True}
 
 
 class SemanticRequirementCategory(str, Enum):
@@ -36,6 +37,10 @@ class ResumeEvidenceBasis(str, Enum):
     ACADEMIC_CONTEXT = "academic_context"
     IMPLIED_BY_TOOL = "implied_by_tool"
     RELATED_EXPERIENCE = "related_experience"
+
+
+def _strict_provider(info: ValidationInfo) -> bool:
+    return bool(info.context and info.context.get("strict_provider"))
 
 
 def _legacy_evidence_basis(value: Any) -> ResumeEvidenceBasis:
@@ -63,8 +68,8 @@ class ModelSkillSignal(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _migrate_legacy_fixture(cls, value: Any) -> Any:
-        if not isinstance(value, dict):
+    def _migrate_legacy_fixture(cls, value: Any, info: ValidationInfo) -> Any:
+        if _strict_provider(info) or not isinstance(value, dict):
             return value
         migrated = dict(value)
         migrated.setdefault(
@@ -91,8 +96,8 @@ class ModelJobRequirementSignal(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _migrate_legacy_fixture(cls, value: Any) -> Any:
-        if not isinstance(value, dict):
+    def _migrate_legacy_fixture(cls, value: Any, info: ValidationInfo) -> Any:
+        if _strict_provider(info) or not isinstance(value, dict):
             return value
         migrated = dict(value)
         # Pre-8B internal fixtures supplied provider-selected weights. The
@@ -125,8 +130,8 @@ class ModelHardConstraintSignal(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _migrate_legacy_fixture(cls, value: Any) -> Any:
-        if not isinstance(value, dict):
+    def _migrate_legacy_fixture(cls, value: Any, info: ValidationInfo) -> Any:
+        if _strict_provider(info) or not isinstance(value, dict):
             return value
         migrated = dict(value)
         migrated.setdefault(
@@ -149,8 +154,8 @@ class ModelAssistedExtraction(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _migrate_legacy_fixture(cls, value: Any) -> Any:
-        if not isinstance(value, dict):
+    def _migrate_legacy_fixture(cls, value: Any, info: ValidationInfo) -> Any:
+        if _strict_provider(info) or not isinstance(value, dict):
             return value
         migrated = dict(value)
         migrated.setdefault("schema_version", MODEL_ASSISTED_SCHEMA_VERSION)
