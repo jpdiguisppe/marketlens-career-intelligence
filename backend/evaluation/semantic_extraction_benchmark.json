@@ -1,0 +1,468 @@
+{
+  "version": 1,
+  "contract_version": "8b.1",
+  "minimums": {
+    "cases": 6,
+    "sectors": 6,
+    "critical_cases": 3
+  },
+  "thresholds": {
+    "model_requirement_recall": 1.0,
+    "model_requirement_precision": 1.0,
+    "merged_requirement_recall": 1.0,
+    "requirement_type_accuracy": 1.0,
+    "semantic_category_accuracy": 1.0,
+    "evidence_status_accuracy": 1.0,
+    "hard_constraint_accuracy": 1.0,
+    "grounding_pass_rate": 1.0,
+    "critical_case_pass_rate": 1.0
+  },
+  "cases": [
+    {
+      "id": "software-messaging-semantic-signals",
+      "sector": "software",
+      "critical": false,
+      "resume_text": "PROJECTS\nBuilt a RabbitMQ worker in Python for asynchronous jobs.",
+      "job_description": "Backend Messaging Engineer\nREQUIRED QUALIFICATIONS\nRabbitMQ experience is required.\nBachelor's degree in computer science is required.\nPREFERRED QUALIFICATIONS\nKafka is preferred.\nRESPONSIBILITIES\nDesign event-driven messaging workflows.",
+      "provider_output": {
+        "schema_version": "8b.1",
+        "resume_skills": [
+          {
+            "name": "RabbitMQ",
+            "category": "backend",
+            "semantic_category": "tool_technology",
+            "evidence_basis": "direct_application",
+            "evidence_status": "demonstrated",
+            "confidence": 0.97,
+            "context": "backend messaging",
+            "source_text": "Built a RabbitMQ worker in Python for asynchronous jobs"
+          }
+        ],
+        "job_requirements": [
+          {
+            "skill": "RabbitMQ",
+            "category": "backend",
+            "semantic_category": "tool_technology",
+            "requirement_type": "required_qualification",
+            "confidence": 0.99,
+            "context": "backend messaging",
+            "source_text": "RabbitMQ experience is required"
+          },
+          {
+            "skill": "Kafka",
+            "category": "backend",
+            "semantic_category": "tool_technology",
+            "requirement_type": "preferred_qualification",
+            "confidence": 0.97,
+            "context": "event streaming",
+            "source_text": "Kafka is preferred"
+          },
+          {
+            "skill": "Event-driven messaging",
+            "category": "software_architecture",
+            "semantic_category": "implied_capability",
+            "requirement_type": "core_responsibility",
+            "confidence": 0.94,
+            "context": "architecture",
+            "source_text": "Design event-driven messaging workflows"
+          }
+        ],
+        "hard_constraints": [
+          {
+            "category": "degree",
+            "semantic_category": "hard_constraint",
+            "requirement": "Bachelor's degree in computer science",
+            "source_text": "Bachelor's degree in computer science is required",
+            "confidence": 0.99
+          }
+        ],
+        "unknown_resume_skills": [],
+        "unknown_job_skills": [],
+        "uncertainty_notes": []
+      },
+      "expected": {
+        "requirements": [
+          {"skill": "RabbitMQ", "type": "required_qualification", "semantic_category": "tool_technology"},
+          {"skill": "Kafka", "type": "preferred_qualification", "semantic_category": "tool_technology"},
+          {"skill": "Event-driven messaging", "type": "core_responsibility", "semantic_category": "implied_capability"}
+        ],
+        "evidence": [
+          {"skill": "RabbitMQ", "status": "demonstrated"}
+        ],
+        "hard_constraints": [
+          {"category": "degree"}
+        ]
+      }
+    },
+    {
+      "id": "healthcare-privacy-workflow-experience",
+      "sector": "healthcare",
+      "critical": true,
+      "resume_text": "EXPERIENCE\nConfigured Epic workflows for patient access support.",
+      "job_description": "Healthcare Systems Analyst\nREQUIRED QUALIFICATIONS\nKnowledge of HIPAA and patient-data privacy is required.\n2 years of healthcare experience is required.\nPREFERRED QUALIFICATIONS\nEpic experience is preferred.\nRESPONSIBILITIES\nSupport clinical workflow analysis.",
+      "provider_output": {
+        "schema_version": "8b.1",
+        "resume_skills": [
+          {
+            "name": "Epic",
+            "category": "healthcare",
+            "semantic_category": "tool_technology",
+            "evidence_basis": "direct_application",
+            "evidence_status": "demonstrated",
+            "confidence": 0.96,
+            "context": "patient access",
+            "source_text": "Configured Epic workflows for patient access support"
+          }
+        ],
+        "job_requirements": [
+          {
+            "skill": "HIPAA privacy",
+            "category": "healthcare",
+            "semantic_category": "domain_knowledge",
+            "requirement_type": "required_qualification",
+            "confidence": 0.99,
+            "context": "patient data",
+            "source_text": "Knowledge of HIPAA and patient-data privacy is required"
+          },
+          {
+            "skill": "Epic",
+            "category": "healthcare",
+            "semantic_category": "tool_technology",
+            "requirement_type": "preferred_qualification",
+            "confidence": 0.98,
+            "context": "EHR",
+            "source_text": "Epic experience is preferred"
+          },
+          {
+            "skill": "Clinical workflow analysis",
+            "category": "healthcare",
+            "semantic_category": "responsibility",
+            "requirement_type": "core_responsibility",
+            "confidence": 0.96,
+            "context": "clinical operations",
+            "source_text": "Support clinical workflow analysis"
+          }
+        ],
+        "hard_constraints": [
+          {
+            "category": "years_experience",
+            "semantic_category": "hard_constraint",
+            "requirement": "2 years of healthcare experience",
+            "source_text": "2 years of healthcare experience is required",
+            "confidence": 0.99
+          }
+        ],
+        "unknown_resume_skills": [],
+        "unknown_job_skills": [],
+        "uncertainty_notes": []
+      },
+      "expected": {
+        "requirements": [
+          {"skill": "HIPAA privacy", "type": "required_qualification", "semantic_category": "domain_knowledge"},
+          {"skill": "Epic", "type": "preferred_qualification", "semantic_category": "tool_technology"},
+          {"skill": "Clinical workflow analysis", "type": "core_responsibility", "semantic_category": "responsibility"}
+        ],
+        "evidence": [
+          {"skill": "Epic", "status": "demonstrated"}
+        ],
+        "hard_constraints": [
+          {"category": "years_experience"}
+        ]
+      }
+    },
+    {
+      "id": "finance-modeling-credential-responsibility",
+      "sector": "finance",
+      "critical": false,
+      "resume_text": "PROJECTS\nBuilt a three-statement financial model in Excel.",
+      "job_description": "Financial Analyst\nREQUIRED QUALIFICATIONS\nFinancial modeling expertise is required.\nBachelor's degree in finance or accounting is required.\nPREFERRED QUALIFICATIONS\nCPA certification is preferred.\nRESPONSIBILITIES\nPerform variance analysis and forecasting.",
+      "provider_output": {
+        "schema_version": "8b.1",
+        "resume_skills": [
+          {
+            "name": "Financial Modeling",
+            "category": "finance",
+            "semantic_category": "domain_knowledge",
+            "evidence_basis": "direct_application",
+            "evidence_status": "demonstrated",
+            "confidence": 0.98,
+            "context": "three-statement model",
+            "source_text": "Built a three-statement financial model in Excel"
+          }
+        ],
+        "job_requirements": [
+          {
+            "skill": "Financial Modeling",
+            "category": "finance",
+            "semantic_category": "domain_knowledge",
+            "requirement_type": "required_qualification",
+            "confidence": 0.99,
+            "context": "financial analysis",
+            "source_text": "Financial modeling expertise is required"
+          },
+          {
+            "skill": "CPA",
+            "category": "finance",
+            "semantic_category": "credential_education",
+            "requirement_type": "preferred_qualification",
+            "confidence": 0.98,
+            "context": "accounting credential",
+            "source_text": "CPA certification is preferred"
+          },
+          {
+            "skill": "Variance analysis and forecasting",
+            "category": "finance",
+            "semantic_category": "responsibility",
+            "requirement_type": "core_responsibility",
+            "confidence": 0.97,
+            "context": "planning and analysis",
+            "source_text": "Perform variance analysis and forecasting"
+          }
+        ],
+        "hard_constraints": [
+          {
+            "category": "degree",
+            "semantic_category": "hard_constraint",
+            "requirement": "Bachelor's degree in finance or accounting",
+            "source_text": "Bachelor's degree in finance or accounting is required",
+            "confidence": 0.99
+          }
+        ],
+        "unknown_resume_skills": [],
+        "unknown_job_skills": [],
+        "uncertainty_notes": []
+      },
+      "expected": {
+        "requirements": [
+          {"skill": "Financial Modeling", "type": "required_qualification", "semantic_category": "domain_knowledge"},
+          {"skill": "CPA", "type": "preferred_qualification", "semantic_category": "credential_education"},
+          {"skill": "Variance analysis and forecasting", "type": "core_responsibility", "semantic_category": "responsibility"}
+        ],
+        "evidence": [
+          {"skill": "Financial Modeling", "status": "demonstrated"}
+        ],
+        "hard_constraints": [
+          {"category": "degree"}
+        ]
+      }
+    },
+    {
+      "id": "cybersecurity-tools-investigation-citizenship",
+      "sector": "cybersecurity",
+      "critical": true,
+      "resume_text": "PROJECTS\nAnalyzed SIEM alerts and documented incident response findings.",
+      "job_description": "Security Operations Analyst\nREQUIRED QUALIFICATIONS\nSIEM alert triage is required.\nU.S. citizenship is required.\nPREFERRED QUALIFICATIONS\nSplunk experience is preferred.\nRESPONSIBILITIES\nInvestigate security incidents.",
+      "provider_output": {
+        "schema_version": "8b.1",
+        "resume_skills": [
+          {
+            "name": "SIEM",
+            "category": "cybersecurity",
+            "semantic_category": "tool_technology",
+            "evidence_basis": "direct_application",
+            "evidence_status": "demonstrated",
+            "confidence": 0.97,
+            "context": "security operations",
+            "source_text": "Analyzed SIEM alerts and documented incident response findings"
+          }
+        ],
+        "job_requirements": [
+          {
+            "skill": "SIEM alert triage",
+            "category": "cybersecurity",
+            "semantic_category": "tool_technology",
+            "requirement_type": "required_qualification",
+            "confidence": 0.99,
+            "context": "security operations",
+            "source_text": "SIEM alert triage is required"
+          },
+          {
+            "skill": "Splunk",
+            "category": "cybersecurity",
+            "semantic_category": "tool_technology",
+            "requirement_type": "preferred_qualification",
+            "confidence": 0.98,
+            "context": "SIEM platform",
+            "source_text": "Splunk experience is preferred"
+          },
+          {
+            "skill": "Security incident investigation",
+            "category": "cybersecurity",
+            "semantic_category": "responsibility",
+            "requirement_type": "core_responsibility",
+            "confidence": 0.96,
+            "context": "incident response",
+            "source_text": "Investigate security incidents"
+          }
+        ],
+        "hard_constraints": [
+          {
+            "category": "citizenship",
+            "semantic_category": "hard_constraint",
+            "requirement": "U.S. citizenship",
+            "source_text": "U.S. citizenship is required",
+            "confidence": 0.99
+          }
+        ],
+        "unknown_resume_skills": [],
+        "unknown_job_skills": [],
+        "uncertainty_notes": []
+      },
+      "expected": {
+        "requirements": [
+          {"skill": "SIEM alert triage", "type": "required_qualification", "semantic_category": "tool_technology"},
+          {"skill": "Splunk", "type": "preferred_qualification", "semantic_category": "tool_technology"},
+          {"skill": "Security incident investigation", "type": "core_responsibility", "semantic_category": "responsibility"}
+        ],
+        "evidence": [
+          {"skill": "SIEM", "status": "demonstrated"}
+        ],
+        "hard_constraints": [
+          {"category": "citizenship"}
+        ]
+      }
+    },
+    {
+      "id": "marketing-campaign-channel-responsibilities",
+      "sector": "marketing",
+      "critical": false,
+      "resume_text": "EXPERIENCE\nCreated social media campaigns and measured engagement.",
+      "job_description": "Marketing Coordinator\nREQUIRED QUALIFICATIONS\nCampaign execution experience is required.\nPREFERRED QUALIFICATIONS\nSEO knowledge is preferred.\nRESPONSIBILITIES\nDevelop content calendars.",
+      "provider_output": {
+        "schema_version": "8b.1",
+        "resume_skills": [
+          {
+            "name": "Campaign Execution",
+            "category": "marketing",
+            "semantic_category": "responsibility",
+            "evidence_basis": "direct_application",
+            "evidence_status": "demonstrated",
+            "confidence": 0.96,
+            "context": "social media",
+            "source_text": "Created social media campaigns and measured engagement"
+          }
+        ],
+        "job_requirements": [
+          {
+            "skill": "Campaign Execution",
+            "category": "marketing",
+            "semantic_category": "responsibility",
+            "requirement_type": "required_qualification",
+            "confidence": 0.98,
+            "context": "campaign delivery",
+            "source_text": "Campaign execution experience is required"
+          },
+          {
+            "skill": "SEO",
+            "category": "marketing",
+            "semantic_category": "tool_technology",
+            "requirement_type": "preferred_qualification",
+            "confidence": 0.97,
+            "context": "digital marketing",
+            "source_text": "SEO knowledge is preferred"
+          },
+          {
+            "skill": "Content calendar development",
+            "category": "marketing",
+            "semantic_category": "responsibility",
+            "requirement_type": "core_responsibility",
+            "confidence": 0.95,
+            "context": "content operations",
+            "source_text": "Develop content calendars"
+          }
+        ],
+        "hard_constraints": [],
+        "unknown_resume_skills": [],
+        "unknown_job_skills": [],
+        "uncertainty_notes": []
+      },
+      "expected": {
+        "requirements": [
+          {"skill": "Campaign Execution", "type": "required_qualification", "semantic_category": "responsibility"},
+          {"skill": "SEO", "type": "preferred_qualification", "semantic_category": "tool_technology"},
+          {"skill": "Content calendar development", "type": "core_responsibility", "semantic_category": "responsibility"}
+        ],
+        "evidence": [
+          {"skill": "Campaign Execution", "status": "demonstrated"}
+        ],
+        "hard_constraints": []
+      }
+    },
+    {
+      "id": "education-capability-platform-degree",
+      "sector": "education",
+      "critical": true,
+      "resume_text": "EXPERIENCE\nDesigned lesson plans and assessed student progress.",
+      "job_description": "Elementary Teacher\nREQUIRED QUALIFICATIONS\nClassroom management is required.\nBachelor's degree in education is required.\nPREFERRED QUALIFICATIONS\nLearning management system experience is preferred.\nRESPONSIBILITIES\nDifferentiate instruction for diverse learners.",
+      "provider_output": {
+        "schema_version": "8b.1",
+        "resume_skills": [
+          {
+            "name": "Lesson Planning",
+            "category": "education",
+            "semantic_category": "responsibility",
+            "evidence_basis": "direct_application",
+            "evidence_status": "demonstrated",
+            "confidence": 0.97,
+            "context": "classroom instruction",
+            "source_text": "Designed lesson plans and assessed student progress"
+          }
+        ],
+        "job_requirements": [
+          {
+            "skill": "Classroom Management",
+            "category": "education",
+            "semantic_category": "implied_capability",
+            "requirement_type": "required_qualification",
+            "confidence": 0.99,
+            "context": "classroom environment",
+            "source_text": "Classroom management is required"
+          },
+          {
+            "skill": "Learning Management Systems",
+            "category": "education",
+            "semantic_category": "tool_technology",
+            "requirement_type": "preferred_qualification",
+            "confidence": 0.96,
+            "context": "education technology",
+            "source_text": "Learning management system experience is preferred"
+          },
+          {
+            "skill": "Differentiated Instruction",
+            "category": "education",
+            "semantic_category": "responsibility",
+            "requirement_type": "core_responsibility",
+            "confidence": 0.98,
+            "context": "instructional practice",
+            "source_text": "Differentiate instruction for diverse learners"
+          }
+        ],
+        "hard_constraints": [
+          {
+            "category": "degree",
+            "semantic_category": "hard_constraint",
+            "requirement": "Bachelor's degree in education",
+            "source_text": "Bachelor's degree in education is required",
+            "confidence": 0.99
+          }
+        ],
+        "unknown_resume_skills": [],
+        "unknown_job_skills": [],
+        "uncertainty_notes": []
+      },
+      "expected": {
+        "requirements": [
+          {"skill": "Classroom Management", "type": "required_qualification", "semantic_category": "implied_capability"},
+          {"skill": "Learning Management Systems", "type": "preferred_qualification", "semantic_category": "tool_technology"},
+          {"skill": "Differentiated Instruction", "type": "core_responsibility", "semantic_category": "responsibility"}
+        ],
+        "evidence": [
+          {"skill": "Lesson Planning", "status": "demonstrated"}
+        ],
+        "hard_constraints": [
+          {"category": "degree"}
+        ]
+      }
+    }
+  ]
+}
