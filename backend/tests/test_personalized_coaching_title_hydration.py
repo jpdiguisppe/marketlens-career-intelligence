@@ -163,15 +163,16 @@ def test_provider_action_type_mismatch_is_hydrated_from_validated_basis() -> Non
         use_model_assisted=False,
     )
     payload = _payload()
-    for action in payload["action_items"]:
-        action["action_type"] = "resume_rewrite"
+    payload["action_items"][0]["action_type"] = "learning_focus"
+    payload["action_items"][1]["action_type"] = "lower_priority"
+    payload["action_items"][2]["action_type"] = "resume_rewrite"
 
     plan = personalized_coaching.PersonalizedCoachingPlan.model_validate_json(
         json.dumps(payload)
     )
     assert [item.action_type.value for item in plan.action_items] == [
-        "resume_rewrite",
-        "resume_rewrite",
+        "learning_focus",
+        "lower_priority",
         "resume_rewrite",
     ]
 
