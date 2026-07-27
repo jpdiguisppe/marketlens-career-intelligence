@@ -6,11 +6,15 @@ on:
       - "backend/app/analysis/__init__.py"
       - "backend/app/analysis/schemas.py"
       - "backend/app/analysis/personalized_coaching.py"
+      - "backend/app/analysis/personalized_coaching_reliability_patch.py"
+      - "backend/app/analysis/personalized_coaching_title_patch.py"
       - "backend/app/analysis/coaching_evaluation.py"
       - "backend/evaluation/personalized_coaching_benchmark.json"
       - "backend/scripts/run_personalized_coaching_evaluation.py"
       - "backend/tests/test_personalized_coaching.py"
       - "backend/tests/test_personalized_coaching_evaluation.py"
+      - "backend/tests/test_personalized_coaching_live_reliability.py"
+      - "backend/tests/test_personalized_coaching_title_hydration.py"
       - ".github/workflows/personalized-coaching.yml"
   workflow_dispatch:
 
@@ -36,6 +40,8 @@ jobs:
           python -m pytest -q \
             tests/test_personalized_coaching.py \
             tests/test_personalized_coaching_evaluation.py \
+            tests/test_personalized_coaching_live_reliability.py \
+            tests/test_personalized_coaching_title_hydration.py \
             2>&1 | tee personalized-coaching-tests.txt
       - name: Run personalized coaching benchmark
         if: always()

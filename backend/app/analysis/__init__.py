@@ -20,6 +20,9 @@ from app.analysis.semantic_merge_patch import install_semantic_merge_patch  # no
 from app.analysis.personalized_coaching_reliability_patch import (  # noqa: E402
     install_personalized_coaching_reliability_patch,
 )
+from app.analysis.personalized_coaching_title_patch import (  # noqa: E402
+    install_personalized_coaching_title_patch,
+)
 
 # A specific job-function signal such as ``marketing`` must win over a generic
 # shared title token such as ``coordinator``.
@@ -33,6 +36,11 @@ install_semantic_merge_patch()
 # authoritative for canonical evidence and permits distinct coaching actions to
 # reuse the same reference without allowing true duplicate actions.
 install_personalized_coaching_reliability_patch()
+
+# Display titles are backend-owned. Short provider titles are normalized only so
+# the plan can be parsed, then replaced after the action passes strict reference,
+# status, basis, and action-type validation.
+install_personalized_coaching_title_patch()
 
 from app.analysis.personalized_coaching import apply_personalized_coaching  # noqa: E402
 
