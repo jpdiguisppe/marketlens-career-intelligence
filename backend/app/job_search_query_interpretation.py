@@ -216,7 +216,7 @@ def _wrap_query_first(function: Callable[..., Any]) -> Callable[..., Any]:
     return wrapped
 
 
-def apply_job_search_query_interpretation(job_search: Any, intent_patch: Any) -> None:
+def apply_job_search_query_interpretation(job_search: Any, source_expansion: Any) -> None:
     """Apply centralized interpretation without replacing existing search rules."""
 
     if getattr(job_search, "_QUERY_INTERPRETATION_APPLIED", False):
@@ -230,7 +230,9 @@ def apply_job_search_query_interpretation(job_search: Any, intent_patch: Any) ->
     original_query_industry = job_search._query_industry
     original_matches_requested_role = job_search._matches_requested_role
     original_score_job = job_search._score_job
-    original_occupation_signature = intent_patch._occupation_signature
+    original_remotive_search_terms = job_search._remotive_search_terms
+    original_source_score = source_expansion._source_score
+    original_source_search_terms = source_expansion._search_terms
 
     def matching_query(query: str) -> str:
         # Existing recognized abbreviations such as SWE and RN already have
@@ -305,8 +307,21 @@ def apply_job_search_query_interpretation(job_search: Any, intent_patch: Any) ->
             company=company,
         )
 
-    def occupation_signature(query: str) -> Any:
-        return original_occupation_signature(canonicalize_job_query(query))
+    def source_score(
+        source: Any,
+        *,
+        query: str,
+        job_function: str | None,
+        industry: str | None,
+        location: str | None,
+    ) -> int:
+        return original_source_score(
+            source,
+            query=canonicalize_job_query(query),
+            job_function=job_function,
+            industry=industry,
+            location=location,
+        )
 
     job_search.parse_job_search_intent = parse_job_search_intent
     job_search.resolve_job_level = resolve_job_level
@@ -316,5 +331,7 @@ def apply_job_search_query_interpretation(job_search: Any, intent_patch: Any) ->
     job_search._query_industry = _wrap_query_first(original_query_industry)
     job_search._matches_requested_role = matches_requested_role
     job_search._score_job = score_job
-    intent_patch._occupation_signature = occupation_signature
+    job_search._remotive_search_terms = _wrap_query_first(original_remotive_search_terms)
+    source_expansion._source_score = source_score
+    source_expansion._search_terms = _wrap_query_first(original_source_search_terms)
     job_search._QUERY_INTERPRETATION_APPLIED = True
