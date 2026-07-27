@@ -6,7 +6,6 @@ behavior from provider-fetching code.
 """
 
 from . import job_search as _job_search
-from . import job_search_intent_patch as _intent_patch
 from . import job_search_source_expansion as _source_expansion
 from . import smartrecruiters_sources as _smartrecruiters_sources
 from .job_search_correctness_patch import apply_job_search_correctness_patch
@@ -27,7 +26,7 @@ apply_job_search_correctness_patch(_job_search)
 apply_job_search_specific_occupation_patch(_job_search)
 apply_job_search_level_patch(_job_search)
 apply_job_search_location_patch(_job_search)
-apply_job_search_query_interpretation(_job_search, _intent_patch)
+apply_job_search_query_interpretation(_job_search, _source_expansion)
 apply_smartrecruiters_live_shape_patch(_source_expansion)
 apply_smartrecruiters_source_extensions(
     _smartrecruiters_sources,
