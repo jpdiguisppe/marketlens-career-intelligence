@@ -16,6 +16,9 @@ from app.analysis.role_aware_stable import (  # noqa: E402
 from app.analysis.role_domain_priority_patch import (  # noqa: E402
     install_role_domain_priority_patch,
 )
+from app.analysis.responsibility_label_normalization import (  # noqa: E402
+    install_responsibility_label_normalization,
+)
 from app.analysis.semantic_merge_patch import install_semantic_merge_patch  # noqa: E402
 from app.analysis.personalized_coaching_reliability_patch import (  # noqa: E402
     install_personalized_coaching_reliability_patch,
@@ -27,6 +30,10 @@ from app.analysis.personalized_coaching_title_patch import (  # noqa: E402
 # A specific job-function signal such as ``marketing`` must win over a generic
 # shared title token such as ``coordinator``.
 install_role_domain_priority_patch()
+
+# Exact grounded responsibility phrases may use concise canonical capability
+# labels while retaining their original source quotes and provenance.
+install_responsibility_label_normalization()
 
 # Model assistance may add grounded semantic recall, but deterministic parsing
 # remains authoritative for resume-proof strength and scoring boundaries.

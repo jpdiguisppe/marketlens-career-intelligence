@@ -199,7 +199,18 @@ def test_provider_context_exposes_only_valid_reference_sources() -> None:
     context = personalized_coaching._analysis_context(_analysis())
 
     assert "deterministic_actions" not in context
-    assert set(context["allowed_references"]) == {"Python", "SQL", "Docker"}
+    assert set(context["allowed_references"]) == {
+        "Python",
+        "SQL",
+        "Docker",
+        "Backend API Reliability",
+    }
+    backend_reliability = next(
+        item
+        for item in context["requirements"]
+        if item["reference"] == "Backend API Reliability"
+    )
+    assert backend_reliability["job_evidence"] == "Build reliable backend APIs."
     assert "Turn background into resume proof" not in json.dumps(context)
 
 

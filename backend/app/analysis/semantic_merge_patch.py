@@ -14,6 +14,9 @@ from app.analysis.model_extractor import (
     ModelSkillSignal,
     ResumeEvidenceBasis,
 )
+from app.analysis.responsibility_label_normalization import (
+    canonicalize_model_skill_label,
+)
 from app.analysis.schemas import (
     EvidenceStatus,
     JobRequirement,
@@ -85,7 +88,7 @@ def _merge_semantic_model_extraction(
     evidence_by_key = {_key(skill): item for skill, item in resume_evidence.items()}
 
     for signal in extraction.job_requirements:
-        skill = signal.skill.strip()
+        skill = canonicalize_model_skill_label(signal.skill)
         if not skill:
             continue
 
@@ -109,7 +112,7 @@ def _merge_semantic_model_extraction(
     # Unknown technologies should be emitted as normal signals with source_text.
 
     for signal in extraction.resume_skills:
-        skill = signal.name.strip()
+        skill = canonicalize_model_skill_label(signal.name)
         if not skill:
             continue
 
