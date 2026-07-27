@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 import pytest
+from pydantic import ValidationError
 
 from app.analysis import analyze_smart_fit
 from app.analysis import personalized_coaching
