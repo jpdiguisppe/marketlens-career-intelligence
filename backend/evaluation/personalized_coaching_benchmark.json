@@ -1,0 +1,50 @@
+{
+  "version": "8d.1",
+  "resume_text": "PROJECTS\nBuilt a Python FastAPI service backed by PostgreSQL.\nSKILLS\nPython, SQL, FastAPI, PostgreSQL",
+  "job_description": "Backend Engineer\nREQUIRED QUALIFICATIONS\nPython and SQL are required.\nPREFERRED QUALIFICATIONS\nDocker is preferred.\nRESPONSIBILITIES\nBuild reliable backend APIs.",
+  "valid_plan": {
+    "schema_version": "8d.1",
+    "strategy_summary": "Lead with the demonstrated Python backend project, strengthen the existing SQL proof, and treat Docker as a lower-priority learning target rather than overstating experience.",
+    "action_items": [
+      {
+        "action_type": "interview_prep",
+        "priority": "high",
+        "basis": "strength_positioning",
+        "title": "Prepare the Python backend project story",
+        "reference": "Python",
+        "category": "programming_language",
+        "resume_evidence": [
+          "Built a Python FastAPI service backed by PostgreSQL."
+        ],
+        "job_evidence": "Python and SQL are required.",
+        "advice": "Prepare a concise explanation of the backend problem, why FastAPI was selected, and how the service used PostgreSQL, while staying within the documented project evidence."
+      },
+      {
+        "action_type": "resume_rewrite",
+        "priority": "high",
+        "basis": "wording_proof_gap",
+        "title": "Turn the SQL mention into applied proof",
+        "reference": "SQL",
+        "category": "database",
+        "resume_evidence": [
+          "Python, SQL, FastAPI, PostgreSQL"
+        ],
+        "job_evidence": "Python and SQL are required.",
+        "advice": "Rewrite an existing truthful project bullet to describe what SQL was used to query, store, or change; do not add an outcome or responsibility that is not already accurate."
+      },
+      {
+        "action_type": "lower_priority",
+        "priority": "low",
+        "basis": "lower_priority_preference",
+        "title": "Keep Docker behind required proof",
+        "reference": "Docker",
+        "category": "devops",
+        "resume_evidence": [],
+        "job_evidence": "Docker is preferred.",
+        "advice": "Treat Docker as an optional next project enhancement after the required Python and SQL evidence is clear; do not imply current Docker experience."
+      }
+    ],
+    "application_guidance": "The role is reasonable to pursue if the candidate can clarify the existing SQL work, while keeping Docker framed as a preference and not a demonstrated strength.",
+    "uncertainty_note": null
+  }
+}
