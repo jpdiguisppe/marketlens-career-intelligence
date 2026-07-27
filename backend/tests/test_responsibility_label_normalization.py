@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from app.analysis import analyze_smart_fit
+from app.analysis import personalized_coaching
 from app.analysis.model_extractor import (
     ModelAssistedExtraction,
     ModelJobRequirementSignal,
 )
 from app.analysis.responsibility_label_normalization import (
+    canonicalize_grounded_model_skill_label,
     canonicalize_model_skill_label,
 )
 from app.analysis.schemas import EvidenceStatus, RequirementType
@@ -44,13 +46,23 @@ def test_exact_responsibility_aliases_use_canonical_capability_label() -> None:
     assert canonicalize_model_skill_label("  reliable backend APIs. ") == (
         "Backend API Reliability"
     )
+    assert canonicalize_grounded_model_skill_label(
+        "backend APIs",
+        "Build reliable backend APIs",
+    ) == "Backend API Reliability"
+    assert canonicalize_grounded_model_skill_label(
+        "RabbitMQ",
+        "Build RabbitMQ messaging workers",
+    ) == "RabbitMQ"
     assert canonicalize_model_skill_label("RabbitMQ") == "RabbitMQ"
     assert extract_skills("Build reliable backend APIs.") == [
         "Backend API Reliability"
     ]
 
 
-def test_live_shaped_model_requirement_keeps_quote_and_score(monkeypatch) -> None:
+def test_live_shaped_model_requirement_keeps_quote_score_and_single_reference(
+    monkeypatch,
+) -> None:
     deterministic = analyze_smart_fit(
         resume_text=RESUME_TEXT,
         job_description=JOB_TEXT,
@@ -65,7 +77,7 @@ def test_live_shaped_model_requirement_keeps_quote_and_score(monkeypatch) -> Non
             resume_skills=[],
             job_requirements=[
                 ModelJobRequirementSignal(
-                    skill="Build reliable backend APIs",
+                    skill="backend APIs",
                     category="backend reliability",
                     semantic_category=SemanticRequirementCategory.RESPONSIBILITY,
                     requirement_type=RequirementType.CORE_RESPONSIBILITY,
@@ -103,15 +115,23 @@ def test_live_shaped_model_requirement_keeps_quote_and_score(monkeypatch) -> Non
     assert assessment.job_provenance.grounded is True
     assert assessment.grounded is True
 
-    labels = {item.skill for item in analysis.requirement_assessments}
-    assert "Backend API Reliability" in labels
+    labels = [item.skill for item in analysis.requirement_assessments]
+    assert labels.count("Backend API Reliability") == 1
+    assert "backend APIs" not in labels
     assert "Build reliable backend APIs" not in labels
 
     backend_coverage = next(
         item for item in analysis.category_coverage if item.category == "backend"
     )
-    assert "Backend API Reliability" in backend_coverage.weak_or_missing_skills
-    assert "Backend API Reliability" in analysis.important_gaps
+    assert backend_coverage.weak_or_missing_skills.count("Backend API Reliability") == 1
+    assert analysis.important_gaps.count("Backend API Reliability") == 1
+    assert "backend APIs" not in analysis.important_gaps
+
+    coaching_context = personalized_coaching._analysis_context(analysis)
+    allowed_references = coaching_context["allowed_references"]
+    assert allowed_references.count("Backend API Reliability") == 1
+    assert "backend APIs" not in allowed_references
+
     assert any(
         "Backend API Reliability" in action.title
         or "Backend API Reliability" in action.advice
