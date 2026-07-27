@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 SMART_RESUME_MAX_LENGTH = 25_000
 SMART_JOB_MAX_LENGTH = 50_000
 PROVENANCE_SCHEMA_VERSION = "8c.1"
+COACHING_SCHEMA_VERSION = "8d.1"
 
 
 class DocumentKind(str, Enum):
@@ -192,7 +193,7 @@ class SmartFitAnalysisRequest(BaseModel):
     )
     use_model_assisted: bool = Field(
         default=False,
-        description="When true, the backend may use the configured model-assisted extractor. If disabled or unavailable, the deterministic engine is used instead.",
+        description="When true, the backend may use the configured model-assisted extractor and personalized coach. If disabled or unavailable, deterministic analysis and coaching are used instead.",
     )
 
 
@@ -219,3 +220,6 @@ class SmartFitAnalysisResponse(BaseModel):
     model_assisted_status: str = "not_requested"
     provenance_version: str = PROVENANCE_SCHEMA_VERSION
     grounding_warnings: list[str] = Field(default_factory=list)
+    coaching_engine: str = "deterministic"
+    coaching_status: str = "not_requested"
+    coaching_version: str = COACHING_SCHEMA_VERSION
