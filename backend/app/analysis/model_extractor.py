@@ -13,6 +13,7 @@ This module is deliberately safe-by-default:
 from __future__ import annotations
 
 import json
+import logging
 import os
 from typing import Any
 
@@ -42,6 +43,29 @@ DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1"
 DEFAULT_TIMEOUT_SECONDS = 12.0
 MODEL_ASSISTED_PROMPT_VERSION = "8b.1"
 
+_logger = logging.getLogger(__name__)
+
+# Pydantic emits validation metadata that is useful locally but not part of the
+# strict JSON Schema subset accepted by the Responses API. MarketLens enforces
+# these constraints again with Pydantic after the provider responds.
+_PROVIDER_SCHEMA_METADATA_KEYS = {
+    "default",
+    "title",
+    "examples",
+    "minLength",
+    "maxLength",
+    "minimum",
+    "maximum",
+    "exclusiveMinimum",
+    "exclusiveMaximum",
+    "multipleOf",
+    "minItems",
+    "maxItems",
+    "uniqueItems",
+    "pattern",
+    "format",
+}
+
 
 class ModelAssistedUnavailable(RuntimeError):
     """Raised when model-assisted extraction is requested but not configured."""
@@ -49,6 +73,10 @@ class ModelAssistedUnavailable(RuntimeError):
 
 class ModelAssistedExtractionError(RuntimeError):
     """Raised when a configured provider fails or returns invalid extraction output."""
+
+    def __init__(self, message: str, *, code: str = "provider_error"):
+        super().__init__(message)
+        self.code = code
 
 
 def _env_enabled(value: str | None) -> bool:
@@ -88,8 +116,38 @@ def _require_provider_config() -> tuple[str, str, str, float]:
     return api_key, model, base_url, timeout_seconds
 
 
+def _provider_compatible_schema(value: Any) -> Any:
+    """Convert Pydantic JSON Schema to the Responses strict-schema subset.
+
+    Strict Structured Outputs requires every object property to be listed in
+    ``required``. Nullable Pydantic fields remain optional in meaning through
+    their existing ``anyOf: [type, null]`` union, but the provider must emit the
+    key. Validation-only metadata is removed because MarketLens re-validates the
+    returned JSON with the full Pydantic model.
+    """
+
+    if isinstance(value, list):
+        return [_provider_compatible_schema(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+
+    normalized = {
+        key: _provider_compatible_schema(item)
+        for key, item in value.items()
+        if key not in _PROVIDER_SCHEMA_METADATA_KEYS
+    }
+
+    if normalized.get("type") == "object":
+        properties = normalized.get("properties")
+        if isinstance(properties, dict):
+            normalized["required"] = list(properties)
+        normalized["additionalProperties"] = False
+
+    return normalized
+
+
 def _structured_output_schema() -> dict[str, Any]:
-    return ModelAssistedExtraction.model_json_schema()
+    return _provider_compatible_schema(ModelAssistedExtraction.model_json_schema())
 
 
 _SYSTEM_PROMPT = f"""You extract structured career-fit signals from resume text and job descriptions.
@@ -109,6 +167,7 @@ Rules:
 - Keep source_text to the smallest exact phrase copied from the corresponding document.
 - Hard constraints include citizenship, clearance, degree, work authorization, years of experience, and travel. Do not guess whether the candidate meets them.
 - Do not output names, emails, phone numbers, addresses, or other contact details.
+- Return every schema field. Use null for nullable category/context fields and [] for empty lists.
 - Return only schema-valid JSON with no extra fields.
 """
 
@@ -142,7 +201,11 @@ def _extract_output_text(response_json: dict[str, Any]) -> str:
             if isinstance(text, str) and text.strip():
                 return text
 
-    raise ModelAssistedExtractionError("Provider response did not include parseable output text.")
+    _logger.warning("model_assisted_provider_failure code=provider_missing_output")
+    raise ModelAssistedExtractionError(
+        "Provider response did not include parseable output text.",
+        code="provider_missing_output",
+    )
 
 
 def _validate_provider_extraction(
@@ -157,8 +220,17 @@ def _validate_provider_extraction(
             context=STRICT_PROVIDER_CONTEXT,
         )
     except ValidationError as exc:
+        locations = [
+            ".".join(str(part) for part in error.get("loc", ()))
+            for error in exc.errors(include_url=False)[:3]
+        ]
+        _logger.warning(
+            "model_assisted_provider_failure code=provider_schema_mismatch fields=%s",
+            ",".join(location for location in locations if location) or "unknown",
+        )
         raise ModelAssistedExtractionError(
-            "Provider output did not match the versioned extraction schema."
+            "Provider output did not match the versioned extraction schema.",
+            code="provider_schema_mismatch",
         ) from exc
 
     grounding_errors = validate_extraction_grounding(
@@ -167,9 +239,14 @@ def _validate_provider_extraction(
         job_description=job_description,
     )
     if grounding_errors:
+        _logger.warning(
+            "model_assisted_provider_failure code=provider_ungrounded_evidence count=%s",
+            len(grounding_errors),
+        )
         detail = "; ".join(grounding_errors[:3])
         raise ModelAssistedExtractionError(
-            f"Provider output included ungrounded source evidence: {detail}."
+            f"Provider output included ungrounded source evidence: {detail}.",
+            code="provider_ungrounded_evidence",
         )
 
     return extraction
@@ -212,18 +289,38 @@ def extract_model_assisted_signals(
             )
             response.raise_for_status()
     except httpx.TimeoutException as exc:
-        raise ModelAssistedExtractionError("Provider request timed out.") from exc
-    except httpx.HTTPStatusError as exc:
+        _logger.warning("model_assisted_provider_failure code=provider_timeout")
         raise ModelAssistedExtractionError(
-            f"Provider returned HTTP {exc.response.status_code}."
+            "Provider request timed out.",
+            code="provider_timeout",
+        ) from exc
+    except httpx.HTTPStatusError as exc:
+        status_code = exc.response.status_code
+        request_id = exc.response.headers.get("x-request-id", "unavailable")
+        _logger.warning(
+            "model_assisted_provider_failure code=provider_http_%s request_id=%s",
+            status_code,
+            request_id,
+        )
+        raise ModelAssistedExtractionError(
+            f"Provider returned HTTP {status_code}.",
+            code=f"provider_http_{status_code}",
         ) from exc
     except httpx.HTTPError as exc:
-        raise ModelAssistedExtractionError("Provider request failed.") from exc
+        _logger.warning("model_assisted_provider_failure code=provider_transport_error")
+        raise ModelAssistedExtractionError(
+            "Provider request failed.",
+            code="provider_transport_error",
+        ) from exc
 
     try:
         response_json = response.json()
     except json.JSONDecodeError as exc:
-        raise ModelAssistedExtractionError("Provider response was not valid JSON.") from exc
+        _logger.warning("model_assisted_provider_failure code=provider_invalid_json")
+        raise ModelAssistedExtractionError(
+            "Provider response was not valid JSON.",
+            code="provider_invalid_json",
+        ) from exc
 
     output_text = _extract_output_text(response_json)
     return _validate_provider_extraction(

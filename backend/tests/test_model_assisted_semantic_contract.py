@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any, Iterator
 
 import httpx
 import pytest
@@ -40,8 +41,20 @@ def _fixture() -> dict:
     return json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
 
 
+def _object_schemas(value: Any) -> Iterator[dict[str, Any]]:
+    if isinstance(value, dict):
+        if value.get("type") == "object":
+            yield value
+        for item in value.values():
+            yield from _object_schemas(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from _object_schemas(item)
+
+
 class _FakeResponse:
     status_code = 200
+    headers: dict[str, str] = {}
 
     def __init__(self, output_text: str):
         self._output_text = output_text
@@ -98,6 +111,24 @@ def test_semantic_contract_is_versioned_and_forbids_extra_fields() -> None:
         ModelAssistedExtraction.model_validate(fixture)
 
 
+def test_provider_schema_matches_strict_structured_output_subset() -> None:
+    schema = model_extractor._structured_output_schema()
+    encoded_schema = json.dumps(schema)
+
+    assert '"default"' not in encoded_schema
+    assert '"title"' not in encoded_schema
+
+    for object_schema in _object_schemas(schema):
+        properties = object_schema.get("properties", {})
+        assert object_schema["additionalProperties"] is False
+        assert set(object_schema["required"]) == set(properties)
+
+    skill_schema = schema["$defs"]["ModelSkillSignal"]
+    assert {"category", "context"} <= set(skill_schema["required"])
+    assert {"type": "null"} in skill_schema["properties"]["category"]["anyOf"]
+    assert {"type": "null"} in skill_schema["properties"]["context"]["anyOf"]
+
+
 def test_provider_fixture_uses_strict_schema_redaction_and_no_storage(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -131,36 +162,51 @@ def test_legacy_internal_payload_is_not_accepted_as_provider_output() -> None:
     legacy["job_requirements"][0].pop("semantic_category")
     legacy["job_requirements"][0]["weight"] = 1.0
 
-    with pytest.raises(ModelAssistedExtractionError, match="versioned extraction schema"):
+    with pytest.raises(
+        ModelAssistedExtractionError,
+        match="versioned extraction schema",
+    ) as error:
         model_extractor._validate_provider_extraction(
             json.dumps(legacy),
             resume_text=RESUME_TEXT,
             job_description=JOB_TEXT,
         )
 
+    assert error.value.code == "provider_schema_mismatch"
+
 
 def test_ungrounded_source_text_is_rejected() -> None:
     fixture = _fixture()
     fixture["job_requirements"][0]["source_text"] = "Ten years of Rust leadership"
 
-    with pytest.raises(ModelAssistedExtractionError, match="ungrounded source evidence"):
+    with pytest.raises(
+        ModelAssistedExtractionError,
+        match="ungrounded source evidence",
+    ) as error:
         model_extractor._validate_provider_extraction(
             json.dumps(fixture),
             resume_text=RESUME_TEXT,
             job_description=JOB_TEXT,
         )
+
+    assert error.value.code == "provider_ungrounded_evidence"
 
 
 def test_wrong_schema_version_is_rejected() -> None:
     fixture = _fixture()
     fixture["schema_version"] = "8b.0"
 
-    with pytest.raises(ModelAssistedExtractionError, match="versioned extraction schema"):
+    with pytest.raises(
+        ModelAssistedExtractionError,
+        match="versioned extraction schema",
+    ) as error:
         model_extractor._validate_provider_extraction(
             json.dumps(fixture),
             resume_text=RESUME_TEXT,
             job_description=JOB_TEXT,
         )
+
+    assert error.value.code == "provider_schema_mismatch"
 
 
 def test_timeout_becomes_typed_fallback_error(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -173,5 +219,7 @@ def test_timeout_becomes_typed_fallback_error(monkeypatch: pytest.MonkeyPatch) -
 
     monkeypatch.setattr(model_extractor.httpx, "Client", TimeoutClient)
 
-    with pytest.raises(ModelAssistedExtractionError, match="timed out"):
+    with pytest.raises(ModelAssistedExtractionError, match="timed out") as error:
         extract_model_assisted_signals(RESUME_TEXT, JOB_TEXT)
+
+    assert error.value.code == "provider_timeout"
