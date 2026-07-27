@@ -232,10 +232,29 @@ def apply_job_search_query_interpretation(job_search: Any, intent_patch: Any) ->
     original_score_job = job_search._score_job
     original_occupation_signature = intent_patch._occupation_signature
 
+    def matching_query(query: str) -> str:
+        # Existing recognized abbreviations such as SWE and RN already have
+        # carefully tested title aliases. Keep those rules for matching, while
+        # still using the canonical phrase for provider routing. Typos and new
+        # abbreviations that have no existing interpretation use the canonical
+        # query end to end.
+        if (
+            original_query_job_function(query) is not None
+            or original_query_role_family(query) is not None
+        ):
+            return query
+        return canonicalize_job_query(query)
+
     def query_role_family(query: str) -> Any:
+        existing = original_query_role_family(query)
+        if existing is not None:
+            return existing
         return _family_hint(query) or original_query_role_family(canonicalize_job_query(query))
 
     def query_job_function(query: str) -> Any:
+        existing = original_query_job_function(query)
+        if existing is not None:
+            return existing
         return _family_hint(query) or original_query_job_function(canonicalize_job_query(query))
 
     def parse_job_search_intent(
@@ -245,7 +264,8 @@ def apply_job_search_query_interpretation(job_search: Any, intent_patch: Any) ->
     ) -> Any:
         canonical = canonicalize_job_query(query)
         parsed = original_parse_intent(canonical, location, level)
-        family = _family_hint(query)
+        existing_family = original_query_job_function(query)
+        family = existing_family or _family_hint(query)
         return job_search.JobSearchIntent(
             query=query.strip(),
             job_function=family or parsed.job_function,
@@ -266,7 +286,7 @@ def apply_job_search_query_interpretation(job_search: Any, intent_patch: Any) ->
         return original_matches_requested_role(
             title,
             description,
-            canonicalize_job_query(query),
+            matching_query(query),
             level,
         )
 
@@ -280,7 +300,7 @@ def apply_job_search_query_interpretation(job_search: Any, intent_patch: Any) ->
         return original_score_job(
             title=title,
             description=description,
-            query=canonicalize_job_query(query),
+            query=matching_query(query),
             level=level,
             company=company,
         )
