@@ -37,6 +37,10 @@ _ALIAS_TO_CANONICAL = {
 }
 
 
+def _canonical_for_exact_alias(value: str) -> str | None:
+    return _ALIAS_TO_CANONICAL.get(_normalized_alias(value))
+
+
 def canonicalize_model_skill_label(value: str) -> str:
     """Return a canonical capability label for an exact known alias.
 
@@ -47,7 +51,23 @@ def canonicalize_model_skill_label(value: str) -> str:
     cleaned = _WHITESPACE.sub(" ", value.strip())
     if not cleaned:
         return ""
-    return _ALIAS_TO_CANONICAL.get(_normalized_alias(cleaned), cleaned)
+    return _canonical_for_exact_alias(cleaned) or cleaned
+
+
+def canonicalize_grounded_model_skill_label(label: str, source_text: str) -> str:
+    """Canonicalize from the grounded quote before trusting the model label.
+
+    The provider may summarize the same responsibility with a shorter label such
+    as ``backend APIs``. When its exact grounded quote is a known alias, the quote
+    determines the canonical capability so deterministic and model extraction
+    merge into one requirement. Unknown quotes still fall back to conservative
+    exact-label normalization.
+    """
+
+    source_canonical = _canonical_for_exact_alias(source_text)
+    if source_canonical is not None:
+        return source_canonical
+    return canonicalize_model_skill_label(label)
 
 
 def install_responsibility_label_normalization() -> None:
@@ -63,6 +83,7 @@ def install_responsibility_label_normalization() -> None:
 
 
 __all__ = [
+    "canonicalize_grounded_model_skill_label",
     "canonicalize_model_skill_label",
     "install_responsibility_label_normalization",
 ]
