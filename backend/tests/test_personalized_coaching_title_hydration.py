@@ -154,3 +154,37 @@ def test_valid_provider_title_is_still_replaced_with_backend_title() -> None:
     personalized_coaching.validate_personalized_coaching(plan, analysis)
 
     assert plan.action_items[0].title == "Prepare the Python interview story"
+
+
+def test_provider_action_type_mismatch_is_hydrated_from_validated_basis() -> None:
+    analysis = analyze_smart_fit(
+        resume_text=RESUME_TEXT,
+        job_description=JOB_TEXT,
+        use_model_assisted=False,
+    )
+    payload = _payload()
+    payload["action_items"][0]["action_type"] = "learning_focus"
+    payload["action_items"][1]["action_type"] = "lower_priority"
+    payload["action_items"][2]["action_type"] = "resume_rewrite"
+
+    plan = personalized_coaching.PersonalizedCoachingPlan.model_validate_json(
+        json.dumps(payload)
+    )
+    assert [item.action_type.value for item in plan.action_items] == [
+        "learning_focus",
+        "lower_priority",
+        "resume_rewrite",
+    ]
+
+    personalized_coaching.validate_personalized_coaching(plan, analysis)
+
+    assert [item.action_type.value for item in plan.action_items] == [
+        "interview_prep",
+        "resume_rewrite",
+        "lower_priority",
+    ]
+    assert [item.title for item in plan.action_items] == [
+        "Prepare the Python interview story",
+        "Strengthen SQL resume proof",
+        "Keep Docker as a lower priority",
+    ]

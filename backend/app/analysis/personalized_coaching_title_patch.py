@@ -1,11 +1,10 @@
-"""Backend-owned display titles for live Milestone 8D coaching.
+"""Backend-owned display fields for live Milestone 8D coaching.
 
-Structured Outputs intentionally omits local string-length metadata because the
-provider supports only a JSON Schema subset. A provider may therefore return an
-empty or very short display title even when the reference, basis, action type,
-and advice are valid. MarketLens treats titles as presentation text: it accepts a
-short placeholder for parsing, validates the consequential coaching fields, and
-then generates a deterministic title from the validated action.
+Structured Outputs intentionally omits some local validation metadata because the
+provider supports only a JSON Schema subset. Provider-selected display titles and
+action types are not evidence-bearing facts, so MarketLens normalizes incompatible
+values before consequential validation and derives final display text from the
+validated coaching basis and grounded reference.
 """
 
 from __future__ import annotations
@@ -17,6 +16,44 @@ from app.analysis.schemas import CoachingActionType
 
 
 _PARSE_PLACEHOLDER_TITLE = "Pending action"
+
+
+_ALLOWED_ACTION_TYPES_BY_BASIS = {
+    _coaching.CoachingBasis.STRENGTH_POSITIONING: {
+        CoachingActionType.INTERVIEW_PREP,
+        CoachingActionType.RESUME_REWRITE,
+    },
+    _coaching.CoachingBasis.WORDING_PROOF_GAP: {
+        CoachingActionType.RESUME_REWRITE,
+        CoachingActionType.INTERVIEW_PREP,
+    },
+    _coaching.CoachingBasis.EXPERIENCE_LEARNING_GAP: {
+        CoachingActionType.LEARNING_FOCUS,
+    },
+    _coaching.CoachingBasis.HARD_CONSTRAINT_CHECK: {
+        CoachingActionType.HARD_REQUIREMENT_CHECK,
+    },
+    _coaching.CoachingBasis.LOWER_PRIORITY_PREFERENCE: {
+        CoachingActionType.LOWER_PRIORITY,
+    },
+}
+
+_DEFAULT_ACTION_TYPE_BY_BASIS = {
+    _coaching.CoachingBasis.STRENGTH_POSITIONING: CoachingActionType.INTERVIEW_PREP,
+    _coaching.CoachingBasis.WORDING_PROOF_GAP: CoachingActionType.RESUME_REWRITE,
+    _coaching.CoachingBasis.EXPERIENCE_LEARNING_GAP: CoachingActionType.LEARNING_FOCUS,
+    _coaching.CoachingBasis.HARD_CONSTRAINT_CHECK: CoachingActionType.HARD_REQUIREMENT_CHECK,
+    _coaching.CoachingBasis.LOWER_PRIORITY_PREFERENCE: CoachingActionType.LOWER_PRIORITY,
+}
+
+
+def _canonical_action_type(
+    action: _coaching.PersonalizedCoachingAction,
+) -> CoachingActionType:
+    allowed = _ALLOWED_ACTION_TYPES_BY_BASIS[action.basis]
+    if action.action_type in allowed:
+        return action.action_type
+    return _DEFAULT_ACTION_TYPE_BY_BASIS[action.basis]
 
 
 def _canonical_title(action: _coaching.PersonalizedCoachingAction) -> str:
@@ -71,18 +108,22 @@ def install_personalized_coaching_title_patch() -> None:
         normalized_json = json.dumps(payload, ensure_ascii=False)
         return original_model_validate_json(normalized_json, *args, **kwargs)
 
-    def validate_and_hydrate_title(plan, analysis) -> None:
+    def validate_and_hydrate_display_fields(plan, analysis) -> None:
+        for action in plan.action_items:
+            action.action_type = _canonical_action_type(action)
+
         original_validate(plan, analysis)
+
         for action in plan.action_items:
             action.title = _canonical_title(action)
 
     _coaching.PersonalizedCoachingPlan.model_validate_json = classmethod(
         model_validate_json_with_title_placeholder
     )
-    _coaching.validate_personalized_coaching = validate_and_hydrate_title
+    _coaching.validate_personalized_coaching = validate_and_hydrate_display_fields
     _coaching._SYSTEM_PROMPT += (
-        "\n- Set title to an empty string. MarketLens generates the final display title "
-        "after validating the reference, basis, and action type."
+        "\n- Set title to an empty string. Choose an action_type compatible with the "
+        "basis; MarketLens normalizes incompatible display types before validation."
     )
     _coaching._title_hydration_patch_installed = True
 
