@@ -2,9 +2,9 @@
 
 Structured Outputs intentionally omits some local validation metadata because the
 provider supports only a JSON Schema subset. Provider-selected display titles and
-action types are not evidence-bearing facts, so MarketLens normalizes them before
-consequential validation and derives the final values from the validated coaching
-basis and grounded reference.
+action types are not evidence-bearing facts, so MarketLens normalizes incompatible
+values before consequential validation and derives final display text from the
+validated coaching basis and grounded reference.
 """
 
 from __future__ import annotations
@@ -18,7 +18,27 @@ from app.analysis.schemas import CoachingActionType
 _PARSE_PLACEHOLDER_TITLE = "Pending action"
 
 
-_ACTION_TYPE_BY_BASIS = {
+_ALLOWED_ACTION_TYPES_BY_BASIS = {
+    _coaching.CoachingBasis.STRENGTH_POSITIONING: {
+        CoachingActionType.INTERVIEW_PREP,
+        CoachingActionType.RESUME_REWRITE,
+    },
+    _coaching.CoachingBasis.WORDING_PROOF_GAP: {
+        CoachingActionType.RESUME_REWRITE,
+        CoachingActionType.INTERVIEW_PREP,
+    },
+    _coaching.CoachingBasis.EXPERIENCE_LEARNING_GAP: {
+        CoachingActionType.LEARNING_FOCUS,
+    },
+    _coaching.CoachingBasis.HARD_CONSTRAINT_CHECK: {
+        CoachingActionType.HARD_REQUIREMENT_CHECK,
+    },
+    _coaching.CoachingBasis.LOWER_PRIORITY_PREFERENCE: {
+        CoachingActionType.LOWER_PRIORITY,
+    },
+}
+
+_DEFAULT_ACTION_TYPE_BY_BASIS = {
     _coaching.CoachingBasis.STRENGTH_POSITIONING: CoachingActionType.INTERVIEW_PREP,
     _coaching.CoachingBasis.WORDING_PROOF_GAP: CoachingActionType.RESUME_REWRITE,
     _coaching.CoachingBasis.EXPERIENCE_LEARNING_GAP: CoachingActionType.LEARNING_FOCUS,
@@ -30,7 +50,10 @@ _ACTION_TYPE_BY_BASIS = {
 def _canonical_action_type(
     action: _coaching.PersonalizedCoachingAction,
 ) -> CoachingActionType:
-    return _ACTION_TYPE_BY_BASIS[action.basis]
+    allowed = _ALLOWED_ACTION_TYPES_BY_BASIS[action.basis]
+    if action.action_type in allowed:
+        return action.action_type
+    return _DEFAULT_ACTION_TYPE_BY_BASIS[action.basis]
 
 
 def _canonical_title(action: _coaching.PersonalizedCoachingAction) -> str:
@@ -41,9 +64,13 @@ def _canonical_title(action: _coaching.PersonalizedCoachingAction) -> str:
         return f"Verify {category or 'hard'} requirement"[:120]
 
     if action.basis == _coaching.CoachingBasis.STRENGTH_POSITIONING:
-        return f"Prepare the {reference} interview story"[:120]
+        if action.action_type == CoachingActionType.INTERVIEW_PREP:
+            return f"Prepare the {reference} interview story"[:120]
+        return f"Highlight existing {reference} proof"[:120]
 
     if action.basis == _coaching.CoachingBasis.WORDING_PROOF_GAP:
+        if action.action_type == CoachingActionType.INTERVIEW_PREP:
+            return f"Clarify the {reference} experience"[:120]
         return f"Strengthen {reference} resume proof"[:120]
 
     if action.basis == _coaching.CoachingBasis.EXPERIENCE_LEARNING_GAP:
@@ -95,9 +122,8 @@ def install_personalized_coaching_title_patch() -> None:
     )
     _coaching.validate_personalized_coaching = validate_and_hydrate_display_fields
     _coaching._SYSTEM_PROMPT += (
-        "\n- Set title to an empty string and action_type to 'resume_rewrite' as "
-        "placeholders. MarketLens generates the final display title and action type "
-        "after validating the reference and basis."
+        "\n- Set title to an empty string. Choose an action_type compatible with the "
+        "basis; MarketLens normalizes incompatible display types before validation."
     )
     _coaching._title_hydration_patch_installed = True
 
