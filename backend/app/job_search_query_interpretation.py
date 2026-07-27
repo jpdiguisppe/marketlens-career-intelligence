@@ -13,8 +13,9 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 
-# Exact, bounded mappings only. Ambiguous abbreviations such as PM, SE, and BA
-# deliberately remain literal unless the user supplies clarifying words.
+# Exact, bounded mappings only. Ambiguous abbreviations such as PM, SE, BA,
+# CS, DS, PT, and OT deliberately remain literal unless the user supplies
+# clarifying words.
 EXACT_OCCUPATION_ABBREVIATIONS: dict[str, str] = {
     "soc analyst": "security operations center analyst",
     "fp&a": "financial planning and analysis",
@@ -25,7 +26,6 @@ EXACT_OCCUPATION_ABBREVIATIONS: dict[str, str] = {
     "mle": "machine learning engineer",
     "ml": "machine learning",
     "ai": "artificial intelligence",
-    "ds": "data scientist",
     "bi": "business intelligence",
     "ux": "user experience",
     "ui": "user interface",
@@ -34,23 +34,49 @@ EXACT_OCCUPATION_ABBREVIATIONS: dict[str, str] = {
     "lvn": "licensed vocational nurse",
     "cna": "certified nursing assistant",
     "aprn": "advanced practice registered nurse",
+    "emt": "emergency medical technician",
+    "slp": "speech language pathologist",
+    "cpa": "certified public accountant",
     "qa": "quality assurance",
-    "cs": "computer science",
+    "dev": "developer",
+    "sysadmin": "systems administrator",
+    "dba": "database administrator",
+    "infosec": "information security",
+    "secops": "security operations",
+    "fullstack": "full stack",
+    "jr": "junior",
+    "sr": "senior",
+    "lvl": "level",
 }
 
-AMBIGUOUS_ABBREVIATIONS = frozenset({"ba", "pm", "se"})
+AMBIGUOUS_ABBREVIATIONS = frozenset({"ba", "cs", "ds", "ot", "pa", "pm", "pt", "se"})
+
+# Canonical phrases that need a family hint because the older role-family
+# taxonomy does not contain their expanded wording directly.
+CANONICAL_FAMILY_HINTS: tuple[tuple[str, str], ...] = (
+    ("site reliability engineer", "software"),
+    ("security operations center analyst", "cybersecurity"),
+    ("security operations", "cybersecurity"),
+    ("information security", "cybersecurity"),
+    ("user experience", "design"),
+    ("user interface", "design"),
+    ("systems administrator", "technology"),
+    ("database administrator", "data"),
+)
 
 # Curated occupation vocabulary only. This is intentionally not every English
 # word or every technology name, which keeps fuzzy correction narrow.
 TYPO_VOCABULARY = frozenset(
     {
         "accountant",
+        "administrator",
         "analyst",
         "architect",
         "backend",
         "business",
         "cybersecurity",
         "data",
+        "database",
         "developer",
         "engineer",
         "engineering",
@@ -94,6 +120,10 @@ def _phrase_pattern(phrase: str) -> re.Pattern[str]:
         r"(?<![a-z0-9])" + separator.join(parts) + r"(?![a-z0-9])",
         re.IGNORECASE,
     )
+
+
+def _contains_phrase(value: str, phrase: str) -> bool:
+    return bool(_phrase_pattern(phrase).search(value))
 
 
 def _expand_abbreviations(value: str) -> tuple[str, tuple[str, ...]]:
@@ -171,6 +201,14 @@ def canonicalize_job_query(query: str) -> str:
     return interpret_job_query(query).canonical_query
 
 
+def _family_hint(query: str) -> str | None:
+    canonical = canonicalize_job_query(query)
+    for phrase, family in CANONICAL_FAMILY_HINTS:
+        if _contains_phrase(canonical, phrase):
+            return family
+    return None
+
+
 def _wrap_query_first(function: Callable[..., Any]) -> Callable[..., Any]:
     def wrapped(query: str, *args: Any, **kwargs: Any) -> Any:
         return function(canonicalize_job_query(query), *args, **kwargs)
@@ -194,6 +232,12 @@ def apply_job_search_query_interpretation(job_search: Any, intent_patch: Any) ->
     original_score_job = job_search._score_job
     original_occupation_signature = intent_patch._occupation_signature
 
+    def query_role_family(query: str) -> Any:
+        return _family_hint(query) or original_query_role_family(canonicalize_job_query(query))
+
+    def query_job_function(query: str) -> Any:
+        return _family_hint(query) or original_query_job_function(canonicalize_job_query(query))
+
     def parse_job_search_intent(
         query: str,
         location: str | None = None,
@@ -201,9 +245,10 @@ def apply_job_search_query_interpretation(job_search: Any, intent_patch: Any) ->
     ) -> Any:
         canonical = canonicalize_job_query(query)
         parsed = original_parse_intent(canonical, location, level)
+        family = _family_hint(query)
         return job_search.JobSearchIntent(
             query=query.strip(),
-            job_function=parsed.job_function,
+            job_function=family or parsed.job_function,
             industry=parsed.industry,
             level=parsed.level,
             location=parsed.location,
@@ -246,8 +291,8 @@ def apply_job_search_query_interpretation(job_search: Any, intent_patch: Any) ->
     job_search.parse_job_search_intent = parse_job_search_intent
     job_search.resolve_job_level = resolve_job_level
     job_search._query_terms = _wrap_query_first(original_query_terms)
-    job_search._query_role_family = _wrap_query_first(original_query_role_family)
-    job_search._query_job_function = _wrap_query_first(original_query_job_function)
+    job_search._query_role_family = query_role_family
+    job_search._query_job_function = query_job_function
     job_search._query_industry = _wrap_query_first(original_query_industry)
     job_search._matches_requested_role = matches_requested_role
     job_search._score_job = score_job
