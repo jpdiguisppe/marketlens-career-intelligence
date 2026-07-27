@@ -17,7 +17,9 @@ from app.analysis.role_domain_priority_patch import (  # noqa: E402
     install_role_domain_priority_patch,
 )
 from app.analysis.semantic_merge_patch import install_semantic_merge_patch  # noqa: E402
-from app.analysis.personalized_coaching import apply_personalized_coaching  # noqa: E402
+from app.analysis.personalized_coaching_reliability_patch import (  # noqa: E402
+    install_personalized_coaching_reliability_patch,
+)
 
 # A specific job-function signal such as ``marketing`` must win over a generic
 # shared title token such as ``coordinator``.
@@ -26,6 +28,13 @@ install_role_domain_priority_patch()
 # Model assistance may add grounded semantic recall, but deterministic parsing
 # remains authoritative for resume-proof strength and scoring boundaries.
 install_semantic_merge_patch()
+
+# The provider chooses only grounded assessment references. MarketLens remains
+# authoritative for canonical evidence and permits distinct coaching actions to
+# reuse the same reference without allowing true duplicate actions.
+install_personalized_coaching_reliability_patch()
+
+from app.analysis.personalized_coaching import apply_personalized_coaching  # noqa: E402
 
 
 def analyze_smart_fit(
