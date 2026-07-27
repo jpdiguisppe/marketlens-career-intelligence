@@ -81,6 +81,14 @@ def _payload() -> dict:
     }
 
 
+def _assessment_by_skill(analysis, skill: str):
+    return next(
+        assessment
+        for assessment in analysis.requirement_assessments
+        if assessment.skill.casefold() == skill.casefold()
+    )
+
+
 def test_short_provider_titles_are_hydrated_after_grounded_validation() -> None:
     analysis = analyze_smart_fit(
         resume_text=RESUME_TEXT,
@@ -107,19 +115,21 @@ def test_short_provider_titles_are_hydrated_after_grounded_validation() -> None:
 
     personalized_coaching.validate_personalized_coaching(plan, analysis)
 
+    python = _assessment_by_skill(analysis, "Python")
+    sql = _assessment_by_skill(analysis, "SQL")
+    docker = _assessment_by_skill(analysis, "Docker")
+
     assert [item.title for item in plan.action_items] == [
         "Prepare the Python interview story",
         "Strengthen SQL resume proof",
         "Keep Docker as a lower priority",
     ]
-    assert plan.action_items[0].resume_evidence == [
-        "Built a Python FastAPI service backed by PostgreSQL."
-    ]
-    assert plan.action_items[0].job_evidence == "Python"
-    assert plan.action_items[1].resume_evidence == ["Python, SQL, FastAPI, PostgreSQL"]
-    assert plan.action_items[1].job_evidence == "SQL"
-    assert plan.action_items[2].resume_evidence == []
-    assert plan.action_items[2].job_evidence == "Docker"
+    assert plan.action_items[0].resume_evidence == python.resume_evidence
+    assert plan.action_items[0].job_evidence == python.job_evidence
+    assert plan.action_items[1].resume_evidence == sql.resume_evidence
+    assert plan.action_items[1].job_evidence == sql.job_evidence
+    assert plan.action_items[2].resume_evidence == docker.resume_evidence
+    assert plan.action_items[2].job_evidence == docker.job_evidence
 
     assert analysis.fit_summary.model_dump() == immutable_snapshot["fit_summary"]
     assert [item.model_dump() for item in analysis.requirement_assessments] == immutable_snapshot["requirements"]
