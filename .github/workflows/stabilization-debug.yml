@@ -1,0 +1,50 @@
+name: Stabilization Debug
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  pytest-summary:
+    if: github.head_ref == 'agent/stabilize-search-abbreviations-levels-smartrecruiters'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+      - name: Run tests and capture concise summary
+        id: tests
+        working-directory: backend
+        shell: bash
+        run: |
+          set +e
+          python -m pytest -q > /tmp/pytest-output.txt 2>&1
+          status=$?
+          tail -n 140 /tmp/pytest-output.txt > /tmp/pytest-tail.txt
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Post failure summary
+        if: steps.tests.outputs.status != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo 'Temporary stabilization test summary:'
+            echo '```text'
+            cat /tmp/pytest-tail.txt
+            echo '```'
+          } > /tmp/comment.md
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file /tmp/comment.md
+      - name: Fail when pytest failed
+        if: steps.tests.outputs.status != '0'
+        run: exit 1
