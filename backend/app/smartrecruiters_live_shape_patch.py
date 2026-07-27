@@ -1,8 +1,8 @@
 """Support documented and live SmartRecruiters posting-detail shapes.
 
 The Posting API has returned both direct string jobAd fields and nested section
-objects. MarketLens accepts both, keeps the actual posting text separate from
-provider metadata, and leaves all existing filtering/scoring rules intact.
+objects. MarketLens accepts both, gives documented nested sections priority,
+and leaves all existing filtering/scoring rules intact.
 """
 
 from __future__ import annotations
@@ -42,6 +42,11 @@ def _job_ad_containers(job_ad: Any) -> tuple[dict[str, Any], ...]:
     return (job_ad,)
 
 
+def _uses_nested_sections(details: dict[str, Any]) -> bool:
+    job_ad = details.get("jobAd")
+    return isinstance(job_ad, dict) and isinstance(job_ad.get("sections"), dict)
+
+
 def extract_smartrecruiters_sections(details: dict[str, Any]) -> list[tuple[str, str]]:
     containers = _job_ad_containers(details.get("jobAd"))
     extracted: list[tuple[str, str]] = []
@@ -78,10 +83,19 @@ def apply_smartrecruiters_live_shape_patch(source_expansion: Any) -> None:
             cleaned_title = job_search.clean_job_description(section_title)
             parts.append(f"{cleaned_title}\n{cleaned_text}" if cleaned_title else cleaned_text)
 
-        # Provider industry/department/experience labels are metadata, not the
-        # job description. Keeping them out prevents a provider's contradictory
-        # level label from being presented as MarketLens's own classification or
-        # from polluting Smart Fit requirement extraction.
+        if not _uses_nested_sections(details):
+            # Some older/alternate Posting API responses expose direct string
+            # jobAd fields. Preserve their existing level signal for search
+            # compatibility, but label it explicitly as provider metadata rather
+            # than presenting it as a MarketLens classification.
+            provider_level = source_expansion._metadata_label(details, "experienceLevel")
+            if provider_level:
+                parts.append(f"Provider experience metadata\n{provider_level}")
+
+        # Documented nested sections are the production shape that triggered the
+        # bug. Their actual posting text remains separate from provider metadata,
+        # preventing contradictory labels such as Principal + Entry Level from
+        # entering the card preview or Smart Fit input.
         return "\n\n".join(parts).strip() or title
 
     source_expansion._detail_description = detail_description
