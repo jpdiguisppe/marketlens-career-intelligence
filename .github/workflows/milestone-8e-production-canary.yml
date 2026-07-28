@@ -6,6 +6,9 @@ on:
     paths:
       - ".github/workflows/milestone-8e-production-canary.yml"
       - "scripts/smoke_milestone8e_production.py"
+      - "backend/app/saved_jobs.py"
+      - "backend/tests/test_deployment_status.py"
+      - "frontend/docker-entrypoint.sh"
       - "frontend/src/App.tsx"
       - "frontend/src/ProviderTelemetryPanel.tsx"
   push:
@@ -39,6 +42,8 @@ jobs:
     name: Railway production canary
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      MARKETLENS_EXPECTED_REVISION: ${{ github.event_name == 'push' && github.sha || '' }}
 
     steps:
       - name: Check out repository
