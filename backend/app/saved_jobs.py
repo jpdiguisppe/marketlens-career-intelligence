@@ -1,3 +1,5 @@
+import os
+import re
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -11,6 +13,7 @@ from app.models import SavedJobDB
 from app.skill_extractor import extract_skills
 
 MAX_SAVED_JOB_DESCRIPTION_LENGTH = 50_000
+GIT_COMMIT_SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$", re.IGNORECASE)
 
 router = APIRouter(prefix="/saved-jobs", tags=["saved-jobs"])
 
@@ -40,6 +43,11 @@ class SavedJob(SavedJobCreate):
     id: int
     extracted_skills: list[str] = Field(default_factory=list)
     created_at: datetime
+
+
+def _deployment_revision() -> str:
+    revision = os.getenv("RAILWAY_GIT_COMMIT_SHA", "").strip()
+    return revision.lower() if GIT_COMMIT_SHA_PATTERN.fullmatch(revision) else "unknown"
 
 
 def _to_saved_job_response(saved_job: SavedJobDB) -> SavedJob:
@@ -75,6 +83,16 @@ def _get_owned_saved_job(
         raise HTTPException(status_code=404, detail="Saved job not found.")
 
     return saved_job
+
+
+@router.get("/deployment-status")
+def deployment_status() -> dict[str, str]:
+    """Expose only the safe Git revision needed by production canaries."""
+
+    return {
+        "status": "ok",
+        "revision": _deployment_revision(),
+    }
 
 
 @router.post(
