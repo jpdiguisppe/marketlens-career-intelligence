@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import sys
 from pathlib import Path
 
 SCRIPT_PATH = (
@@ -8,9 +9,11 @@ SCRIPT_PATH = (
     / "scripts"
     / "run_secret_log_safety_audit.py"
 )
-_SPEC = importlib.util.spec_from_file_location("secret_log_safety_audit", SCRIPT_PATH)
+_MODULE_NAME = "secret_log_safety_audit"
+_SPEC = importlib.util.spec_from_file_location(_MODULE_NAME, SCRIPT_PATH)
 assert _SPEC and _SPEC.loader
 _AUDIT = importlib.util.module_from_spec(_SPEC)
+sys.modules[_MODULE_NAME] = _AUDIT
 _SPEC.loader.exec_module(_AUDIT)
 
 
