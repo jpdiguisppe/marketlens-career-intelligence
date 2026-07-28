@@ -4,7 +4,7 @@ from app.analysis.schemas import SmartFitAnalysisRequest, SmartFitAnalysisRespon
 from app.analysis.service import AnalysisInputError
 from app.analysis.provenance_patch import install_provenance_patch
 from app.analysis.model_failure_status_patch import install_model_failure_status_patch
-from app.analysis.provider_telemetry import (
+from app.analysis.provider_telemetry_summary_policy import (
     attach_provider_telemetry,
     begin_provider_telemetry,
     install_coaching_telemetry_patch,
