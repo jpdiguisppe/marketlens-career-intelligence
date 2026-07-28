@@ -5,6 +5,14 @@ occupation, level, location, source coverage, and cross-sector correctness
 behavior from provider-fetching code.
 """
 
+from .http_safety import install_safe_fastapi_defaults
+from .safe_logging import install_safe_log_record_factory
+
+# Install process-wide output safety before application modules create loggers or
+# the main module imports FastAPI.
+install_safe_log_record_factory()
+install_safe_fastapi_defaults()
+
 from . import job_search as _job_search
 from . import job_search_source_expansion as _source_expansion
 from . import smartrecruiters_sources as _smartrecruiters_sources
