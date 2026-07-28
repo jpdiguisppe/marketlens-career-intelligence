@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   operational-reliability:
     name: Operational reliability evaluation
@@ -27,7 +31,32 @@ jobs:
           python -m pip install -r requirements.txt
 
       - name: Run offline reliability harness
+        id: reliability
         working-directory: backend
         env:
           AI_ANALYSIS_ENABLED: "false"
-        run: python scripts/run_operational_reliability_evaluation.py
+        shell: bash
+        run: |
+          set +e
+          python scripts/run_operational_reliability_evaluation.py > /tmp/operational-reliability.txt 2>&1
+          status=$?
+          cat /tmp/operational-reliability.txt
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Post safe failure summary
+        if: github.event_name == 'pull_request' && steps.reliability.outputs.status != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo 'Operational reliability failure summary:'
+            echo '```text'
+            head -n 30 /tmp/operational-reliability.txt
+            echo '```'
+          } > /tmp/reliability-comment.md
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file /tmp/reliability-comment.md
+
+      - name: Fail when reliability checks fail
+        if: steps.reliability.outputs.status != '0'
+        run: exit 1
