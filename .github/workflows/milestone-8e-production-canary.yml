@@ -1,0 +1,67 @@
+name: Milestone 8E Production Canary
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/milestone-8e-production-canary.yml"
+      - "scripts/smoke_milestone8e_production.py"
+      - "frontend/src/App.tsx"
+      - "frontend/src/ProviderTelemetryPanel.tsx"
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 12 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-contract:
+    name: Frontend status and fallback contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate frontend source contract
+        run: python scripts/smoke_milestone8e_production.py --frontend-source-only
+
+  production-canary:
+    name: Railway production canary
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run production canary
+        shell: bash
+        run: |
+          set -o pipefail
+          python scripts/smoke_milestone8e_production.py \
+            | tee milestone-8e-production-canary-report.json
+
+      - name: Upload document-free canary report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: milestone-8e-production-canary-report
+          path: milestone-8e-production-canary-report.json
+          if-no-files-found: error
+          retention-days: 30
