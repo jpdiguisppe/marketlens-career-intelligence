@@ -4,12 +4,20 @@ from app.analysis.schemas import SmartFitAnalysisRequest, SmartFitAnalysisRespon
 from app.analysis.service import AnalysisInputError
 from app.analysis.provenance_patch import install_provenance_patch
 from app.analysis.model_failure_status_patch import install_model_failure_status_patch
+from app.analysis.provider_telemetry import (
+    attach_provider_telemetry,
+    begin_provider_telemetry,
+    install_coaching_telemetry_patch,
+    install_extraction_telemetry_patch,
+    reset_provider_telemetry,
+)
 import app.analysis.service as _service
 
-# Request-scoped provenance and model failure metadata must wrap the base service
-# before the role-aware layer captures it.
+# Request-scoped provenance, failure metadata, and extraction telemetry must wrap
+# the base service before the role-aware layer captures it.
 install_provenance_patch()
 install_model_failure_status_patch()
+install_extraction_telemetry_patch()
 
 from app.analysis.role_aware_stable import (  # noqa: E402
     analyze_smart_fit as _role_aware_analyze_smart_fit,
@@ -57,6 +65,9 @@ install_personalized_coaching_title_patch()
 # existing coaching request and validation patch has been installed.
 install_coaching_failure_status_patch()
 
+# Coaching telemetry observes the final, fully validated request boundary.
+install_coaching_telemetry_patch()
+
 from app.analysis.personalized_coaching import apply_personalized_coaching  # noqa: E402
 
 
@@ -65,22 +76,30 @@ def analyze_smart_fit(
     job_description: str,
     use_model_assisted: bool = False,
 ) -> SmartFitAnalysisResponse:
-    """Run scoring first, then add evidence-bound optional coaching.
+    """Run scoring and coaching, then attach document-free provider telemetry.
 
-    The coaching layer receives only the completed grounded response and may
-    update coaching text and metadata. It cannot change scoring, assessments,
-    hard requirements, or provenance.
+    The coaching and telemetry layers cannot change scores, assessments, hard
+    requirements, evidence, or provenance. Telemetry is request-scoped and is
+    discarded after this response is assembled.
     """
 
-    analysis = _role_aware_analyze_smart_fit(
-        resume_text=resume_text,
-        job_description=job_description,
-        use_model_assisted=use_model_assisted,
-    )
-    return apply_personalized_coaching(
-        analysis,
-        use_model_assisted=use_model_assisted,
-    )
+    telemetry_token = begin_provider_telemetry()
+    try:
+        analysis = _role_aware_analyze_smart_fit(
+            resume_text=resume_text,
+            job_description=job_description,
+            use_model_assisted=use_model_assisted,
+        )
+        coached = apply_personalized_coaching(
+            analysis,
+            use_model_assisted=use_model_assisted,
+        )
+        return attach_provider_telemetry(
+            coached,
+            use_model_assisted=use_model_assisted,
+        )
+    finally:
+        reset_provider_telemetry(telemetry_token)
 
 
 # Keep direct imports from app.analysis.service behavior-compatible with the
