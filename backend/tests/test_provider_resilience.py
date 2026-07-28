@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from app.analysis.failure_status import fallback_failed_status, safe_failure_code
-from app.analysis.provider_resilience import (
+from app.analysis.provider_resilience_policy import (
     COACHING_FAILURES,
     EXTRACTION_FAILURES,
     evaluate_provider_resilience,

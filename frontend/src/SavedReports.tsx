@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@clerk/react";
 
 import { createSavedReport, deleteSavedReport, getSavedReports } from "./api";
+import { ProviderTelemetryPanel } from "./ProviderTelemetryPanel";
 import { SafeExternalLink } from "./SafeExternalLink";
 import type {
   SavedReport,
@@ -49,7 +50,7 @@ function notifySavedReportsChanged(): void {
   window.dispatchEvent(new Event(SAVED_REPORTS_CHANGED_EVENT));
 }
 
-export function SaveSmartFitReportButton({
+function SaveSmartFitReportControl({
   analysis,
   job,
 }: {
@@ -131,6 +132,21 @@ export function SaveSmartFitReportButton({
             ? "Try saving report again"
             : "Save Smart Fit report"}
     </button>
+  );
+}
+
+export function SaveSmartFitReportButton({
+  analysis,
+  job,
+}: {
+  analysis: SmartFitAnalysisResponse;
+  job: SavedReportJobContext;
+}) {
+  return (
+    <>
+      <SaveSmartFitReportControl analysis={analysis} job={job} />
+      <ProviderTelemetryPanel analysis={analysis} />
+    </>
   );
 }
 

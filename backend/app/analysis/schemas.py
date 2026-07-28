@@ -178,6 +178,44 @@ class CoachingAction(BaseModel):
     advice: str
 
 
+class ProviderTokenUsage(BaseModel):
+    input_tokens: int = Field(default=0, ge=0)
+    cached_input_tokens: int = Field(default=0, ge=0)
+    output_tokens: int = Field(default=0, ge=0)
+    reasoning_tokens: int = Field(default=0, ge=0)
+    total_tokens: int = Field(default=0, ge=0)
+
+
+class ProviderStageTelemetry(BaseModel):
+    stage: str
+    requested: bool
+    outcome: str
+    status_code: str
+    model: str | None = None
+    prompt_version: str
+    schema_version: str
+    latency_ms: float = Field(default=0.0, ge=0.0)
+    usage: ProviderTokenUsage | None = None
+    estimated_cost_usd: float | None = Field(default=None, ge=0.0)
+    cost_estimate_status: str
+
+
+class ProviderTelemetrySummary(BaseModel):
+    telemetry_version: str
+    pricing_catalog_version: str
+    pricing_currency: str = "USD"
+    pricing_basis: str
+    extraction: ProviderStageTelemetry
+    coaching: ProviderStageTelemetry
+    total_provider_latency_ms: float = Field(default=0.0, ge=0.0)
+    total_input_tokens: int = Field(default=0, ge=0)
+    total_cached_input_tokens: int = Field(default=0, ge=0)
+    total_output_tokens: int = Field(default=0, ge=0)
+    total_tokens: int = Field(default=0, ge=0)
+    total_estimated_cost_usd: float | None = Field(default=None, ge=0.0)
+    cost_estimate_status: str
+
+
 class SmartFitAnalysisRequest(BaseModel):
     resume_text: str = Field(
         ...,
@@ -223,3 +261,4 @@ class SmartFitAnalysisResponse(BaseModel):
     coaching_engine: str = "deterministic"
     coaching_status: str = "not_requested"
     coaching_version: str = COACHING_SCHEMA_VERSION
+    provider_telemetry: ProviderTelemetrySummary | None = None
