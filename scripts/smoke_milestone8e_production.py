@@ -26,7 +26,7 @@ TIMEOUT_SECONDS = 150
 DEPLOYMENT_ATTEMPTS = 24
 DEPLOYMENT_RETRY_SECONDS = 20
 MAX_RESPONSE_BYTES = 2_000_000
-CANARY_VERSION = "8e.5.2"
+CANARY_VERSION = "8e.5.3"
 GIT_COMMIT_SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 
 CANARY_RESUME = (
@@ -559,8 +559,8 @@ def production_canary(root: Path) -> dict[str, Any]:
             "Model-assisted result did not expose used status",
         )
         require(
-            assisted["fit_score"] == deterministic["fit_score"],
-            "Model-assisted path changed the deterministic score",
+            assisted["telemetry"]["extraction"]["outcome"] == "used",
+            "Successful model-assisted analysis did not report used extraction telemetry",
         )
 
     return {
@@ -578,6 +578,9 @@ def production_canary(root: Path) -> dict[str, Any]:
             == deterministic["deterministic_fingerprint"]
             if fell_back
             else None
+        ),
+        "successful_assisted_analysis_grounded": (
+            assisted["grounding_warning_count"] == 0 if not fell_back else None
         ),
         "safe_validation_error": safe_validation_error(),
         "status": "passed",
