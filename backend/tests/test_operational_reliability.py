@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from app.analysis import analyze_smart_fit
-from app.analysis.operational_reliability import (
+from app.analysis.operational_reliability_policy import (
     evaluate_operational_reliability,
     load_operational_reliability_benchmark,
     validate_analysis_invariants,
