@@ -15,6 +15,11 @@ from typing import Any, Iterator
 from app.analysis import operational_reliability as _base
 from app.analysis.schemas import CoachingActionType, SmartFitAnalysisResponse
 
+# Operational telemetry is evaluated by its own suite. Content-preservation
+# fingerprints intentionally compare the career analysis rather than latency,
+# usage, or provider cost metadata.
+_base._RESPONSE_METADATA_FIELDS.add("provider_telemetry")
+
 _ORIGINAL_VALIDATE = _base.validate_analysis_invariants
 _INSTALL_LOCK = RLock()
 
