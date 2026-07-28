@@ -11,6 +11,7 @@ from app.analysis.provider_telemetry_summary_policy import (
     install_extraction_telemetry_patch,
     reset_provider_telemetry,
 )
+from app.safe_logging import sensitive_log_context
 import app.analysis.service as _service
 
 # Request-scoped provenance, failure metadata, and extraction telemetry must wrap
@@ -79,25 +80,26 @@ def analyze_smart_fit(
     """Run scoring and coaching, then attach document-free provider telemetry.
 
     The coaching and telemetry layers cannot change scores, assessments, hard
-    requirements, evidence, or provenance. Telemetry is request-scoped and is
-    discarded after this response is assembled.
+    requirements, evidence, or provenance. Telemetry and sensitive log values
+    are request-scoped and discarded after this response is assembled.
     """
 
     telemetry_token = begin_provider_telemetry()
     try:
-        analysis = _role_aware_analyze_smart_fit(
-            resume_text=resume_text,
-            job_description=job_description,
-            use_model_assisted=use_model_assisted,
-        )
-        coached = apply_personalized_coaching(
-            analysis,
-            use_model_assisted=use_model_assisted,
-        )
-        return attach_provider_telemetry(
-            coached,
-            use_model_assisted=use_model_assisted,
-        )
+        with sensitive_log_context(resume_text, job_description):
+            analysis = _role_aware_analyze_smart_fit(
+                resume_text=resume_text,
+                job_description=job_description,
+                use_model_assisted=use_model_assisted,
+            )
+            coached = apply_personalized_coaching(
+                analysis,
+                use_model_assisted=use_model_assisted,
+            )
+            return attach_provider_telemetry(
+                coached,
+                use_model_assisted=use_model_assisted,
+            )
     finally:
         reset_provider_telemetry(telemetry_token)
 
