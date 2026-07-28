@@ -53,7 +53,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          python scripts/smoke_milestone8e_production.py \
+          python scripts/smoke_milestone8e_production.py 2>&1 \
             | tee milestone-8e-production-canary-report.json
 
       - name: Upload document-free canary report
