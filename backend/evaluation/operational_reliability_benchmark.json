@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "runs_per_case": 3,
+  "minimums": {
+    "cases": 12,
+    "sectors": 9,
+    "fallback_cases": 6
+  },
+  "thresholds": {
+    "case_pass_rate": 1.0,
+    "stable_run_rate": 1.0,
+    "invariant_pass_rate": 1.0,
+    "fallback_preservation_rate": 1.0,
+    "maximum_mean_case_latency_ms": 2000.0
+  },
+  "cases": [
+    {
+      "id": "operational-software-backend",
+      "source_case_id": "software-backend-required-preferred",
+      "check_disabled_provider_fallback": true
+    },
+    {
+      "id": "operational-data-ai",
+      "source_case_id": "data-ai-pipeline-gap",
+      "check_disabled_provider_fallback": true
+    },
+    {
+      "id": "operational-systems-cloud",
+      "source_case_id": "systems-cloud-related-provider-gap",
+      "check_disabled_provider_fallback": true
+    },
+    {
+      "id": "operational-frontend",
+      "source_case_id": "frontend-typescript-proof-gap",
+      "check_disabled_provider_fallback": true
+    },
+    {
+      "id": "operational-cybersecurity-capability",
+      "source_case_id": "cybersecurity-capability-only",
+      "check_disabled_provider_fallback": true
+    },
+    {
+      "id": "operational-finance-capability",
+      "source_case_id": "finance-domain-capability-gap",
+      "check_disabled_provider_fallback": false
+    },
+    {
+      "id": "operational-healthcare-capability",
+      "source_case_id": "healthcare-context-capability-gaps",
+      "check_disabled_provider_fallback": false
+    },
+    {
+      "id": "operational-marketing-capability",
+      "source_case_id": "marketing-capability-gap",
+      "check_disabled_provider_fallback": false
+    },
+    {
+      "id": "operational-admin-capability",
+      "source_case_id": "operations-admin-capability-gaps",
+      "check_disabled_provider_fallback": false
+    },
+    {
+      "id": "operational-regulated-constraints",
+      "source_case_id": "regulated-technical-hard-constraints-and-fallback",
+      "check_disabled_provider_fallback": true
+    },
+    {
+      "id": "operational-messy-software-paragraph",
+      "sector": "software",
+      "resume_text": "Built a Python FastAPI service with PostgreSQL and SQL queries. Added REST API endpoints and tested request validation for a career intelligence project.",
+      "job_description": "Backend engineer needed to build and maintain reliable REST APIs with Python and SQL. The engineer will review code, test services, and work with PostgreSQL. Docker experience is preferred.",
+      "check_disabled_provider_fallback": false
+    },
+    {
+      "id": "operational-responsibility-alias-deduplication",
+      "sector": "software",
+      "resume_text": "PROJECTS\nBuilt a Python FastAPI service backed by PostgreSQL.\nSKILLS\nPython, SQL, FastAPI, PostgreSQL",
+      "job_description": "Backend Engineer\nREQUIRED QUALIFICATIONS\nPython and SQL are required.\nPREFERRED QUALIFICATIONS\nDocker is preferred.\nRESPONSIBILITIES\nBuild reliable backend APIs.",
+      "check_disabled_provider_fallback": false
+    }
+  ]
+}

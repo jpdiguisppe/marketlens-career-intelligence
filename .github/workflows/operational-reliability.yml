@@ -1,0 +1,62 @@
+name: Operational Reliability
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  operational-reliability:
+    name: Operational reliability evaluation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run offline reliability harness
+        id: reliability
+        working-directory: backend
+        env:
+          AI_ANALYSIS_ENABLED: "false"
+        shell: bash
+        run: |
+          set +e
+          python scripts/run_operational_reliability_evaluation.py > /tmp/operational-reliability.txt 2>&1
+          status=$?
+          cat /tmp/operational-reliability.txt
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Post safe failure summary
+        if: github.event_name == 'pull_request' && steps.reliability.outputs.status != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo 'Operational reliability failure summary:'
+            echo '```text'
+            head -n 30 /tmp/operational-reliability.txt
+            echo '```'
+          } > /tmp/reliability-comment.md
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file /tmp/reliability-comment.md
+
+      - name: Fail when reliability checks fail
+        if: steps.reliability.outputs.status != '0'
+        run: exit 1
