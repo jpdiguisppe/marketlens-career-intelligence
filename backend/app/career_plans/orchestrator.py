@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import time
-from typing import Any, Callable
+from typing import Callable
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -21,18 +21,16 @@ from app.career_plans.schemas import (
     CareerPlanStepStatus,
 )
 from app.career_plans.state_machine import InvalidCareerPlanTransition, ensure_run_transition
-from app.career_plans.tools.job_search_tool import CareerPlanSearchToolOutput, run_job_search_tool
+from app.career_plans.tools.job_search_tool import (
+    CareerPlanSearchCandidate,
+    CareerPlanSearchToolOutput,
+    run_job_search_tool,
+)
 from app.career_plans.tools.smart_fit_tool import (
     CareerPlanSmartFitToolError,
     CareerPlanSmartFitToolOutput,
     run_smart_fit_tool,
 )
-
-
-class CareerPlanExecutionFailure(RuntimeError):
-    def __init__(self, safe_code: str, message: str) -> None:
-        super().__init__(message)
-        self.safe_code = safe_code
 
 
 def _input_fingerprint(goal: CareerPlanGoal, resume_text: str) -> str:
@@ -161,7 +159,7 @@ def _complete_step(
     run: CareerPlanRunDB,
     step: CareerPlanStepDB,
     started_at: float,
-    safe_summary: dict[str, Any],
+    safe_summary: dict[str, object],
     status: CareerPlanStepStatus = CareerPlanStepStatus.COMPLETED,
 ) -> None:
     step.status = status.value
@@ -259,9 +257,11 @@ def execute_career_plan(
     db: Session,
     run: CareerPlanRunDB,
     request: CareerPlanExecuteRequest,
-    search_tool: Callable[[CareerPlanGoal], CareerPlanSearchToolOutput] = run_job_search_tool,
-    smart_fit_tool: Callable[[str, list[Any]], CareerPlanSmartFitToolOutput] = run_smart_fit_tool,
+    search_tool: Callable[[CareerPlanGoal], CareerPlanSearchToolOutput] | None = None,
+    smart_fit_tool: Callable[[str, list[CareerPlanSearchCandidate]], CareerPlanSmartFitToolOutput] | None = None,
 ) -> CareerPlanRunDB:
+    search_tool_fn = search_tool or run_job_search_tool
+    smart_fit_tool_fn = smart_fit_tool or run_smart_fit_tool
     goal = CareerPlanGoal.model_validate(run.goal)
     fingerprint = _input_fingerprint(goal, request.resume_text)
     run = _begin_execution(db, run, request, fingerprint)
@@ -275,9 +275,7 @@ def execute_career_plan(
     active_step: CareerPlanStepDB | None = None
     step_started: float | None = None
     try:
-        active_step, step_started = _begin_step(
-            db, run, CareerPlanStepName.VALIDATE_INPUT, fingerprint
-        )
+        active_step, step_started = _begin_step(db, run, CareerPlanStepName.VALIDATE_INPUT, fingerprint)
         _complete_step(
             db,
             run,
@@ -295,18 +293,14 @@ def execute_career_plan(
         if _cancel_if_requested(db, run):
             return run
 
-        active_step, step_started = _begin_step(
-            db, run, CareerPlanStepName.SEARCH_JOBS, fingerprint
-        )
-        search_output = search_tool(goal)
+        active_step, step_started = _begin_step(db, run, CareerPlanStepName.SEARCH_JOBS, fingerprint)
+        search_output = search_tool_fn(goal)
         run.search_summary = search_output.safe_summary
         _complete_step(db, run, active_step, step_started, search_output.safe_summary)
         if _cancel_if_requested(db, run):
             return run
 
-        active_step, step_started = _begin_step(
-            db, run, CareerPlanStepName.SELECT_CANDIDATES, fingerprint
-        )
+        active_step, step_started = _begin_step(db, run, CareerPlanStepName.SELECT_CANDIDATES, fingerprint)
         selection: CandidateSelectionResult = select_candidates(
             search_output.candidates,
             max_jobs=goal.max_jobs_to_analyze,
@@ -315,21 +309,15 @@ def execute_career_plan(
         if _cancel_if_requested(db, run):
             return run
 
-        active_step, step_started = _begin_step(
-            db, run, CareerPlanStepName.ANALYZE_SMART_FIT, fingerprint
-        )
-        smart_fit_output = smart_fit_tool(request.resume_text, selection.selected)
+        active_step, step_started = _begin_step(db, run, CareerPlanStepName.ANALYZE_SMART_FIT, fingerprint)
+        smart_fit_output = smart_fit_tool_fn(request.resume_text, selection.selected)
         _complete_step(
             db,
             run,
             active_step,
             step_started,
             smart_fit_output.safe_summary,
-            status=(
-                CareerPlanStepStatus.COMPLETED
-                if selection.selected
-                else CareerPlanStepStatus.SKIPPED
-            ),
+            status=CareerPlanStepStatus.COMPLETED if selection.selected else CareerPlanStepStatus.SKIPPED,
         )
         if _cancel_if_requested(db, run):
             return run
@@ -344,8 +332,15 @@ def execute_career_plan(
             smart_fit_output=smart_fit_output,
         )
         if goal.model_assisted_planning:
-            proposal.warnings.append(
-                "Model-assisted planning was requested but is not part of this deterministic implementation slice; the complete deterministic proposal was preserved."
+            proposal = proposal.model_copy(
+                update={
+                    "warnings": (
+                        proposal.warnings
+                        + [
+                            "Model-assisted planning was requested but is not part of this deterministic implementation slice; the complete deterministic proposal was preserved."
+                        ]
+                    )[:30]
+                }
             )
         run.proposal = proposal.model_dump(mode="json")
         run.fallback_status = proposal.fallback_status
@@ -366,9 +361,7 @@ def execute_career_plan(
         if _cancel_if_requested(db, run):
             return run
 
-        active_step, step_started = _begin_step(
-            db, run, CareerPlanStepName.ENHANCE_PLAN_OPTIONAL, fingerprint
-        )
+        active_step, step_started = _begin_step(db, run, CareerPlanStepName.ENHANCE_PLAN_OPTIONAL, fingerprint)
         _complete_step(
             db,
             run,
@@ -384,9 +377,7 @@ def execute_career_plan(
         if _cancel_if_requested(db, run):
             return run
 
-        active_step, step_started = _begin_step(
-            db, run, CareerPlanStepName.FINALIZE_PROPOSAL, fingerprint
-        )
+        active_step, step_started = _begin_step(db, run, CareerPlanStepName.FINALIZE_PROPOSAL, fingerprint)
         run.status = CareerPlanRunStatus.AWAITING_APPROVAL.value
         run.safe_error_code = None
         run.resume_required_to_resume = False
@@ -425,6 +416,6 @@ def execute_career_plan(
     except CareerPlanSmartFitToolError as exc:
         return _fail_active_step(db, run, active_step, step_started, exc.safe_code)
     except ValueError:
-        return _fail_active_step(db, run, active_step, step_started, "invalid_goal")
+        return _fail_active_step(db, run, active_step, step_started, "invalid_input")
     except Exception:
         return _fail_active_step(db, run, active_step, step_started, "internal_error")
