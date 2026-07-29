@@ -16,6 +16,12 @@ declare global {
   }
 }
 
+export const CAREER_PLANS_CHANGED_EVENT = "marketlens:career-plans-changed";
+
+function notifyCareerPlansChanged(): void {
+  window.dispatchEvent(new Event(CAREER_PLANS_CHANGED_EVENT));
+}
+
 function normalizeApiBaseUrl(url: string | undefined): string | undefined {
   const trimmed = url?.trim();
   return trimmed ? trimmed.replace(/\/$/, "") : undefined;
@@ -92,10 +98,12 @@ export async function createCareerPlan(
   token: string,
   request: CareerPlanCreateRequest,
 ): Promise<CareerPlanRun> {
-  return authenticatedJson<CareerPlanRun>(token, "/career-plans", {
+  const run = await authenticatedJson<CareerPlanRun>(token, "/career-plans", {
     method: "POST",
     body: JSON.stringify(request),
   });
+  notifyCareerPlansChanged();
+  return run;
 }
 
 export async function executeCareerPlan(
@@ -103,16 +111,20 @@ export async function executeCareerPlan(
   runId: number,
   request: CareerPlanExecuteRequest,
 ): Promise<CareerPlanRun> {
-  return authenticatedJson<CareerPlanRun>(token, `/career-plans/${runId}/execute`, {
+  const run = await authenticatedJson<CareerPlanRun>(token, `/career-plans/${runId}/execute`, {
     method: "POST",
     body: JSON.stringify(request),
   });
+  notifyCareerPlansChanged();
+  return run;
 }
 
 export async function cancelCareerPlan(token: string, runId: number): Promise<CareerPlanRun> {
-  return authenticatedJson<CareerPlanRun>(token, `/career-plans/${runId}/cancel`, {
+  const run = await authenticatedJson<CareerPlanRun>(token, `/career-plans/${runId}/cancel`, {
     method: "POST",
   });
+  notifyCareerPlansChanged();
+  return run;
 }
 
 export async function decideCareerPlan(
@@ -120,10 +132,12 @@ export async function decideCareerPlan(
   runId: number,
   request: CareerPlanDecisionRequest,
 ): Promise<CareerPlanRun> {
-  return authenticatedJson<CareerPlanRun>(token, `/career-plans/${runId}/decision`, {
+  const run = await authenticatedJson<CareerPlanRun>(token, `/career-plans/${runId}/decision`, {
     method: "POST",
     body: JSON.stringify(request),
   });
+  notifyCareerPlansChanged();
+  return run;
 }
 
 export async function explainCareerPlan(
@@ -141,4 +155,5 @@ export async function deleteCareerPlan(token: string, runId: number): Promise<vo
   await authenticatedJson<{ status: string }>(token, `/career-plans/${runId}`, {
     method: "DELETE",
   });
+  notifyCareerPlansChanged();
 }

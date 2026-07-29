@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import App from "./App";
+import CareerPlanSelectionAudit from "./CareerPlanSelectionAudit";
 import CareerPlanWorkspace from "./CareerPlanWorkspace";
 import "./workspaceRouter.css";
 
@@ -53,6 +54,7 @@ export default function WorkspaceRouter() {
       </div>
       <div hidden={workspace !== "career-plans"}>
         <CareerPlanWorkspace />
+        <CareerPlanSelectionAudit />
       </div>
     </>
   );
