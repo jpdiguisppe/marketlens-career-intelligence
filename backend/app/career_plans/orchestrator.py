@@ -10,12 +10,17 @@ from sqlalchemy.orm import Session
 
 from app.career_plans.candidate_selector import CandidateSelectionResult, select_candidates
 from app.career_plans.deterministic_planner import build_deterministic_proposal
+from app.career_plans.model_planner import (
+    CareerPlanModelApplication,
+    apply_model_assisted_planning,
+)
 from app.career_plans.models import CareerPlanRunDB, CareerPlanStepDB
 from app.career_plans.runtime import append_audit_event, safe_conflict, utcnow
 from app.career_plans.schemas import (
     CAREER_PLAN_SCHEMA_VERSION,
     CareerPlanExecuteRequest,
     CareerPlanGoal,
+    CareerPlanProposal,
     CareerPlanRunStatus,
     CareerPlanStepName,
     CareerPlanStepStatus,
@@ -253,15 +258,46 @@ def _cancel_if_requested(
     return True
 
 
+def _model_step_summary(application: CareerPlanModelApplication) -> dict[str, object]:
+    assistance = application.proposal.model_assisted
+    if assistance is None:
+        return {
+            "requested": False,
+            "used": False,
+            "status_code": application.status_code,
+        }
+    telemetry = assistance.telemetry
+    usage = telemetry.usage
+    return {
+        "requested": telemetry.requested,
+        "used": application.used,
+        "status_code": application.status_code,
+        "engine": assistance.engine,
+        "prompt_version": assistance.prompt_version,
+        "schema_version": assistance.schema_version,
+        "model": telemetry.model,
+        "latency_ms": telemetry.latency_ms,
+        "input_tokens": usage.input_tokens if usage else 0,
+        "output_tokens": usage.output_tokens if usage else 0,
+        "total_tokens": usage.total_tokens if usage else 0,
+        "estimated_cost_usd": telemetry.estimated_cost_usd,
+        "cost_estimate_status": telemetry.cost_estimate_status,
+        "priority_job_count": len(assistance.priority_job_refs),
+        "priority_action_count": len(assistance.priority_action_ids),
+    }
+
+
 def execute_career_plan(
     db: Session,
     run: CareerPlanRunDB,
     request: CareerPlanExecuteRequest,
     search_tool: Callable[[CareerPlanGoal], CareerPlanSearchToolOutput] | None = None,
     smart_fit_tool: Callable[[str, list[CareerPlanSearchCandidate]], CareerPlanSmartFitToolOutput] | None = None,
+    model_planner: Callable[[CareerPlanGoal, CareerPlanProposal], CareerPlanModelApplication] | None = None,
 ) -> CareerPlanRunDB:
     search_tool_fn = search_tool or run_job_search_tool
     smart_fit_tool_fn = smart_fit_tool or run_smart_fit_tool
+    model_planner_fn = model_planner or apply_model_assisted_planning
     goal = CareerPlanGoal.model_validate(run.goal)
     fingerprint = _input_fingerprint(goal, request.resume_text)
     run = _begin_execution(db, run, request, fingerprint)
@@ -331,17 +367,6 @@ def execute_career_plan(
             selection=selection,
             smart_fit_output=smart_fit_output,
         )
-        if goal.model_assisted_planning:
-            proposal = proposal.model_copy(
-                update={
-                    "warnings": (
-                        proposal.warnings
-                        + [
-                            "Model-assisted planning was requested but is not part of this deterministic implementation slice; the complete deterministic proposal was preserved."
-                        ]
-                    )[:30]
-                }
-            )
         run.proposal = proposal.model_dump(mode="json")
         run.fallback_status = proposal.fallback_status
         _complete_step(
@@ -362,17 +387,26 @@ def execute_career_plan(
             return run
 
         active_step, step_started = _begin_step(db, run, CareerPlanStepName.ENHANCE_PLAN_OPTIONAL, fingerprint)
+        model_application = model_planner_fn(goal, proposal)
+        proposal = model_application.proposal
+        run.proposal = proposal.model_dump(mode="json")
+        if model_application.used:
+            run.fallback_status = "model_assisted_used"
+        elif goal.model_assisted_planning:
+            run.fallback_status = f"deterministic_fallback:{model_application.status_code}"[:80]
+        else:
+            run.fallback_status = "deterministic_complete"
         _complete_step(
             db,
             run,
             active_step,
             step_started,
-            {
-                "requested": goal.model_assisted_planning,
-                "used": False,
-                "status": "deferred_to_milestone_8_1c" if goal.model_assisted_planning else "not_requested",
-            },
-            status=CareerPlanStepStatus.SKIPPED,
+            _model_step_summary(model_application),
+            status=(
+                CareerPlanStepStatus.COMPLETED
+                if goal.model_assisted_planning
+                else CareerPlanStepStatus.SKIPPED
+            ),
         )
         if _cancel_if_requested(db, run):
             return run
@@ -391,7 +425,10 @@ def execute_career_plan(
             {
                 "status": CareerPlanRunStatus.AWAITING_APPROVAL.value,
                 "proposal_status": proposal.proposal_status,
-                "fallback_status": proposal.fallback_status,
+                "fallback_status": run.fallback_status,
+                "model_assisted_status": (
+                    proposal.model_assisted.status if proposal.model_assisted else "not_available"
+                ),
             },
         )
         append_audit_event(
@@ -403,6 +440,8 @@ def execute_career_plan(
                 "proposal_status": proposal.proposal_status,
                 "portfolio_count": len(proposal.portfolio),
                 "action_count": len(proposal.actions),
+                "model_assisted_used": model_application.used,
+                "model_status_code": model_application.status_code,
                 "attempt": run.attempt_count,
                 "run_version": run.run_version,
             },
