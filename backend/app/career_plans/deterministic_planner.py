@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any
 
@@ -74,11 +73,7 @@ def _collect_recurring_findings(
             key = label.casefold()
             entry = occurrences.setdefault(
                 key,
-                {
-                    "label": label,
-                    "job_refs": [],
-                    "evidence_refs": [],
-                },
+                {"label": label, "job_refs": [], "evidence_refs": []},
             )
             if job_ref not in entry["job_refs"]:
                 entry["job_refs"].append(job_ref)
@@ -109,10 +104,7 @@ def _collect_recurring_findings(
             )
         )
 
-    return sorted(
-        findings,
-        key=lambda item: (-item.job_count, item.capability.casefold()),
-    )[:30]
+    return sorted(findings, key=lambda item: (-item.job_count, item.capability.casefold()))[:30]
 
 
 def _portfolio_entry(result: dict[str, Any]) -> CareerPlanPortfolioEntry:
@@ -164,11 +156,9 @@ def _build_actions(
                     action_type=CareerPlanActionType.VERIFY_HARD_REQUIREMENT,
                     priority="high",
                     title=f"Verify hard requirements for {entry.title}",
-                    rationale=(
-                        "MarketLens found a hard requirement that is not clearly met. Verify it before treating this opportunity as actionable."
-                    ),
+                    rationale="MarketLens found a hard requirement that is not clearly met. Verify it before treating this opportunity as actionable.",
                     job_refs=[entry.job_ref],
-                    evidence_refs=entry.gap_refs,
+                    evidence_refs=entry.gap_refs[:50],
                     status=CareerPlanActionStatus.PROPOSED,
                 )
             )
@@ -176,18 +166,32 @@ def _build_actions(
         if entry.category in {
             CareerPlanOpportunityCategory.STRONG_MATCH,
             CareerPlanOpportunityCategory.BALANCED,
-        }:
+        } and entry.safe_apply_url:
             actions.append(
                 CareerPlanAction(
                     id=f"apply-{entry.job_ref}",
                     action_type=CareerPlanActionType.APPLY_NOW,
                     priority="high" if entry.category == CareerPlanOpportunityCategory.STRONG_MATCH else "medium",
                     title=f"Review and apply to {entry.title}",
-                    rationale=(
-                        f"This opportunity is categorized as {entry.category.value.replace('_', ' ')} from grounded Smart Fit evidence."
-                    ),
+                    rationale=f"This opportunity is categorized as {entry.category.value.replace('_', ' ')} from grounded Smart Fit evidence.",
                     job_refs=[entry.job_ref],
-                    evidence_refs=entry.evidence_refs,
+                    evidence_refs=entry.evidence_refs[:50],
+                    status=CareerPlanActionStatus.PROPOSED,
+                )
+            )
+        elif entry.category in {
+            CareerPlanOpportunityCategory.STRONG_MATCH,
+            CareerPlanOpportunityCategory.BALANCED,
+        }:
+            actions.append(
+                CareerPlanAction(
+                    id=f"later-{entry.job_ref}",
+                    action_type=CareerPlanActionType.SAVE_FOR_LATER,
+                    priority="medium",
+                    title=f"Review {entry.title} outside MarketLens",
+                    rationale="The evidence supports this role, but MarketLens does not have a validated application URL for an apply action.",
+                    job_refs=[entry.job_ref],
+                    evidence_refs=entry.evidence_refs[:50],
                     status=CareerPlanActionStatus.PROPOSED,
                 )
             )
@@ -200,7 +204,7 @@ def _build_actions(
                     title=f"Keep {entry.title} as a stretch option",
                     rationale="The role has partial alignment but meaningful evidence gaps remain.",
                     job_refs=[entry.job_ref],
-                    evidence_refs=entry.evidence_refs + entry.gap_refs,
+                    evidence_refs=(entry.evidence_refs + entry.gap_refs)[:50],
                     status=CareerPlanActionStatus.PROPOSED,
                 )
             )
@@ -213,7 +217,7 @@ def _build_actions(
                     title=f"Deprioritize {entry.title}",
                     rationale="Current evidence or hard-requirement findings do not support prioritizing this role.",
                     job_refs=[entry.job_ref],
-                    evidence_refs=entry.gap_refs,
+                    evidence_refs=entry.gap_refs[:50],
                     status=CareerPlanActionStatus.PROPOSED,
                 )
             )
@@ -227,7 +231,7 @@ def _build_actions(
                 title=f"Build proof for {finding.capability}",
                 rationale=finding.summary,
                 job_refs=finding.job_refs,
-                evidence_refs=finding.evidence_refs,
+                evidence_refs=finding.evidence_refs[:50],
                 status=CareerPlanActionStatus.PROPOSED,
             )
         )
