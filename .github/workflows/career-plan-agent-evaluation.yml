@@ -1,0 +1,98 @@
+name: Career Plan Agent Evaluation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  career-plan-agent-evaluation:
+    name: Task-level safety and resilience matrix
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run representative task-level evaluation
+        id: evaluation
+        working-directory: backend
+        shell: bash
+        run: |
+          set +e
+          python scripts/run_career_plan_agent_evaluation.py > /tmp/career-plan-agent-evaluation.txt 2>&1
+          status=$?
+          cat /tmp/career-plan-agent-evaluation.txt
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Run permanent agent security and resilience tests
+        id: tests
+        working-directory: backend
+        shell: bash
+        run: |
+          set +e
+          python -m pytest -q \
+            tests/test_career_plan_foundation.py \
+            tests/test_career_plan_deterministic_execution.py \
+            tests/test_career_plan_model_planning.py \
+            tests/test_career_plan_agent_evaluation.py \
+            tests/test_career_plan_retry_resilience.py \
+            > /tmp/career-plan-agent-tests.txt 2>&1
+          status=$?
+          cat /tmp/career-plan-agent-tests.txt
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload readable evaluation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: career-plan-agent-evaluation
+          path: |
+            /tmp/career-plan-agent-evaluation.txt
+            /tmp/career-plan-agent-tests.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Post safe failure summary
+        if: >-
+          github.event_name == 'pull_request' &&
+          (steps.evaluation.outputs.status != '0' || steps.tests.outputs.status != '0')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo 'Career Plan agent evaluation failure summary:'
+            echo
+            echo 'Task-level evaluator:'
+            echo '```text'
+            head -n 35 /tmp/career-plan-agent-evaluation.txt
+            echo '```'
+            echo
+            echo 'Permanent test matrix:'
+            echo '```text'
+            tail -n 35 /tmp/career-plan-agent-tests.txt
+            echo '```'
+          } > /tmp/career-plan-agent-comment.md
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file /tmp/career-plan-agent-comment.md
+
+      - name: Fail when agent evaluation checks fail
+        if: steps.evaluation.outputs.status != '0' || steps.tests.outputs.status != '0'
+        run: exit 1

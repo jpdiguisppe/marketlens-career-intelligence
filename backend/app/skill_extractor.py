@@ -2,7 +2,7 @@ import re
 from collections import Counter
 from typing import Iterable
 
-from app.analysis.skill_ontology import SKILL_PATTERNS
+from app.skill_ontology import SKILL_PATTERNS
 
 
 def _term_pattern(term: str) -> str:
