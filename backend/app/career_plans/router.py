@@ -1,18 +1,25 @@
-from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth import AuthenticatedUser, get_current_user
 from app.career_plans.models import CareerPlanAuditEventDB, CareerPlanRunDB
+from app.career_plans.orchestrator import execute_career_plan
+from app.career_plans.runtime import (
+    append_audit_event as _append_audit_event,
+    get_owned_run as _get_owned_run,
+    safe_conflict as _safe_conflict,
+    utcnow as _utcnow,
+    validate_safe_audit_payload as _validate_safe_audit_payload,
+)
 from app.career_plans.schemas import (
     CAREER_PLAN_SCHEMA_VERSION,
     CareerPlanAuditEventResponse,
     CareerPlanCreate,
     CareerPlanDecisionRequest,
+    CareerPlanExecuteRequest,
     CareerPlanGoal,
     CareerPlanRunResponse,
     CareerPlanRunStatus,
@@ -24,94 +31,6 @@ from app.career_plans.state_machine import InvalidCareerPlanTransition, ensure_r
 from app.database import get_db
 
 router = APIRouter(prefix="/career-plans", tags=["career-plans"])
-MAX_AUDIT_EVENTS_PER_RUN = 100
-MAX_SAFE_AUDIT_PAYLOAD_CHARACTERS = 4_000
-_FORBIDDEN_AUDIT_KEY_PARTS = {
-    "resume",
-    "description",
-    "document",
-    "quote",
-    "authorization",
-    "token",
-    "secret",
-    "api_key",
-    "database_url",
-}
-
-
-def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-def _safe_conflict(code: str, message: str) -> HTTPException:
-    return HTTPException(status_code=409, detail={"code": code, "message": message})
-
-
-def _get_owned_run(db: Session, run_id: int, user_id: str) -> CareerPlanRunDB:
-    run = (
-        db.query(CareerPlanRunDB)
-        .filter(CareerPlanRunDB.id == run_id, CareerPlanRunDB.user_id == user_id)
-        .one_or_none()
-    )
-    if run is None:
-        raise HTTPException(status_code=404, detail="Career Plan run not found.")
-    return run
-
-
-def _validate_safe_audit_payload(payload: dict[str, Any]) -> None:
-    serialized = str(payload)
-    if len(serialized) > MAX_SAFE_AUDIT_PAYLOAD_CHARACTERS:
-        raise _safe_conflict("audit_payload_too_large", "The audit payload exceeds the safe size limit.")
-
-    def visit(value: Any) -> None:
-        if isinstance(value, dict):
-            for key, nested in value.items():
-                normalized_key = str(key).strip().lower()
-                if any(part in normalized_key for part in _FORBIDDEN_AUDIT_KEY_PARTS):
-                    raise _safe_conflict(
-                        "unsafe_audit_payload",
-                        "Audit payloads may contain only safe IDs, counts, statuses, reason codes, and versions.",
-                    )
-                visit(nested)
-        elif isinstance(value, list):
-            for nested in value:
-                visit(nested)
-        elif not isinstance(value, (str, int, float, bool, type(None))):
-            raise _safe_conflict("unsafe_audit_payload", "Audit payload values must be JSON-safe primitives.")
-
-    visit(payload)
-
-
-def _append_audit_event(
-    db: Session,
-    run: CareerPlanRunDB,
-    event_type: str,
-    safe_payload: dict[str, Any],
-) -> None:
-    _validate_safe_audit_payload(safe_payload)
-    event_count = (
-        db.query(func.count(CareerPlanAuditEventDB.id))
-        .filter(CareerPlanAuditEventDB.run_id == run.id)
-        .scalar()
-        or 0
-    )
-    if event_count >= MAX_AUDIT_EVENTS_PER_RUN:
-        raise _safe_conflict("audit_limit_reached", "The Career Plan audit-event limit was reached.")
-
-    last_sequence = (
-        db.query(func.max(CareerPlanAuditEventDB.sequence_number))
-        .filter(CareerPlanAuditEventDB.run_id == run.id)
-        .scalar()
-        or 0
-    )
-    event = CareerPlanAuditEventDB(
-        run=run,
-        sequence_number=last_sequence + 1,
-        event_type=event_type,
-        safe_payload_json="{}",
-    )
-    event.safe_payload = safe_payload
-    db.add(event)
 
 
 def _to_step_response(step: Any) -> CareerPlanStepResponse:
@@ -253,6 +172,17 @@ def get_career_plan(
     db: Session = Depends(get_db),
 ) -> CareerPlanRunResponse:
     return _to_response(_get_owned_run(db, run_id, current_user.user_id))
+
+
+@router.post("/{run_id}/execute", response_model=CareerPlanRunResponse)
+def execute_or_resume_career_plan(
+    run_id: int,
+    request: CareerPlanExecuteRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CareerPlanRunResponse:
+    run = _get_owned_run(db, run_id, current_user.user_id)
+    return _to_response(execute_career_plan(db, run, request))
 
 
 @router.post("/{run_id}/cancel", response_model=CareerPlanRunResponse)

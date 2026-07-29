@@ -4,8 +4,10 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-CAREER_PLAN_SCHEMA_VERSION = "8.1.1"
+CAREER_PLAN_SCHEMA_VERSION = "8.1.2"
 MAX_EDITED_ACTIONS = 20
+MAX_PLAN_ACTIONS = 20
+MAX_RESUME_TEXT_LENGTH = 25_000
 
 
 class CareerPlanRunStatus(str, Enum):
@@ -63,6 +65,13 @@ class CareerPlanDecision(str, Enum):
     REJECTED = "rejected"
 
 
+class CareerPlanOpportunityCategory(str, Enum):
+    STRONG_MATCH = "strong_match"
+    BALANCED = "balanced"
+    STRETCH = "stretch"
+    SKIP = "skip"
+
+
 class CareerPlanActionType(str, Enum):
     APPLY_NOW = "apply_now"
     VERIFY_HARD_REQUIREMENT = "verify_hard_requirement"
@@ -101,6 +110,58 @@ class CareerPlanCreate(BaseModel):
     idempotency_key: str | None = Field(default=None, min_length=1, max_length=120)
 
 
+class CareerPlanExecuteRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    resume_text: str = Field(..., min_length=20, max_length=MAX_RESUME_TEXT_LENGTH)
+    expected_run_version: int = Field(..., ge=1)
+
+
+class CareerPlanEvidenceRef(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(..., min_length=1, max_length=120)
+    kind: str = Field(..., min_length=1, max_length=50)
+    job_ref: str | None = Field(default=None, max_length=100)
+    capability: str | None = Field(default=None, max_length=255)
+    assessment_status: str | None = Field(default=None, max_length=50)
+    source_section: str | None = Field(default=None, max_length=80)
+    source_origin: str = Field(..., min_length=1, max_length=50)
+    smart_fit_schema_version: str | None = Field(default=None, max_length=40)
+    analysis_ref: str | None = Field(default=None, max_length=255)
+    summary: str = Field(..., min_length=1, max_length=240)
+
+
+class CareerPlanPortfolioEntry(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    job_ref: str = Field(..., min_length=1, max_length=100)
+    category: CareerPlanOpportunityCategory
+    rank: int = Field(..., ge=1, le=5)
+    fit_score: int = Field(..., ge=0, le=100)
+    fit_band: str = Field(..., min_length=1, max_length=80)
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    company: str = Field(..., min_length=1, max_length=255)
+    title: str = Field(..., min_length=1, max_length=255)
+    location: str | None = Field(default=None, max_length=255)
+    reason_codes: list[str] = Field(default_factory=list, max_length=20)
+    evidence_refs: list[str] = Field(default_factory=list, max_length=50)
+    gap_refs: list[str] = Field(default_factory=list, max_length=50)
+    hard_requirement_flags: list[str] = Field(default_factory=list, max_length=30)
+    safe_apply_url: str | None = Field(default=None, max_length=2048)
+
+
+class CareerPlanRecurringFinding(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    capability: str = Field(..., min_length=1, max_length=255)
+    job_count: int = Field(..., ge=1, le=5)
+    job_refs: list[str] = Field(..., min_length=1, max_length=5)
+    evidence_refs: list[str] = Field(default_factory=list, max_length=50)
+    priority: str | None = Field(default=None, max_length=20)
+    summary: str = Field(..., min_length=1, max_length=500)
+
+
 class CareerPlanAction(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -111,7 +172,26 @@ class CareerPlanAction(BaseModel):
     rationale: str = Field(..., min_length=1, max_length=2_000)
     job_refs: list[str] = Field(default_factory=list, max_length=5)
     evidence_refs: list[str] = Field(default_factory=list, max_length=50)
-    status: CareerPlanActionStatus = CareerPlanActionStatus.EDITED
+    status: CareerPlanActionStatus = CareerPlanActionStatus.PROPOSED
+
+
+class CareerPlanProposal(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = Field(..., min_length=1, max_length=40)
+    run_id: int
+    generated_at: datetime
+    proposal_engine: str = Field(..., min_length=1, max_length=80)
+    proposal_status: str = Field(..., min_length=1, max_length=80)
+    source_summary: dict[str, Any]
+    portfolio: list[CareerPlanPortfolioEntry] = Field(default_factory=list, max_length=5)
+    recurring_strengths: list[CareerPlanRecurringFinding] = Field(default_factory=list, max_length=30)
+    recurring_gaps: list[CareerPlanRecurringFinding] = Field(default_factory=list, max_length=30)
+    evidence_refs: list[CareerPlanEvidenceRef] = Field(default_factory=list, max_length=250)
+    actions: list[CareerPlanAction] = Field(default_factory=list, max_length=MAX_PLAN_ACTIONS)
+    limitations: list[str] = Field(default_factory=list, max_length=30)
+    warnings: list[str] = Field(default_factory=list, max_length=30)
+    fallback_status: str = Field(..., min_length=1, max_length=80)
 
 
 class CareerPlanDecisionRequest(BaseModel):
