@@ -11,6 +11,12 @@ SEARCH_TOOL_NAME = "career.search_jobs.v1"
 SEARCH_RESULT_LIMIT = 15
 
 
+class CareerPlanSearchToolError(RuntimeError):
+    def __init__(self, safe_code: str, message: str) -> None:
+        super().__init__(message)
+        self.safe_code = safe_code
+
+
 @dataclass(frozen=True)
 class CareerPlanSearchCandidate:
     job_ref: str
@@ -57,12 +63,24 @@ def _search_location(goal: CareerPlanGoal) -> str | None:
 
 
 def run_job_search_tool(goal: CareerPlanGoal) -> CareerPlanSearchToolOutput:
-    results = search_external_jobs(
-        query=_search_query(goal),
-        location=_search_location(goal),
-        level=goal.experience_level.value,
-        limit=SEARCH_RESULT_LIMIT,
-    )
+    try:
+        results = search_external_jobs(
+            query=_search_query(goal),
+            location=_search_location(goal),
+            level=goal.experience_level.value,
+            limit=SEARCH_RESULT_LIMIT,
+        )
+    except ValueError as exc:
+        raise CareerPlanSearchToolError(
+            "job_search_invalid_input",
+            "The Career Plan search input was rejected.",
+        ) from exc
+    except Exception as exc:
+        raise CareerPlanSearchToolError(
+            "job_search_failure",
+            "The bounded public job search failed.",
+        ) from exc
+
     candidates = [
         CareerPlanSearchCandidate(job_ref=f"job-{index}", search_rank=index, job=job)
         for index, job in enumerate(results.results, start=1)
