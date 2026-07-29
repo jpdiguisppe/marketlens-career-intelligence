@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 
 from app.career_plans import model_planner
 from app.career_plans.evaluation import (
@@ -15,6 +17,27 @@ from app.career_plans.evaluation import (
 )
 from app.career_plans.evaluation_budget import model_budget_failures
 from app.career_plans.schemas import CareerPlanGoal
+
+
+def test_evaluator_imports_and_runs_first_in_a_fresh_interpreter() -> None:
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "from app.career_plans.evaluation import evaluate_career_plan_agent; "
+                "report = evaluate_career_plan_agent(); "
+                "assert report['passed']; "
+                "print(report['deterministic_executions'])"
+            ),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout.strip() == "30"
 
 
 def test_task_level_agent_evaluation_covers_ten_sectors_and_repeated_runs() -> None:
