@@ -53,6 +53,7 @@ jobs:
             tests/test_career_plan_deterministic_execution.py \
             tests/test_career_plan_model_planning.py \
             tests/test_career_plan_agent_evaluation.py \
+            tests/test_career_plan_retry_resilience.py \
             > /tmp/career-plan-agent-tests.txt 2>&1
           status=$?
           cat /tmp/career-plan-agent-tests.txt
