@@ -7,11 +7,13 @@ from sqlalchemy.orm import Session
 
 from app.analysis.schemas import CategoryCoverage, CoachingActionType, FitSummary, GapGroup
 from app.auth import AuthenticatedUser, get_current_user
+from app.career_plans.router import router as career_plans_router
 from app.database import get_db
 from app.external_urls import require_external_https_url, sanitize_external_https_url
 from app.models import SavedReportDB
 
-router = APIRouter(prefix="/saved-reports", tags=["saved-reports"])
+router = APIRouter()
+saved_reports_router = APIRouter(prefix="/saved-reports", tags=["saved-reports"])
 
 
 class SavedCoachingAction(BaseModel):
@@ -89,7 +91,7 @@ def _get_owned_saved_report(db: Session, saved_report_id: int, user_id: str) -> 
     return saved_report
 
 
-@router.post("", response_model=SavedReport, status_code=status.HTTP_201_CREATED)
+@saved_reports_router.post("", response_model=SavedReport, status_code=status.HTTP_201_CREATED)
 def create_saved_report(
     report: SavedReportCreate,
     current_user: AuthenticatedUser = Depends(get_current_user),
@@ -112,7 +114,7 @@ def create_saved_report(
     return _to_saved_report_response(saved_report)
 
 
-@router.get("", response_model=list[SavedReport])
+@saved_reports_router.get("", response_model=list[SavedReport])
 def list_saved_reports(
     current_user: AuthenticatedUser = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -126,7 +128,7 @@ def list_saved_reports(
     return [_to_saved_report_response(report) for report in saved_reports]
 
 
-@router.get("/{saved_report_id}", response_model=SavedReport)
+@saved_reports_router.get("/{saved_report_id}", response_model=SavedReport)
 def get_saved_report(
     saved_report_id: int,
     current_user: AuthenticatedUser = Depends(get_current_user),
@@ -135,7 +137,7 @@ def get_saved_report(
     return _to_saved_report_response(_get_owned_saved_report(db, saved_report_id, current_user.user_id))
 
 
-@router.delete("/{saved_report_id}")
+@saved_reports_router.delete("/{saved_report_id}")
 def delete_saved_report(
     saved_report_id: int,
     current_user: AuthenticatedUser = Depends(get_current_user),
@@ -145,3 +147,10 @@ def delete_saved_report(
     db.delete(saved_report)
     db.commit()
     return {"status": "deleted"}
+
+
+# main.py currently imports this module's public router. Compose both private
+# workspaces here so the new Career Plan tables are registered before metadata
+# creation and both route groups remain available without changing legacy paths.
+router.include_router(saved_reports_router)
+router.include_router(career_plans_router)
