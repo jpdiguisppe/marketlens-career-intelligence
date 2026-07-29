@@ -1,10 +1,15 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth import AuthenticatedUser, get_current_user
+from app.career_plans.explanations import (
+    CareerPlanExplanationError,
+    explain_saved_career_plan,
+)
 from app.career_plans.models import CareerPlanAuditEventDB, CareerPlanRunDB
 from app.career_plans.orchestrator import execute_career_plan
 from app.career_plans.runtime import (
@@ -20,7 +25,10 @@ from app.career_plans.schemas import (
     CareerPlanCreate,
     CareerPlanDecisionRequest,
     CareerPlanExecuteRequest,
+    CareerPlanExplanationRequest,
+    CareerPlanExplanationResponse,
     CareerPlanGoal,
+    CareerPlanProposal,
     CareerPlanRunResponse,
     CareerPlanRunStatus,
     CareerPlanRunSummary,
@@ -183,6 +191,35 @@ def execute_or_resume_career_plan(
 ) -> CareerPlanRunResponse:
     run = _get_owned_run(db, run_id, current_user.user_id)
     return _to_response(execute_career_plan(db, run, request))
+
+
+@router.post("/{run_id}/explain", response_model=CareerPlanExplanationResponse)
+def explain_career_plan(
+    run_id: int,
+    request: CareerPlanExplanationRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CareerPlanExplanationResponse:
+    run = _get_owned_run(db, run_id, current_user.user_id)
+    if not run.proposal:
+        raise _safe_conflict(
+            "proposal_not_ready",
+            "This Career Plan does not have a saved proposal to explain.",
+        )
+    try:
+        proposal = CareerPlanProposal.model_validate(run.proposal)
+    except ValidationError as exc:
+        raise _safe_conflict(
+            "saved_proposal_invalid",
+            "This saved Career Plan cannot be explained with the current schema.",
+        ) from exc
+    try:
+        return explain_saved_career_plan(proposal, request, run.run_version)
+    except CareerPlanExplanationError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": exc.code, "message": str(exc)},
+        ) from exc
 
 
 @router.post("/{run_id}/cancel", response_model=CareerPlanRunResponse)

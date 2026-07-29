@@ -4,7 +4,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-CAREER_PLAN_SCHEMA_VERSION = "8.1.2"
+CAREER_PLAN_SCHEMA_VERSION = "8.1.3"
 MAX_EDITED_ACTIONS = 20
 MAX_PLAN_ACTIONS = 20
 MAX_RESUME_TEXT_LENGTH = 25_000
@@ -88,6 +88,38 @@ class CareerPlanActionStatus(str, Enum):
     EDITED = "edited"
     REJECTED = "rejected"
     COMPLETED = "completed"
+
+
+class CareerPlanModelStrategyTheme(str, Enum):
+    PRIORITIZE_STRONG_MATCHES = "prioritize_strong_matches"
+    BALANCE_APPLY_AND_BUILD = "balance_apply_and_build"
+    CLOSE_REPEATED_GAP = "close_repeated_gap"
+    VERIFY_CONSTRAINTS_FIRST = "verify_constraints_first"
+    BROADEN_SEARCH = "broaden_search"
+
+
+class CareerPlanModelJobFocus(str, Enum):
+    APPLY = "apply"
+    VERIFY = "verify"
+    BUILD_PROOF = "build_proof"
+    MONITOR = "monitor"
+    DEPRIORITIZE = "deprioritize"
+
+
+class CareerPlanModelActionEmphasis(str, Enum):
+    ACT_NOW = "act_now"
+    VERIFY_FIRST = "verify_first"
+    BUILD_EVIDENCE = "build_evidence"
+    PREPARE_STORY = "prepare_story"
+    REVIEW_LATER = "review_later"
+    DEPRIORITIZE = "deprioritize"
+
+
+class CareerPlanExplanationType(str, Enum):
+    WHY_JOB = "why_job"
+    WHY_ACTION = "why_action"
+    WHY_GAP = "why_gap"
+    MODEL_ASSISTANCE = "model_assistance"
 
 
 class CareerPlanGoal(BaseModel):
@@ -175,6 +207,65 @@ class CareerPlanAction(BaseModel):
     status: CareerPlanActionStatus = CareerPlanActionStatus.PROPOSED
 
 
+class CareerPlanProviderTokenUsage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    input_tokens: int = Field(default=0, ge=0)
+    cached_input_tokens: int = Field(default=0, ge=0)
+    output_tokens: int = Field(default=0, ge=0)
+    reasoning_tokens: int = Field(default=0, ge=0)
+    total_tokens: int = Field(default=0, ge=0)
+
+
+class CareerPlanModelTelemetry(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    requested: bool
+    outcome: str = Field(..., min_length=1, max_length=40)
+    status_code: str = Field(..., min_length=1, max_length=80)
+    model: str | None = Field(default=None, max_length=120)
+    prompt_version: str = Field(..., min_length=1, max_length=40)
+    schema_version: str = Field(..., min_length=1, max_length=40)
+    latency_ms: float = Field(default=0.0, ge=0.0)
+    usage: CareerPlanProviderTokenUsage | None = None
+    estimated_cost_usd: float | None = Field(default=None, ge=0.0)
+    cost_estimate_status: str = Field(..., min_length=1, max_length=80)
+
+
+class CareerPlanModelJobNote(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    job_ref: str = Field(..., min_length=1, max_length=100)
+    focus: CareerPlanModelJobFocus
+    supporting_evidence_refs: list[str] = Field(default_factory=list, max_length=10)
+    summary: str = Field(..., min_length=1, max_length=500)
+
+
+class CareerPlanModelActionNote(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    action_id: str = Field(..., min_length=1, max_length=100)
+    emphasis: CareerPlanModelActionEmphasis
+    summary: str = Field(..., min_length=1, max_length=500)
+
+
+class CareerPlanModelAssistance(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: str = Field(..., min_length=1, max_length=80)
+    engine: str = Field(..., min_length=1, max_length=80)
+    schema_version: str = Field(..., min_length=1, max_length=40)
+    prompt_version: str = Field(..., min_length=1, max_length=40)
+    strategy_theme: CareerPlanModelStrategyTheme | None = None
+    strategy_summary: str | None = Field(default=None, max_length=800)
+    priority_job_refs: list[str] = Field(default_factory=list, max_length=5)
+    priority_action_ids: list[str] = Field(default_factory=list, max_length=8)
+    job_notes: list[CareerPlanModelJobNote] = Field(default_factory=list, max_length=5)
+    action_notes: list[CareerPlanModelActionNote] = Field(default_factory=list, max_length=8)
+    uncertainty_codes: list[str] = Field(default_factory=list, max_length=8)
+    telemetry: CareerPlanModelTelemetry
+
+
 class CareerPlanProposal(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -192,6 +283,7 @@ class CareerPlanProposal(BaseModel):
     limitations: list[str] = Field(default_factory=list, max_length=30)
     warnings: list[str] = Field(default_factory=list, max_length=30)
     fallback_status: str = Field(..., min_length=1, max_length=80)
+    model_assisted: CareerPlanModelAssistance | None = None
 
 
 class CareerPlanDecisionRequest(BaseModel):
@@ -205,6 +297,37 @@ class CareerPlanDecisionRequest(BaseModel):
         if self.decision == CareerPlanDecision.REJECTED and self.edited_actions:
             raise ValueError("Rejected plans cannot include edited actions.")
         return self
+
+
+class CareerPlanExplanationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    explanation_type: CareerPlanExplanationType
+    reference_id: str | None = Field(default=None, min_length=1, max_length=120)
+
+    @model_validator(mode="after")
+    def require_reference_for_specific_explanations(self) -> "CareerPlanExplanationRequest":
+        requires_reference = self.explanation_type in {
+            CareerPlanExplanationType.WHY_JOB,
+            CareerPlanExplanationType.WHY_ACTION,
+            CareerPlanExplanationType.WHY_GAP,
+        }
+        if requires_reference and not self.reference_id:
+            raise ValueError("This explanation type requires a reference_id.")
+        if not requires_reference and self.reference_id:
+            raise ValueError("Model-assistance explanations do not accept a reference_id.")
+        return self
+
+
+class CareerPlanExplanationResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    explanation_type: CareerPlanExplanationType
+    reference_id: str | None
+    answer: str = Field(..., min_length=1, max_length=2_000)
+    evidence_refs: list[str] = Field(default_factory=list, max_length=50)
+    engine: str = Field(..., min_length=1, max_length=80)
+    based_on_run_version: int = Field(..., ge=1)
 
 
 class CareerPlanStepResponse(BaseModel):
