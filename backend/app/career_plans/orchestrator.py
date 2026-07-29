@@ -417,5 +417,11 @@ def execute_career_plan(
         return _fail_active_step(db, run, active_step, step_started, exc.safe_code)
     except ValueError:
         return _fail_active_step(db, run, active_step, step_started, "invalid_input")
-    except Exception:
-        return _fail_active_step(db, run, active_step, step_started, "internal_error")
+    except Exception as exc:
+        return _fail_active_step(
+            db,
+            run,
+            active_step,
+            step_started,
+            str(getattr(exc, "safe_code", "internal_error")),
+        )
