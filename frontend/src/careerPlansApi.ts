@@ -38,9 +38,9 @@ function errorDetail(body: { detail?: ApiErrorDetail }, response: Response): str
   }
   if (Array.isArray(detail)) {
     const messages = detail.map((item) => item.msg).filter(Boolean);
-    if (messages.length > 0) {
-      return messages.join("; ");
-    }
+    return messages.length > 0
+      ? messages.join("; ")
+      : `${response.status} ${response.statusText}`;
   }
   if (detail && typeof detail === "object") {
     const message = detail.message ?? detail.msg;
