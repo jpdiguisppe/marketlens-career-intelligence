@@ -81,7 +81,6 @@ def _safe_result_summary(
             "score": analysis.fit_summary.score,
             "band": _enum_value(analysis.fit_summary.band),
             "confidence": analysis.fit_summary.confidence,
-            "headline": analysis.fit_summary.headline[:255],
         },
         "hard_requirements": [
             {
@@ -117,7 +116,6 @@ def _safe_result_summary(
         "strong_matches": analysis.strong_matches[:50],
         "related_matches": analysis.related_matches[:50],
         "important_gaps": analysis.important_gaps[:50],
-        "under_sold_experience": analysis.under_sold_experience[:30],
         "coaching_actions": [
             {
                 "action_type": _enum_value(item.action_type),
