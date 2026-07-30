@@ -1,0 +1,93 @@
+name: Production Career Plan Canary
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Production canary depth
+        required: true
+        type: choice
+        options:
+          - public
+          - full
+        default: full
+      expected_revision:
+        description: Optional exact 40-character deployed revision; defaults to the workflow commit
+        required: false
+        type: string
+      run_model:
+        description: Exercise configured model-assisted paths once
+        required: true
+        type: boolean
+        default: true
+      skip_cancellation:
+        description: Skip the timing-sensitive authenticated cancellation/retry canary
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-career-plan-canary
+  cancel-in-progress: false
+
+jobs:
+  production-canary:
+    name: Exact-revision production validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      EXPECTED_REVISION: ${{ github.event_name == 'workflow_dispatch' && inputs.expected_revision || github.sha }}
+      CANARY_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'public' }}
+      CANARY_WAIT_SECONDS: "900"
+      RUN_MODEL_CANARY: ${{ github.event_name == 'workflow_dispatch' && inputs.run_model || false }}
+      MARKETLENS_CANARY_BEARER_TOKEN: ${{ secrets.MARKETLENS_CANARY_BEARER_TOKEN }}
+      MARKETLENS_CANARY_SECOND_BEARER_TOKEN: ${{ secrets.MARKETLENS_CANARY_SECOND_BEARER_TOKEN }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run production Career Plan canary
+        id: canary
+        working-directory: backend
+        shell: bash
+        run: |
+          set +e
+          extra_args=()
+          if [ "${{ github.event_name == 'workflow_dispatch' && inputs.skip_cancellation || false }}" = "true" ]; then
+            extra_args+=(--skip-cancellation)
+          fi
+          python scripts/run_production_career_plan_canary.py "${extra_args[@]}" > /tmp/marketlens-production-canary.txt 2>&1
+          status=$?
+          cat /tmp/marketlens-production-canary.txt
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload production validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: marketlens-production-career-plan-canary
+          path: /tmp/marketlens-production-canary.txt
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Fail when production validation fails
+        if: steps.canary.outputs.status != '0'
+        run: exit 1
