@@ -247,10 +247,17 @@ class ProductionCareerPlanCanary:
             asset_response = self._client.get(asset_url)
             _require_status(asset_response, {200})
             bundle_text += asset_response.text
-        required_markers = ("Career Plans", "Candidate Selection Audit", "/career-plans")
+        required_markers = (
+            "Seven-step workflow",
+            "Inspect every candidate decision before approval",
+            "/career-plans",
+        )
         missing = [marker for marker in required_markers if marker not in bundle_text]
         if missing:
-            raise ProductionCanaryError("career_plan_bundle_stale", "Career Plan workspace markers were missing from the frontend bundle.")
+            raise ProductionCanaryError(
+                "career_plan_bundle_stale",
+                "Career Plan workspace markers were missing from the frontend bundle: " + ", ".join(missing),
+            )
         return {"script_count": len(sources), "markers": list(required_markers)}
 
     def _check_model_status(self) -> dict[str, Any]:
