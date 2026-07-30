@@ -30,7 +30,14 @@ def _handler(request: httpx.Request) -> httpx.Response:
         if path == "/":
             return httpx.Response(200, text='<html><div id="root"></div><script src="/assets/app.js"></script></html>')
         if path == "/assets/app.js":
-            return httpx.Response(200, text='Career Plans Candidate Selection Audit fetch("/career-plans")')
+            return httpx.Response(
+                200,
+                text=(
+                    'Seven-step workflow '
+                    'Inspect every candidate decision before approval '
+                    'fetch("/career-plans")'
+                ),
+            )
     if request.url.host == "backend.example":
         if path == "/health":
             return httpx.Response(200, json={"status": "ok"})
@@ -103,6 +110,12 @@ def test_public_canary_contract_passes_with_exact_revision() -> None:
         "live_job_search",
         "deterministic_smart_fit",
     }
+    bundle_check = next(item for item in report["checks"] if item["name"] == "frontend_career_plan_bundle")
+    assert bundle_check["details"]["markers"] == [
+        "Seven-step workflow",
+        "Inspect every candidate decision before approval",
+        "/career-plans",
+    ]
 
 
 def test_full_canary_cannot_pass_without_authenticated_identity() -> None:
