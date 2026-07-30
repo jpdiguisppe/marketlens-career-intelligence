@@ -9,6 +9,7 @@ from app.analysis.schemas import CategoryCoverage, CoachingActionType, FitSummar
 from app.auth import AuthenticatedUser, get_current_user
 from app.career_plans.router import router as career_plans_router
 from app.database import get_db
+from app.deployment_status import router as deployment_status_router
 from app.external_urls import require_external_https_url, sanitize_external_https_url
 from app.models import SavedReportDB
 
@@ -149,8 +150,9 @@ def delete_saved_report(
     return {"status": "deleted"}
 
 
-# main.py currently imports this module's public router. Compose both private
-# workspaces here so the new Career Plan tables are registered before metadata
-# creation and both route groups remain available without changing legacy paths.
+# main.py currently imports this module's public router. Compose the deployment,
+# saved-report, and Career Plan route groups here so their models are registered
+# before metadata creation while preserving all existing public paths.
+router.include_router(deployment_status_router)
 router.include_router(saved_reports_router)
 router.include_router(career_plans_router)
