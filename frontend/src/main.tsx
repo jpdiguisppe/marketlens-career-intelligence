@@ -5,6 +5,7 @@ import { ClerkProvider } from "@clerk/react";
 import AuthControls from "./AuthControls";
 import WorkspaceRouter from "./WorkspaceRouter";
 import "./styles.css";
+import "./mobileAuthControls.css";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
