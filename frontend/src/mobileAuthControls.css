@@ -1,0 +1,8 @@
+@media (max-width: 560px) {
+  .marketlens-auth-controls {
+    position: static;
+    width: min(1180px, calc(100% - 32px));
+    margin: 16px auto 0;
+    justify-content: flex-end;
+  }
+}
