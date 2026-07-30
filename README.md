@@ -41,57 +41,69 @@ The product has two connected workspaces:
 
 MarketLens is a portfolio product. Do not upload secrets, API keys, confidential employer/customer data, or highly sensitive personal information.
 
-## Screenshots
+## Product screenshots
 
-### Online job search
+The visuals are grouped by the MarketLens workspace they belong to, so each part of the product can be understood independently.
+
+### Workspace 1 — Job Intelligence
+
+> **Purpose:** Search configured public job sources, compare opportunities against résumé evidence, and inspect grounded Smart Fit results.
+
+#### Job Intelligence 1 — Public-source job search
 
 MarketLens searches configured public sources and reports exactly which providers were attempted.
 
-![Online job search results](docs/screenshots/online-job-search.png)
+![Job Intelligence public-source search results](docs/screenshots/online-job-search.png)
 
-### Ranked Smart Fit comparison
+#### Job Intelligence 2 — Ranked Smart Fit comparison
 
 Users can compare multiple jobs against one résumé and inspect why one opportunity ranked above another.
 
-![Ranked Smart Fit comparison](docs/screenshots/job-fit-ranking.png)
+![Job Intelligence ranked Smart Fit comparison](docs/screenshots/job-fit-ranking.png)
 
-### Role-aware gap report
+#### Job Intelligence 3 — Role-aware evidence gaps
 
 Reports distinguish direct résumé proof from broader signals and surface role-specific capability gaps.
 
-![Role-aware gap report](docs/screenshots/role-aware-gap-report.png)
+![Job Intelligence role-aware gap report](docs/screenshots/role-aware-gap-report.png)
 
-### Coaching actions and requirements
+#### Job Intelligence 4 — Coaching actions and requirements
 
 Deterministic recommendations keep hard requirements separate from broader career-development guidance.
 
-![Coaching actions and requirement breakdown](docs/screenshots/coaching-actions-breakdown.png)
+![Job Intelligence coaching actions and requirement breakdown](docs/screenshots/coaching-actions-breakdown.png)
 
-### Seven-step Career Planning Agent
+---
+
+### Workspace 2 — Career Plans
+
+> **Purpose:** Run the authenticated seven-step planning agent, inspect every decision, and review or change the proposed plan before approval.
+
+#### Career Plans 1 — Seven-step agent workflow
 
 The authenticated production workspace displays every persisted step and clearly separates deterministic planning from optional bounded AI organization.
 
-![Career Plan seven-step AI workflow](docs/screenshots/milestone-8-1/career-plan-ai-workflow.svg)
+![Career Plans seven-step AI workflow](docs/screenshots/milestone-8-1/career-plan-ai-workflow.svg)
 
-### Deterministic candidate-selection audit
+#### Career Plans 2 — Deterministic candidate-selection audit
 
 Users can inspect provider coverage, considered jobs, selected jobs, excluded jobs, and deterministic reason codes before approval.
 
-![Career Plan candidate-selection audit](docs/screenshots/milestone-8-1/candidate-selection-audit.svg)
+![Career Plans deterministic candidate-selection audit](docs/screenshots/milestone-8-1/candidate-selection-audit.svg)
 
-### Safe cancellation and retry
+#### Career Plans 3 — Safe cancellation and retry
 
 A production run was cancelled after search and successfully completed as attempt two without duplicated actions or lost audit history.
 
-![Career Plan cancellation and retry recovery](docs/screenshots/milestone-8-1/cancellation-retry-recovery.svg)
+![Career Plans cancellation and retry recovery](docs/screenshots/milestone-8-1/cancellation-retry-recovery.svg)
 
-### Edited approval persistence
+#### Career Plans 4 — Edited approval persistence
 
 User edits remain separate from the immutable generated proposal and persist after approval, refresh, and reopening.
 
-![Approved Career Plan edited action](docs/screenshots/milestone-8-1/approved-edited-action.svg)
+![Career Plans approved edited action](docs/screenshots/milestone-8-1/approved-edited-action.svg)
 
-These privacy-safe production validation visuals reproduce the exact captured states and measured values from the July 30, 2026 authenticated session while excluding raw résumé text and account details. Responsive behavior was separately validated at a 400 × 770 viewport after the mobile authentication-overlay fix in PR #98.
+These privacy-safe Career Plans visuals reproduce the exact captured production states and measured values from the July 30, 2026 authenticated session while excluding raw résumé text and account details. Responsive behavior was separately validated at a 400 × 770 viewport after the mobile authentication-overlay fix in PR #98.
 
 ## Current product workflow
 
