@@ -1,4 +1,5 @@
 import type {
+  CareerPlanAction,
   CareerPlanCreateRequest,
   CareerPlanDecisionRequest,
   CareerPlanExecuteRequest,
@@ -7,6 +8,7 @@ import type {
   CareerPlanRun,
   CareerPlanRunSummary,
 } from "./careerPlanTypes";
+import { hasCareerPlanProposal } from "./careerPlanTypes";
 
 declare global {
   interface Window {
@@ -36,6 +38,56 @@ type ApiErrorDetail =
   | string
   | { code?: string; message?: string; msg?: string }
   | { msg?: string }[];
+
+type CareerPlanApprovalEnvelope = {
+  decision?: unknown;
+  edited_actions?: unknown;
+};
+
+function isCareerPlanAction(value: unknown): value is CareerPlanAction {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const action = value as Partial<CareerPlanAction>;
+  return (
+    typeof action.id === "string" &&
+    typeof action.action_type === "string" &&
+    typeof action.priority === "string" &&
+    typeof action.title === "string" &&
+    typeof action.rationale === "string" &&
+    typeof action.status === "string" &&
+    Array.isArray(action.job_refs) &&
+    Array.isArray(action.evidence_refs)
+  );
+}
+
+function withApprovedEditsForDisplay(run: CareerPlanRun): CareerPlanRun {
+  if (!hasCareerPlanProposal(run.proposal)) {
+    return run;
+  }
+
+  const approval = run.approval as CareerPlanApprovalEnvelope;
+  if (approval.decision !== "approved" || !Array.isArray(approval.edited_actions)) {
+    return run;
+  }
+
+  const generatedActionIds = new Set(run.proposal.actions.map((action) => action.id));
+  const approvedEdits = approval.edited_actions.filter(
+    (action): action is CareerPlanAction => isCareerPlanAction(action) && generatedActionIds.has(action.id),
+  );
+  if (approvedEdits.length === 0) {
+    return run;
+  }
+
+  const editsById = new Map(approvedEdits.map((action) => [action.id, action]));
+  return {
+    ...run,
+    proposal: {
+      ...run.proposal,
+      actions: run.proposal.actions.map((action) => editsById.get(action.id) ?? action),
+    },
+  };
+}
 
 function errorDetail(body: { detail?: ApiErrorDetail }, response: Response): string {
   const detail = body.detail;
@@ -91,7 +143,8 @@ export async function listCareerPlans(token: string): Promise<CareerPlanRunSumma
 }
 
 export async function getCareerPlan(token: string, runId: number): Promise<CareerPlanRun> {
-  return authenticatedJson<CareerPlanRun>(token, `/career-plans/${runId}`);
+  const run = await authenticatedJson<CareerPlanRun>(token, `/career-plans/${runId}`);
+  return withApprovedEditsForDisplay(run);
 }
 
 export async function createCareerPlan(
@@ -103,7 +156,7 @@ export async function createCareerPlan(
     body: JSON.stringify(request),
   });
   notifyCareerPlansChanged();
-  return run;
+  return withApprovedEditsForDisplay(run);
 }
 
 export async function executeCareerPlan(
@@ -116,7 +169,7 @@ export async function executeCareerPlan(
     body: JSON.stringify(request),
   });
   notifyCareerPlansChanged();
-  return run;
+  return withApprovedEditsForDisplay(run);
 }
 
 export async function cancelCareerPlan(token: string, runId: number): Promise<CareerPlanRun> {
@@ -124,7 +177,7 @@ export async function cancelCareerPlan(token: string, runId: number): Promise<Ca
     method: "POST",
   });
   notifyCareerPlansChanged();
-  return run;
+  return withApprovedEditsForDisplay(run);
 }
 
 export async function decideCareerPlan(
@@ -137,7 +190,7 @@ export async function decideCareerPlan(
     body: JSON.stringify(request),
   });
   notifyCareerPlansChanged();
-  return run;
+  return withApprovedEditsForDisplay(run);
 }
 
 export async function explainCareerPlan(
