@@ -1,21 +1,20 @@
 # MarketLens Career Intelligence
 
-MarketLens is a deployed full-stack career-intelligence platform that searches configured public job sources, compares résumé evidence against real job descriptions, ranks role fit, and helps users turn opportunities, strengths, and evidence gaps into a reviewable career plan.
+MarketLens is a deployed full-stack career-intelligence platform that searches configured public job sources, compares résumé evidence against real job descriptions, ranks role fit, and turns opportunities, strengths, and evidence gaps into a reviewable career plan.
 
-The project now contains two connected product surfaces:
+The product has two connected workspaces:
 
-1. **Job Intelligence** — public-source search and role-aware Smart Fit comparison.
-2. **Career Plans** — a private, resumable, bounded AI-agent workflow that searches, selects, analyzes, synthesizes, explains, and proposes next actions while keeping the user in control.
+1. **Job Intelligence** — public-source job search and evidence-aware Smart Fit comparison.
+2. **Career Plans** — a private, resumable, bounded AI-agent workflow that searches, selects, analyzes, synthesizes, explains, and proposes next actions while preserving human control.
 
 ## Project highlights
 
-- **Deployed full-stack product:** React + TypeScript frontend, FastAPI backend, SQLAlchemy persistence, Clerk authentication, Docker packaging, and Railway deployment.
-- **Bounded Career Planning Agent:** a durable seven-step workflow using existing job-search and Smart Fit tools rather than duplicating scoring logic inside a prompt.
-- **Cross-sector job search:** occupation-aware matching across technology, business, education, science, engineering, healthcare, public service, creative work, trades, agriculture, hospitality, transportation, and service work.
-- **Role-aware Smart Fit:** evidence-backed scoring, hard-requirement assessment, capability gaps, ranking explanations, and deterministic coaching actions.
-- **Optional AI with strict authority limits:** model output may organize an already-completed deterministic plan but cannot alter scores, evidence, hard requirements, provenance, job selection, action types, approval state, or external systems.
-- **Private and resumable workspace:** authenticated users can save jobs, reduced Smart Fit summaries, Career Plan runs, workflow steps, decisions, and safe audit metadata.
-- **Permanent adversarial evaluation:** ten-sector agent fixtures, provider-failure matrices, prompt-injection cases, ownership isolation, retry recovery, privacy checks, and explicit model budgets.
+- **Deployed full-stack product:** React + TypeScript, FastAPI, SQLAlchemy, Clerk authentication, Docker, PostgreSQL, and Railway.
+- **Bounded Career Planning Agent:** a durable seven-step workflow that orchestrates the existing search and Smart Fit systems rather than reproducing their logic inside prompts.
+- **Deterministic authority:** job selection, scores, evidence, hard requirements, provenance, opportunity categories, and the action set remain deterministic.
+- **Optional AI organization:** one strict-schema model call may organize existing IDs and priorities but cannot create facts, alter scores, approve a plan, or take external action.
+- **Private resumable workflows:** users can create, cancel, retry, edit, approve, reject, reopen, and delete owned plans.
+- **Production-oriented evaluation:** ten-sector task fixtures, prompt-injection tests, ownership attacks, provider failures, cancellation recovery, privacy checks, explicit budgets, Docker builds, and exact-revision production canaries.
 
 ## Tech stack
 
@@ -23,11 +22,11 @@ The project now contains two connected product surfaces:
 | --- | --- |
 | Frontend | React, TypeScript, Vite, CSS |
 | Backend | Python, FastAPI, Pydantic, SQLAlchemy |
-| Database | SQLite locally; PostgreSQL through `DATABASE_URL` in deployment |
+| Database | SQLite locally; PostgreSQL through `DATABASE_URL` in production |
 | Authentication | Clerk frontend sessions with backend token verification |
 | Job sources | Greenhouse, Lever, named SmartRecruiters employer boards, Remote OK, Remotive |
-| AI integration | Backend-only Responses API configuration with strict schemas and deterministic fallback |
-| Testing / quality | pytest, deterministic evaluations, adversarial fixtures, GitHub Actions, Docker builds |
+| AI integration | Backend-only Responses API configuration, strict schemas, deterministic fallback |
+| Testing | pytest, deterministic evaluators, adversarial fixtures, GitHub Actions, Docker builds |
 | Deployment | Railway frontend and backend services |
 
 ## Live demo
@@ -38,9 +37,9 @@ The project now contains two connected product surfaces:
 - **Deployment identity:** [Safe backend revision endpoint](https://marketlens-career-intelligence-production.up.railway.app/deployment/status)
 - **Portfolio walkthrough:** [How to demo MarketLens](docs/portfolio-demo-walkthrough.md)
 - **Agent evaluation:** [Milestone 8.1 evaluation record](docs/milestone-8-1-agent-evaluation.md)
-- **Milestone 8.1 completion decision:** [Production sign-off record](docs/milestone-8-1-completion.md)
+- **Production sign-off:** [Milestone 8.1 completion record](docs/milestone-8-1-completion.md)
 
-The deployed application is a portfolio product. Do not upload secrets, API keys, confidential employer/customer data, or highly sensitive personal information.
+MarketLens is a portfolio product. Do not upload secrets, API keys, confidential employer/customer data, or highly sensitive personal information.
 
 ## Screenshots
 
@@ -68,7 +67,31 @@ Deterministic recommendations keep hard requirements separate from broader caree
 
 ![Coaching actions and requirement breakdown](docs/screenshots/coaching-actions-breakdown.png)
 
-Authenticated Career Plan screenshots are intentionally gated on the final exact-revision production browser canary in Milestone 8.1F. They will not be represented by mock or local-only images.
+### Seven-step Career Planning Agent
+
+The authenticated production workspace displays every persisted step and clearly separates deterministic planning from optional bounded AI organization.
+
+![Career Plan seven-step AI workflow](docs/screenshots/milestone-8-1/career-plan-ai-workflow.jpg)
+
+### Deterministic candidate-selection audit
+
+Users can inspect provider coverage, considered jobs, selected jobs, excluded jobs, and deterministic reason codes before approval.
+
+![Career Plan candidate-selection audit](docs/screenshots/milestone-8-1/candidate-selection-audit.jpg)
+
+### Safe cancellation and retry
+
+A production run was cancelled after search and successfully completed as attempt two without duplicated actions or lost audit history.
+
+![Career Plan cancellation and retry recovery](docs/screenshots/milestone-8-1/cancellation-retry-recovery.jpg)
+
+### Edited approval persistence
+
+User edits remain separate from the immutable generated proposal and persist after approval, refresh, and reopening.
+
+![Approved Career Plan edited action](docs/screenshots/milestone-8-1/approved-edited-action.jpg)
+
+The authenticated captures were taken from the production deployment on July 30, 2026 and cropped to exclude raw résumé text and account details. Responsive behavior was separately validated at a 400 × 770 viewport after the mobile authentication-overlay fix in PR #98.
 
 ## Current product workflow
 
@@ -119,7 +142,7 @@ The seven workflow steps are:
 2. search jobs
 3. select candidates
 4. analyze Smart Fit
-5. synthesize deterministic plan
+5. synthesize a deterministic plan
 6. optionally organize the plan with one bounded model call
 7. finalize the proposal for human review
 
@@ -134,7 +157,7 @@ The agent:
 - creates at most twenty proposed actions
 - uses at most one Career Plan model call
 - persists workflow state, attempts, safe summaries, and audit events
-- treats job content as untrusted data
+- treats job content and résumé content as untrusted data
 - returns a complete deterministic plan when AI is disabled or fails
 - requires an explicit user decision before a plan becomes approved or rejected
 
@@ -153,29 +176,9 @@ The model cannot:
 
 MarketLens evaluates occupation, experience level, industry, and location as separate concerns.
 
-### Occupation relevance
+Specific occupations require title-level evidence. A shared word such as `engineer`, `analyst`, `assistant`, `technician`, `editor`, or `manager` is not sufficient by itself. Protected distinctions include electrical engineer vs. analytics engineer, electrician vs. electrical engineer, medical assistant vs. registered nurse, policy analyst vs. data analyst, and journalism editor vs. video editor.
 
-Specific occupations require title-level evidence. A shared word such as `engineer`, `analyst`, `assistant`, `technician`, `editor`, or `manager` is not sufficient by itself.
-
-Protected distinctions include:
-
-- electrical engineer vs. analytics engineer
-- elementary teacher vs. middle-school teacher
-- electrician vs. electrical engineer
-- medical assistant vs. registered nurse
-- policy analyst vs. data analyst
-- journalism editor/reporter vs. video editor
-- social worker vs. social-media manager
-
-### Experience level
-
-Supported levels are `any`, `intern`, `entry`, `mid`, and `senior`. The matcher uses guarded title and written-experience evidence rather than blindly treating every unlabeled posting as entry level.
-
-### Location
-
-Explicit city searches are strict. Philadelphia includes recognized metro locations such as King of Prussia, Malvern, West Chester, Camden, Cherry Hill, Mount Laurel, and Wilmington while excluding Pittsburgh, New York, California, and remote-only postings unless remote was requested.
-
-### Source coverage
+Supported experience levels are `any`, `intern`, `entry`, `mid`, and `senior`. Explicit city searches are strict, with bounded metro-area aliases rather than unrestricted location matching.
 
 MarketLens uses public APIs rather than scraping closed platforms:
 
@@ -185,17 +188,16 @@ MarketLens uses public APIs rather than scraping closed platforms:
 - Remote OK public feed
 - Remotive public API
 
-MarketLens does not claim to search all of LinkedIn, Indeed, Handshake, Workday, school portals, or every company career site. Those remain external continuation options.
+It does not claim to search all of LinkedIn, Indeed, Handshake, Workday, school portals, or every company career site.
 
 ## Current capabilities
 
 All visitors can:
 
-- view sample market data
 - upload `.txt`, `.md`, `.pdf`, or `.docx` résumés for request-time extraction
 - paste résumé text manually
 - search configured public sources
-- inspect provider-by-provider coverage, warnings, suggestions, and continuation links
+- inspect provider-by-provider coverage, warnings, and continuation links
 - compare one to ten searched or manually pasted jobs through Smart Fit
 - review requirements, evidence, rankings, gaps, limitations, and coaching actions
 - use deterministic analysis when model-assisted stages are unavailable
@@ -203,7 +205,7 @@ All visitors can:
 Signed-in users can additionally:
 
 - save, reopen, and delete jobs privately
-- explicitly save and delete reduced Smart Fit summaries
+- save and delete reduced Smart Fit summaries
 - create private Career Plan runs
 - inspect all seven workflow steps and safe audit history
 - cancel and retry active or failed runs
@@ -225,10 +227,8 @@ Important public endpoints include:
 - `POST /analysis/smart/batch`
 - `GET /analysis/model-status`
 
-Authenticated endpoints include:
+Authenticated Career Plan endpoints include:
 
-- saved-job create/list/read/delete
-- saved-report create/list/read/delete
 - `POST /career-plans`
 - `GET /career-plans`
 - `GET /career-plans/{run_id}`
@@ -261,24 +261,32 @@ Current controls include:
 
 See [`SECURITY.md`](SECURITY.md) for the security policy and limitations.
 
-## Evaluation and CI
+## Evaluation and production validation
 
-The integrated Milestone 8.1 implementation passed:
+Milestone 8.1 passed:
 
 - ten representative career sectors
 - ten committed task-level cases
 - three repeated deterministic executions per case
 - thirty stable agent executions with zero failed cases
-- prompt-injection inputs across descriptions, titles, company metadata, and URLs
+- prompt-injection inputs across descriptions, titles, company metadata, URLs, and authenticated résumé text
 - model timeout, transport, HTTP, invalid JSON, schema, reference, duplicate, and policy-changing output cases
 - cancellation and failed-run retry recovery without duplicated actions
-- ownership-isolation and private mutation tests
-- provider telemetry, cost, token, payload, and latency policy checks
+- automated and production ownership-isolation checks
+- provider telemetry, cost, token, payload, and latency policies
+- **447 backend tests**
 - frontend TypeScript/Vite production build
 - backend and frontend Docker builds
-- Operational Reliability, Provider Resilience, Provider Telemetry, Smart Fit Evaluation, Career Plan Agent Evaluation, and Secret and Log Safety workflows
+- Career Plan Agent Evaluation
+- Smart Fit Evaluation
+- Operational Reliability
+- Provider Resilience
+- Provider Telemetry
+- Secret and Log Safety
 
-Milestone 8.1F adds an exact-revision Railway canary. Public mode checks both deployed revisions, the Career Plan frontend bundle, live job search, deterministic Smart Fit, model status, and private-route authentication boundaries. Full mode additionally requires configured authenticated canary identities and exercises the private Career Plan lifecycle.
+The exact-revision Railway canaries passed on validated runtime revision `31acd2b7a587cf4fdc9c2cebe0dbf4b7dce567f1`. Authenticated production browser validation covered deterministic and AI-assisted plans, all seven steps, explanations, edit/approve/reopen persistence, reject/delete, cancellation/retry, prompt-injection resistance, second-account isolation, and 400-pixel responsive behavior.
+
+See [`docs/milestone-8-1-completion.md`](docs/milestone-8-1-completion.md) for measured latency, cost, fallback, residual-risk, and GO evidence.
 
 ## Running locally
 
@@ -332,7 +340,7 @@ CANARY_WAIT_SECONDS=900 \
 python scripts/run_production_career_plan_canary.py --mode public
 ```
 
-Full authenticated mode additionally requires short-lived canary bearer tokens stored outside the repository.
+Full automated authenticated mode additionally requires short-lived canary bearer tokens stored outside the repository. The final Milestone 8.1 authenticated sign-off was completed through a recorded production browser session.
 
 ## Portfolio and interview summary
 
@@ -341,20 +349,16 @@ MarketLens is a deployed, stateful career-intelligence product. It combines publ
 Suggested résumé bullet:
 
 ```text
-Built and deployed MarketLens, a React/FastAPI career-intelligence platform with a bounded AI planning agent that orchestrates public job search and evidence-based résumé analysis, persists resumable user-owned workflows, falls back deterministically on model failure, and is validated through adversarial, privacy, recovery, Docker, and production canary gates.
+Built and deployed MarketLens, a React/FastAPI career-intelligence platform with a bounded AI planning agent that orchestrates public job search and evidence-based résumé analysis, persists resumable user-owned workflows, falls back deterministically on model failure, and is validated through adversarial, privacy, recovery, Docker, and exact-revision production canary gates.
 ```
 
 ## Milestone status
 
-Completed implementation work:
+Completed:
 
 - Milestones 1–7.1: search, Smart Fit, deployment, authentication, private saving, source coverage, and cross-sector correctness
 - Milestone 8: optional model-assisted extraction and personalized coaching foundations
-- Milestone 8.1A–8.1E: Career Plan architecture, deterministic orchestration, bounded model organization, authenticated UI, and permanent evaluation/security gates
-
-Final sign-off work:
-
-- Milestone 8.1F: exact-revision deployment proof, production canaries, authenticated browser validation, screenshots, and final GO/NO-GO record
+- **Milestone 8.1A–8.1F: bounded Career Planning Agent architecture, orchestration, optional AI organization, authenticated UI, permanent evaluation, and production sign-off**
 
 ## Explicit post-launch roadmap
 
