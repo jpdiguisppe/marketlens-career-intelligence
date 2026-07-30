@@ -1,5 +1,3 @@
-import os
-import re
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -8,12 +6,12 @@ from sqlalchemy.orm import Session
 
 from app.auth import AuthenticatedUser, get_current_user
 from app.database import get_db
+from app.deployment_status import deployment_revision
 from app.external_urls import require_external_https_url, sanitize_external_https_url
 from app.models import SavedJobDB
 from app.skill_extractor import extract_skills
 
 MAX_SAVED_JOB_DESCRIPTION_LENGTH = 50_000
-GIT_COMMIT_SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$", re.IGNORECASE)
 
 router = APIRouter(prefix="/saved-jobs", tags=["saved-jobs"])
 
@@ -43,11 +41,6 @@ class SavedJob(SavedJobCreate):
     id: int
     extracted_skills: list[str] = Field(default_factory=list)
     created_at: datetime
-
-
-def _deployment_revision() -> str:
-    revision = os.getenv("RAILWAY_GIT_COMMIT_SHA", "").strip()
-    return revision.lower() if GIT_COMMIT_SHA_PATTERN.fullmatch(revision) else "unknown"
 
 
 def _to_saved_job_response(saved_job: SavedJobDB) -> SavedJob:
@@ -86,12 +79,12 @@ def _get_owned_saved_job(
 
 
 @router.get("/deployment-status")
-def deployment_status() -> dict[str, str]:
-    """Expose only the safe Git revision needed by production canaries."""
+def deployment_status_alias() -> dict[str, str]:
+    """Compatibility alias for the canonical public deployment endpoint."""
 
     return {
         "status": "ok",
-        "revision": _deployment_revision(),
+        "revision": deployment_revision(),
     }
 
 
