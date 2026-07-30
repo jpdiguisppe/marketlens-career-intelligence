@@ -82,6 +82,8 @@ def _get_owned_saved_job(
 def deployment_status_alias() -> dict[str, str]:
     """Compatibility alias for the canonical public deployment endpoint."""
 
+    # The canonical helper reads os.getenv("RAILWAY_GIT_COMMIT_SHA" and applies
+    # the same strict 40-character SHA boundary used by the Milestone 8E canary.
     return {
         "status": "ok",
         "revision": deployment_revision(),
