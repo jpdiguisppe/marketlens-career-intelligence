@@ -1,276 +1,286 @@
 # MarketLens Career Intelligence
 
-MarketLens is a deployed full-stack career-intelligence platform that searches configured public job sources, compares resume evidence against real job descriptions, ranks role fit, and turns noisy postings into clearer skill gaps, capability gaps, and learning priorities.
+MarketLens is a deployed full-stack career-intelligence platform that searches configured public job sources, compares résumé evidence against real job descriptions, ranks role fit, and helps users turn opportunities, strengths, and evidence gaps into a reviewable career plan.
 
-## Project Highlights
+The project now contains two connected product surfaces:
 
-- **Deployed full-stack app:** React + TypeScript frontend, FastAPI backend, SQLAlchemy persistence, and Railway deployment.
-- **Cross-sector job search:** Occupation-aware matching supports careers across technology, business, education, science, engineering, healthcare, public service, creative work, trades, agriculture, hospitality, transportation, and service work.
-- **Strict search semantics:** Occupation, experience level, industry, and location are evaluated separately; explicit city searches exclude remote-only roles.
-- **Role-aware Smart Fit:** Users can compare a resume against one or more jobs and review evidence, requirement coverage, capability gaps, ranking explanations, and coaching actions.
-- **Online + manual workflows:** MarketLens searches public Greenhouse, Lever, named SmartRecruiters employer boards, Remote OK, and Remotive sources; outside postings can still be pasted into Smart Fit manually.
-- **Private career workspace:** Clerk-authenticated users can save searched jobs and reduced Smart Fit report summaries with server-side ownership checks.
-- **Quality coverage:** 290 backend tests, a 273-candidate formal job-search benchmark, integrated occupation/level/location matrices, frontend and Docker builds, and reviewed live-provider smoke tests.
+1. **Job Intelligence** — public-source search and role-aware Smart Fit comparison.
+2. **Career Plans** — a private, resumable, bounded AI-agent workflow that searches, selects, analyzes, synthesizes, explains, and proposes next actions while keeping the user in control.
 
-## Tech Stack
+## Project highlights
+
+- **Deployed full-stack product:** React + TypeScript frontend, FastAPI backend, SQLAlchemy persistence, Clerk authentication, Docker packaging, and Railway deployment.
+- **Bounded Career Planning Agent:** a durable seven-step workflow using existing job-search and Smart Fit tools rather than duplicating scoring logic inside a prompt.
+- **Cross-sector job search:** occupation-aware matching across technology, business, education, science, engineering, healthcare, public service, creative work, trades, agriculture, hospitality, transportation, and service work.
+- **Role-aware Smart Fit:** evidence-backed scoring, hard-requirement assessment, capability gaps, ranking explanations, and deterministic coaching actions.
+- **Optional AI with strict authority limits:** model output may organize an already-completed deterministic plan but cannot alter scores, evidence, hard requirements, provenance, job selection, action types, approval state, or external systems.
+- **Private and resumable workspace:** authenticated users can save jobs, reduced Smart Fit summaries, Career Plan runs, workflow steps, decisions, and safe audit metadata.
+- **Permanent adversarial evaluation:** ten-sector agent fixtures, provider-failure matrices, prompt-injection cases, ownership isolation, retry recovery, privacy checks, and explicit model budgets.
+
+## Tech stack
 
 | Area | Tools |
 | --- | --- |
 | Frontend | React, TypeScript, Vite, CSS |
 | Backend | Python, FastAPI, Pydantic, SQLAlchemy |
-| Database | SQLite locally; PostgreSQL-ready through `DATABASE_URL` |
+| Database | SQLite locally; PostgreSQL through `DATABASE_URL` in deployment |
 | Authentication | Clerk frontend sessions with backend token verification |
 | Job sources | Greenhouse, Lever, named SmartRecruiters employer boards, Remote OK, Remotive |
-| Testing / Quality | pytest, deterministic search evaluation, GitHub Actions, Docker builds, Dependabot |
-| Deployment | Railway frontend and backend |
+| AI integration | Backend-only Responses API configuration with strict schemas and deterministic fallback |
+| Testing / quality | pytest, deterministic evaluations, adversarial fixtures, GitHub Actions, Docker builds |
+| Deployment | Railway frontend and backend services |
 
-## Live Demo
+## Live demo
 
-- **Frontend app:** [MarketLens live demo](https://marketlens-career-intelligence-production-8a34.up.railway.app)
+- **Frontend:** [MarketLens live demo](https://marketlens-career-intelligence-production-8a34.up.railway.app)
 - **Backend API docs:** [FastAPI Swagger UI](https://marketlens-career-intelligence-production.up.railway.app/docs)
-- **Backend health check:** [API health endpoint](https://marketlens-career-intelligence-production.up.railway.app/health)
-- **Portfolio demo walkthrough:** [How to demo MarketLens](docs/portfolio-demo-walkthrough.md)
-- **Milestone 6 completion:** [Private workspace completion record](docs/milestone-6-completion.md)
-- **Milestone 7 completion:** [Job-source coverage completion record](docs/milestone-7-completion.md)
-- **Milestone 7.1:** [Cross-sector search correctness contract](docs/search-correctness-hardening.md)
-- **Validation record:** [Search-hardening validation log](docs/search-hardening-validation-log.md)
+- **Backend health:** [API health endpoint](https://marketlens-career-intelligence-production.up.railway.app/health)
+- **Deployment identity:** [Safe backend revision endpoint](https://marketlens-career-intelligence-production.up.railway.app/deployment/status)
+- **Portfolio walkthrough:** [How to demo MarketLens](docs/portfolio-demo-walkthrough.md)
+- **Agent evaluation:** [Milestone 8.1 evaluation record](docs/milestone-8-1-agent-evaluation.md)
+- **Milestone 8.1 completion decision:** [Production sign-off record](docs/milestone-8-1-completion.md)
 
-The deployed version is a secured portfolio application. Visitors can search configured public sources and run Smart Fit without saving. Signed-in users can privately save searched jobs and reduced Smart Fit report summaries. Shared posting creation, CSV import, and deletion remain admin-only actions protected by an `X-Admin-API-Key` header.
-
-Do not upload sensitive personal information, secrets, API keys, database URLs, or confidential employer/customer data.
+The deployed application is a portfolio product. Do not upload secrets, API keys, confidential employer/customer data, or highly sensitive personal information.
 
 ## Screenshots
 
 ### Online job search
 
-MarketLens searches configured public sources and normalizes postings into selectable cards.
+MarketLens searches configured public sources and reports exactly which providers were attempted.
 
 ![Online job search results](docs/screenshots/online-job-search.png)
 
 ### Ranked Smart Fit comparison
 
-Users can select multiple jobs and compare them against the same resume. The ranking explains score gaps, resume evidence, and runner-up differences.
+Users can compare multiple jobs against one résumé and inspect why one opportunity ranked above another.
 
 ![Ranked Smart Fit comparison](docs/screenshots/job-fit-ranking.png)
 
 ### Role-aware gap report
 
-Detailed reports separate direct role evidence from general resume signals and surface capability gaps that exact keyword matching would miss.
+Reports distinguish direct résumé proof from broader signals and surface role-specific capability gaps.
 
 ![Role-aware gap report](docs/screenshots/role-aware-gap-report.png)
 
-### Coaching actions and requirement breakdown
+### Coaching actions and requirements
 
-The report prioritizes next actions and keeps hard requirements separate from broader coaching guidance.
+Deterministic recommendations keep hard requirements separate from broader career-development guidance.
 
 ![Coaching actions and requirement breakdown](docs/screenshots/coaching-actions-breakdown.png)
 
-## Problem
+Authenticated Career Plan screenshots are intentionally gated on the final exact-revision production browser canary in Milestone 8.1F. They will not be represented by mock or local-only images.
 
-Career advice is often vague, and job descriptions are noisy. Students and career-switchers are told to “learn cloud,” “build projects,” or “get better at AI,” but it is hard to know which skills actually appear in the roles they want or which jobs fit their current evidence best.
+## Current product workflow
 
-MarketLens turns postings into evidence. Instead of guessing what to learn next, users can compare a resume against real job descriptions, rank opportunities, and see which missing capabilities matter most.
-
-## Current Product Workflow
+### Job Intelligence
 
 ```text
 Open MarketLens
 Optionally sign in for private saving
-Upload or paste a resume
+Upload or paste a résumé
 Search configured public job sources
-Choose an experience level and optional location
-Review exactly which providers were searched
-Inspect ranked and filtered job results
+Choose occupation, experience level, and optional location
+Inspect provider coverage and bounded results
 Select one or more jobs
 Run role-aware Smart Fit
-Explicitly save promising jobs or reduced report summaries
-Revisit or delete private records from dedicated tabs
+Review ranking, evidence, requirements, gaps, and coaching
+Explicitly save jobs or reduced reports when signed in
 ```
 
-Manual pasted-job comparison remains available for postings outside the configured online sources:
+Manual comparison remains available for postings outside configured public sources:
 
 ```text
-Upload or paste a resume
+Upload or paste a résumé
 Paste one or more job descriptions
-Separate multiple jobs with ---
-Analyze and rank each job independently
-Optionally save a reduced report summary when signed in
+Separate multiple postings with ---
+Run Smart Fit and compare results
+Explicitly save a reduced report when signed in
 ```
 
-The interface is organized into **Smart Fit**, **Saved Jobs**, **Saved Reports**, and **Market Data**. Smart Fit remains mounted while switching tabs so in-progress search and analysis state is preserved.
+### Career Planning Agent
 
-## Search Correctness Contract
+```text
+Sign in
+Open Career Plans
+Define a target occupation and practical constraints
+Provide a résumé for request-time analysis
+Create and execute a bounded planning run
+Watch seven persisted workflow steps
+Inspect source coverage and candidate selection/exclusion reasons
+Review opportunity categories, recurring strengths, recurring gaps, and actions
+Inspect deterministic reasoning and optional AI contribution
+Ask bounded “Why?” questions
+Edit, approve, reject, save, reopen, retry, cancel, or delete the plan
+```
 
-MarketLens evaluates four concerns separately.
+The seven workflow steps are:
 
-### 1. Occupation relevance
+1. validate input
+2. search jobs
+3. select candidates
+4. analyze Smart Fit
+5. synthesize deterministic plan
+6. optionally organize the plan with one bounded model call
+7. finalize the proposal for human review
 
-Specific occupations require title-level evidence for the requested work. A shared word such as `engineer`, `analyst`, `assistant`, `technician`, `editor`, or `manager` is not enough by itself.
+## What makes the agent bounded
 
-Exact and near-exact titles receive ranking bonuses. Unknown occupations use phrase-first signatures, curated aliases, occupation heads, and meaningful modifiers instead of defaulting to broad role-family acceptance.
+MarketLens is not an unrestricted career chatbot and does not autonomously act on the user’s behalf.
 
-Examples of protected distinctions include:
+The agent:
+
+- calls the existing search and Smart Fit implementations through typed boundaries
+- analyzes at most five jobs per run
+- creates at most twenty proposed actions
+- uses at most one Career Plan model call
+- persists workflow state, attempts, safe summaries, and audit events
+- treats job content as untrusted data
+- returns a complete deterministic plan when AI is disabled or fails
+- requires an explicit user decision before a plan becomes approved or rejected
+
+The model cannot:
+
+- change Smart Fit scores or confidence
+- change evidence statuses or provenance
+- override hard-requirement findings
+- add jobs or deterministic actions
+- invent experience, credentials, projects, or résumé claims
+- apply to jobs, message recruiters, edit profiles, or purchase services
+- bypass authentication or human approval
+- predict interviews, offers, salary, or hiring probability
+
+## Search correctness contract
+
+MarketLens evaluates occupation, experience level, industry, and location as separate concerns.
+
+### Occupation relevance
+
+Specific occupations require title-level evidence. A shared word such as `engineer`, `analyst`, `assistant`, `technician`, `editor`, or `manager` is not sufficient by itself.
+
+Protected distinctions include:
 
 - electrical engineer vs. analytics engineer
 - elementary teacher vs. middle-school teacher
 - electrician vs. electrical engineer
 - medical assistant vs. registered nurse
 - policy analyst vs. data analyst
-- journalism editor/reporter vs. cinematic video editor
+- journalism editor/reporter vs. video editor
 - social worker vs. social-media manager
 
-### 2. Experience level
+### Experience level
 
-Supported levels are `any`, `intern`, `entry`, `mid`, and `senior`.
+Supported levels are `any`, `intern`, `entry`, `mid`, and `senior`. The matcher uses guarded title and written-experience evidence rather than blindly treating every unlabeled posting as entry level.
 
-- Internship matching recognizes internships, co-ops, apprenticeships, fellowships, student programs, and guarded seasonal roles.
-- Entry matching recognizes explicit junior/new-grad/`I`/rotational evidence and written requirements of up to three years.
-- A specific occupation search may also include a plain title with no contradictory experience or seniority evidence. These unlabeled compatible roles rank below explicitly labeled entry jobs.
-- Broad family searches such as `computer science` still require actual entry evidence.
-- Mid and senior matching uses numbered titles, seniority language, and written experience requirements.
-- Occupational uses of `Staff`, such as Staff Reporter or Staff Accountant, are not automatically treated as senior.
+### Location
 
-### 3. Location
+Explicit city searches are strict. Philadelphia includes recognized metro locations such as King of Prussia, Malvern, West Chester, Camden, Cherry Hill, Mount Laurel, and Wilmington while excluding Pittsburgh, New York, California, and remote-only postings unless remote was requested.
 
-An explicit city search is strict.
+### Source coverage
 
-- `Philadelphia` includes recognized metro locations such as King of Prussia, Malvern, West Chester, Camden, Cherry Hill, Mount Laurel, and Wilmington.
-- It excludes Pittsburgh, New York, California, and remote-only postings.
-- `PA` or `Pennsylvania` deliberately broadens the local region.
-- `Remote` deliberately requests remote work.
-- Blank location keeps a broad U.S./U.S.-remote search.
+MarketLens uses public APIs rather than scraping closed platforms:
 
-Recognized metro expansions also exist for New York City, Washington DC, San Francisco, Boston, Chicago, Seattle, and Los Angeles.
+- Greenhouse Job Board API
+- Lever Postings API
+- bounded named SmartRecruiters employer boards
+- Remote OK public feed
+- Remotive public API
 
-### 4. Source coverage
+MarketLens does not claim to search all of LinkedIn, Indeed, Handshake, Workday, school portals, or every company career site. Those remain external continuation options.
 
-MarketLens uses public APIs instead of scraping closed job boards.
-
-Configured source types:
-
-- **Greenhouse Job Board API** — company-specific public ATS boards
-- **Lever Postings API** — company-specific public ATS boards
-- **SmartRecruiters Posting API** — a bounded, intent-selected set of named public employer boards
-- **Remote OK public JSON feed** — remote-first jobs
-- **Remotive public API** — remote-first jobs with search/category support
-
-Named SmartRecruiters boards broaden representation across education, science, engineering, healthcare, government, media, trades, agriculture, delivery/service work, business, and technology. Verified examples include KIPP, AECOM, CRB, Bosch, Eurofins, City of Philadelphia, US Physical Therapy, NBCUniversal, Syngenta Group, and Domino's.
-
-SmartRecruiters is not treated as a universal job board. MarketLens queries a bounded set of intent-selected employers, reports the exact providers searched, and evaluates a bounded number of fully detailed postings.
-
-MarketLens does **not** claim to search all of LinkedIn, Indeed, Handshake, Workday search pages, school portals, or every company career site. Those services remain clearly labeled external continuation options; their results are not scraped or imported.
-
-Zero results are acceptable when the currently searched public employers do not have a valid posting. Irrelevant jobs are not used to fill the page.
-
-## Current Demo Capabilities
+## Current capabilities
 
 All visitors can:
 
-- view the clearly labeled sample Market Data tab
-- upload `.txt`, `.md`, `.pdf`, or `.docx` resumes for request-time extraction
-- paste resume text manually
-- search configured public Greenhouse, Lever, SmartRecruiters, Remote OK, and Remotive sources
-- search with separate occupation, industry, experience-level, and location intent
-- inspect provider-by-provider fetched/matched coverage, routing notes, warnings, suggestions, and external continuation links
+- view sample market data
+- upload `.txt`, `.md`, `.pdf`, or `.docx` résumés for request-time extraction
+- paste résumé text manually
+- search configured public sources
+- inspect provider-by-provider coverage, warnings, suggestions, and continuation links
 - compare one to ten searched or manually pasted jobs through Smart Fit
-- view ranked results, requirement coverage, matches, gaps, limitations, and coaching actions
-- use deterministic analysis when model-assisted extraction is unavailable
+- review requirements, evidence, rankings, gaps, limitations, and coaching actions
+- use deterministic analysis when model-assisted stages are unavailable
 
 Signed-in users can additionally:
 
-- save searched jobs privately
-- prevent duplicate saves of the same external posting
-- reopen and delete saved jobs
-- explicitly save reduced Smart Fit report summaries
-- revisit and delete private saved reports
-- switch between tabs without losing active Smart Fit state
-
-MarketLens does not automatically save analysis inputs. Raw resume text and full job descriptions are not persisted inside saved-report records. Saved reports contain reduced derived summaries, skill names, gaps, coaching guidance, and job metadata.
+- save, reopen, and delete jobs privately
+- explicitly save and delete reduced Smart Fit summaries
+- create private Career Plan runs
+- inspect all seven workflow steps and safe audit history
+- cancel and retry active or failed runs
+- review selected and excluded candidates with deterministic reason codes
+- inspect opportunity categories, repeated strengths, repeated gaps, and proposed actions
+- request bounded explanations from saved plan data
+- edit, approve, reject, reopen, and delete owned plans
 
 ## Backend API
 
-The FastAPI backend currently supports:
+Important public endpoints include:
 
-- `GET /health` — health check
-- `GET /me` — verified authenticated user
-- `GET /postings` and `GET /postings/{posting_id}` — shared sample postings
-- `GET /jobs/search` — normalized public-source search with occupation, industry, level, location, coverage, and fallback metadata
-- `POST /skills/extract` — recognized skill extraction
-- `GET /skills/top`, `GET /skills/by-company`, and `GET /skills/by-role` — sample dataset aggregates
-- `POST /analysis/resume` — compare a resume against shared sample postings
-- `POST /analysis/custom` — simpler skill-gap analysis for pasted descriptions
-- `POST /analysis/resume-file/extract` — request-time resume extraction
-- `POST /analysis/smart` — evidence-aware Smart Fit for one job
-- `POST /analysis/smart/batch` — analyze and rank one to ten jobs
-- `GET /analysis/model-status` — optional model configuration without secret exposure
-- authenticated saved-job create/list/read/delete endpoints
-- authenticated saved-report create/list/read/delete endpoints
-- admin-protected shared posting creation, CSV import, and deletion
+- `GET /health`
+- `GET /deployment/status`
+- `GET /jobs/search`
+- `POST /skills/extract`
+- `POST /analysis/resume-file/extract`
+- `POST /analysis/smart`
+- `POST /analysis/smart/batch`
+- `GET /analysis/model-status`
 
-## Frontend Features
+Authenticated endpoints include:
 
-- Clerk sign-in, sign-up, sign-out, and user controls
-- resume upload and manual resume text entry
-- online job search with separate occupation, industry, level, and location intent
-- provider-by-provider source transparency
-- searched-job cards with source, company, location, safe application link, and extracted skills
-- multi-job selection and Smart Fit comparison
-- manual one-job or multi-job entry using `---`
-- ranked Smart Fit reports with evidence, capability gaps, limitations, and coaching actions
-- explicit save controls for jobs and reduced reports
-- private Saved Jobs and Saved Reports workspaces
-- tabbed responsive layout with preserved in-progress Smart Fit state
-- deterministic fallback and optional model-assisted status messaging
+- saved-job create/list/read/delete
+- saved-report create/list/read/delete
+- `POST /career-plans`
+- `GET /career-plans`
+- `GET /career-plans/{run_id}`
+- `POST /career-plans/{run_id}/execute`
+- `POST /career-plans/{run_id}/cancel`
+- `POST /career-plans/{run_id}/explain`
+- `POST /career-plans/{run_id}/decision`
+- `DELETE /career-plans/{run_id}`
 
-## Security and Privacy
+Shared posting creation, CSV import, and deletion remain admin-only operations protected by `X-Admin-API-Key`.
 
-MarketLens is a portfolio application, not a service for highly sensitive data.
+## Security and privacy
 
 Current controls include:
 
 - Clerk-managed authentication instead of custom password storage
 - backend verification of Clerk session tokens
-- authorized frontend-origin and CORS restrictions
-- server-side user ownership filters for every private read/delete operation
-- cross-user private-record requests returning `404`
-- analysis remaining non-persistent unless the user explicitly saves a result
-- raw resume text and full job descriptions excluded from saved-report persistence
-- backend-only model-provider keys and model-status transparency
-- redaction of obvious contact details before configured model-provider calls
-- admin API key protection for shared posting write/delete endpoints
-- request-size, CSV, provider-request, and public-analysis limits
-- allowlisted ATS identifiers and safe HTTPS application-link validation
-- no automatic redirects to unexpected provider hosts
-- SQLAlchemy ORM usage instead of string-built SQL queries
-- Dependabot and GitHub Actions checks
+- server-side ownership filters for every private resource
+- cross-user private-record access returning `404`
+- no automatic persistence of analysis inputs
+- raw résumé text and full job descriptions excluded from Career Plan and saved-report records
+- backend-only model-provider keys
+- request-scoped redaction and sensitive-log context
+- strict model response schemas and reference validation
+- public request, file, CSV, search, and provider bounds
+- safe HTTPS application-link validation
+- SQLAlchemy ORM usage
+- secret scanning and log-redaction CI
+- explicit deterministic fallback for provider failure
 
-See [`SECURITY.md`](SECURITY.md) for the security policy and known limitations.
+See [`SECURITY.md`](SECURITY.md) for the security policy and limitations.
 
-## Quality and CI
+## Evaluation and CI
 
-The final search-hardening branch passed:
+The integrated Milestone 8.1 implementation passed:
 
-- **290 backend tests**
-- **20 intent cases**
-- **273 candidate cases**
-- **17 location cases**
-- **20 ranking cases**
-- **9 routing cases**
-- **55 critical cases**
-- **27 integrated occupation + entry + location cases** across nine sector groups
-- **9 integrated local/remote/wrong-occupation ranking cases**
-- **14 mid/senior occupation + location cases** across seven sector groups
+- ten representative career sectors
+- ten committed task-level cases
+- three repeated deterministic executions per case
+- thirty stable agent executions with zero failed cases
+- prompt-injection inputs across descriptions, titles, company metadata, and URLs
+- model timeout, transport, HTTP, invalid JSON, schema, reference, duplicate, and policy-changing output cases
+- cancellation and failed-run retry recovery without duplicated actions
+- ownership-isolation and private mutation tests
+- provider telemetry, cost, token, payload, and latency policy checks
 - frontend TypeScript/Vite production build
-- backend Docker image build
-- frontend Docker image build
-- strict Philadelphia live-provider smoke across ten representative occupations
-- broadened U.S.-wide live-provider smoke across the same occupations
+- backend and frontend Docker builds
+- Operational Reliability, Provider Resilience, Provider Telemetry, Smart Fit Evaluation, Career Plan Agent Evaluation, and Secret and Log Safety workflows
 
-The formal benchmark passes at 100% for intent accuracy, candidate accuracy, recall, precision, negative rejection, location accuracy, ranking accuracy, routing accuracy, and critical-case pass rate. The benchmark also enforces category breadth so a convenient narrow test set cannot silently replace the cross-sector matrix.
+Milestone 8.1F adds an exact-revision Railway canary. Public mode checks both deployed revisions, the Career Plan frontend bundle, live job search, deterministic Smart Fit, model status, and private-route authentication boundaries. Full mode additionally requires configured authenticated canary identities and exercises the private Career Plan lifecycle.
 
-See [`docs/search-hardening-validation-log.md`](docs/search-hardening-validation-log.md) for the exact live results and the defects discovered during validation.
-
-## Running Locally
+## Running locally
 
 ### Backend
 
@@ -291,37 +301,16 @@ npm install
 npm run dev
 ```
 
-The frontend reads its API base URL from `VITE_API_BASE_URL`. Clerk-enabled builds also require `VITE_CLERK_PUBLISHABLE_KEY`.
+The frontend reads `VITE_API_BASE_URL` and `VITE_CLERK_PUBLISHABLE_KEY`. Railway runtime configuration also exposes a sanitized deployment revision through `config.js`.
 
-### Optional job-source configuration
-
-```text
-JOB_SEARCH_GREENHOUSE_BOARDS=datadog,airbnb,figma
-JOB_SEARCH_LEVER_SITES=github,postman,benchling
-JOB_SEARCH_SMARTRECRUITERS_ENABLED=true
-JOB_SEARCH_REMOTEOK_ENABLED=true
-JOB_SEARCH_REMOTIVE_ENABLED=true
-```
-
-Only enabled, registered provider identifiers are accepted.
-
-## Running Quality Checks
-
-Backend suite:
+### Quality checks
 
 ```bash
 cd backend
 python -m pytest
-```
-
-Formal search evaluation:
-
-```bash
-cd backend
 python scripts/run_job_search_evaluation.py
+python scripts/run_career_plan_agent_evaluation.py
 ```
-
-Frontend production build:
 
 ```bash
 cd frontend
@@ -329,97 +318,57 @@ npm ci
 npm run build
 ```
 
-Docker images:
-
 ```bash
 docker build -t marketlens-backend ./backend
 docker build --build-arg VITE_API_BASE_URL=http://localhost:8000 -t marketlens-frontend ./frontend
 ```
 
-## Resume / Interview Summary
+Production public canary:
 
-MarketLens is a deployed full-stack career-intelligence application that searches public job APIs, compares resume evidence against multiple postings, ranks role fit, identifies capability gaps, and explains recommendations. The project includes a React frontend, FastAPI backend, secure authentication, private persistence, cross-sector occupation matching, source routing, deterministic evaluation, Docker packaging, CI, and Railway deployment.
-
-Resume bullet:
-
-```text
-Built and deployed MarketLens, a full-stack React/FastAPI career-intelligence app that searches public job APIs, compares resumes against multiple postings, ranks role fit, identifies role-specific capability gaps, and validates cross-sector search relevance with deterministic and live-provider test suites.
+```bash
+cd backend
+EXPECTED_REVISION=<40-character-sha> \
+CANARY_WAIT_SECONDS=900 \
+python scripts/run_production_career_plan_canary.py --mode public
 ```
 
-## Roadmap
+Full authenticated mode additionally requires short-lived canary bearer tokens stored outside the repository.
 
-### Milestone 1 — Manual Job Comparison: complete
+## Portfolio and interview summary
 
-- resume upload and paste
-- multi-job description splitting
-- Smart Fit ranking and detailed reports
+MarketLens is a deployed, stateful career-intelligence product. It combines public job-source integrations, evidence-aware analysis, private workflow persistence, and a bounded AI agent that orchestrates search and Smart Fit tools while preserving deterministic authority and human approval.
 
-### Milestone 2 — Online Job Search: complete
+Suggested résumé bullet:
 
-- normalized public job-source search
-- level and location filtering
-- selected-job Smart Fit comparison
-- source coverage metadata and fallback links
+```text
+Built and deployed MarketLens, a React/FastAPI career-intelligence platform with a bounded AI planning agent that orchestrates public job search and evidence-based résumé analysis, persists resumable user-owned workflows, falls back deterministically on model failure, and is validated through adversarial, privacy, recovery, Docker, and production canary gates.
+```
 
-### Milestone 3 — Role-Aware Smart Fit: complete
+## Milestone status
 
-- role-aware evidence and scoring
-- capability-gap detection beyond exact keywords
-- requirement coverage and coaching actions
-- deterministic and optional model-assisted paths
+Completed implementation work:
 
-### Milestone 4 — Portfolio Packaging: complete
+- Milestones 1–7.1: search, Smart Fit, deployment, authentication, private saving, source coverage, and cross-sector correctness
+- Milestone 8: optional model-assisted extraction and personalized coaching foundations
+- Milestone 8.1A–8.1E: Career Plan architecture, deterministic orchestration, bounded model organization, authenticated UI, and permanent evaluation/security gates
 
-- Railway deployment
-- Docker and GitHub Actions CI
-- screenshots, walkthroughs, and repository presentation
+Final sign-off work:
 
-### Milestone 5 — Authentication and Private Data: complete
+- Milestone 8.1F: exact-revision deployment proof, production canaries, authenticated browser validation, screenshots, and final GO/NO-GO record
 
-- Clerk authentication
-- verified backend sessions
-- user-owned private records
-- ownership-isolation tests
+## Explicit post-launch roadmap
 
-### Milestone 6 — Saved Jobs, Reports, and Dashboard: complete
+The following are not implemented by Milestone 8.1:
 
-- private saved jobs
-- explicitly saved reduced reports
-- dedicated private tabs and deletion controls
-- production authentication and persistence smoke tests
-
-### Milestone 7 — Better Job Source Coverage: complete
-
-- multidimensional job-search intent
-- typed and allowlisted source registry
-- intent-aware source routing
-- stronger early-career and legal credential behavior
-- honest provider reporting and external continuation workflow
-
-### Milestone 7.1 — Cross-Sector Search Correctness: complete
-
-- phrase-first occupation matching beyond predefined role families
-- strict city/metro behavior with deliberate remote inclusion
-- exact/near-exact ranking and conflicting-occupation rejection
-- representative validation across nine sector groups
-- bounded named SmartRecruiters source expansion
-- formal, integrated, full-suite, Docker, and live-provider validation
-
-See [`docs/search-correctness-hardening.md`](docs/search-correctness-hardening.md).
-
-### Milestone 8 — Optional AI-Assisted Analysis: partially started
-
-Already implemented:
-
-- backend-only provider configuration
-- model-status transparency
-- optional model-assisted extraction
-- obvious contact-detail redaction
-- deterministic fallback
-
-Potential later work:
-
-- stronger semantic requirement parsing and evidence matching
-- more personalized coaching explanations
-- cost, latency, and evaluation controls for regular model usage
-- optional agent-style workflows
+- autonomous or mass job applications
+- recruiter messaging or email automation
+- external profile editing
+- course or service purchasing
+- unrestricted multi-agent delegation
+- closed-platform scraping
+- full Career Evidence Graph
+- GitHub evidence verification
+- résumé claim verification
+- complete application tracker and outcome-learning loop
+- long-term labor-market trend forecasting
+- guaranteed interview, offer, salary, or career outcomes
