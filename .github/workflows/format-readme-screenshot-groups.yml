@@ -1,3 +1,4 @@
+# One-time README formatting workflow
 name: Format README screenshot groups
 
 on:
