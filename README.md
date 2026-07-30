@@ -71,27 +71,27 @@ Deterministic recommendations keep hard requirements separate from broader caree
 
 The authenticated production workspace displays every persisted step and clearly separates deterministic planning from optional bounded AI organization.
 
-![Career Plan seven-step AI workflow](docs/screenshots/milestone-8-1/career-plan-ai-workflow.jpg)
+![Career Plan seven-step AI workflow](docs/screenshots/milestone-8-1/career-plan-ai-workflow.svg)
 
 ### Deterministic candidate-selection audit
 
 Users can inspect provider coverage, considered jobs, selected jobs, excluded jobs, and deterministic reason codes before approval.
 
-![Career Plan candidate-selection audit](docs/screenshots/milestone-8-1/candidate-selection-audit.jpg)
+![Career Plan candidate-selection audit](docs/screenshots/milestone-8-1/candidate-selection-audit.svg)
 
 ### Safe cancellation and retry
 
 A production run was cancelled after search and successfully completed as attempt two without duplicated actions or lost audit history.
 
-![Career Plan cancellation and retry recovery](docs/screenshots/milestone-8-1/cancellation-retry-recovery.jpg)
+![Career Plan cancellation and retry recovery](docs/screenshots/milestone-8-1/cancellation-retry-recovery.svg)
 
 ### Edited approval persistence
 
 User edits remain separate from the immutable generated proposal and persist after approval, refresh, and reopening.
 
-![Approved Career Plan edited action](docs/screenshots/milestone-8-1/approved-edited-action.jpg)
+![Approved Career Plan edited action](docs/screenshots/milestone-8-1/approved-edited-action.svg)
 
-The authenticated captures were taken from the production deployment on July 30, 2026 and cropped to exclude raw résumé text and account details. Responsive behavior was separately validated at a 400 × 770 viewport after the mobile authentication-overlay fix in PR #98.
+These privacy-safe production validation visuals reproduce the exact captured states and measured values from the July 30, 2026 authenticated session while excluding raw résumé text and account details. Responsive behavior was separately validated at a 400 × 770 viewport after the mobile authentication-overlay fix in PR #98.
 
 ## Current product workflow
 
