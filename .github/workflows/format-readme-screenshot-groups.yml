@@ -1,0 +1,102 @@
+name: Format README screenshot groups
+
+on:
+  push:
+    branches:
+      - agent/group-readme-screenshots-by-workspace
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/group-readme-screenshots-by-workspace
+      - name: Group screenshots by workspace
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('README.md')
+          text = path.read_text()
+          start = text.index('## Screenshots\n')
+          end = text.index('## Current product workflow\n')
+
+          replacement = '''## Product screenshots
+
+The visuals are grouped by the MarketLens workspace they belong to, so each part of the product can be understood independently.
+
+### Workspace 1 — Job Intelligence
+
+> **Purpose:** Search configured public job sources, compare opportunities against résumé evidence, and inspect grounded Smart Fit results.
+
+#### Job Intelligence 1 — Public-source job search
+
+MarketLens searches configured public sources and reports exactly which providers were attempted.
+
+![Job Intelligence public-source search results](docs/screenshots/online-job-search.png)
+
+#### Job Intelligence 2 — Ranked Smart Fit comparison
+
+Users can compare multiple jobs against one résumé and inspect why one opportunity ranked above another.
+
+![Job Intelligence ranked Smart Fit comparison](docs/screenshots/job-fit-ranking.png)
+
+#### Job Intelligence 3 — Role-aware evidence gaps
+
+Reports distinguish direct résumé proof from broader signals and surface role-specific capability gaps.
+
+![Job Intelligence role-aware gap report](docs/screenshots/role-aware-gap-report.png)
+
+#### Job Intelligence 4 — Coaching actions and requirements
+
+Deterministic recommendations keep hard requirements separate from broader career-development guidance.
+
+![Job Intelligence coaching actions and requirement breakdown](docs/screenshots/coaching-actions-breakdown.png)
+
+---
+
+### Workspace 2 — Career Plans
+
+> **Purpose:** Run the authenticated seven-step planning agent, inspect every decision, and review or change the proposed plan before approval.
+
+#### Career Plans 1 — Seven-step agent workflow
+
+The authenticated production workspace displays every persisted step and clearly separates deterministic planning from optional bounded AI organization.
+
+![Career Plans seven-step AI workflow](docs/screenshots/milestone-8-1/career-plan-ai-workflow.svg)
+
+#### Career Plans 2 — Deterministic candidate-selection audit
+
+Users can inspect provider coverage, considered jobs, selected jobs, excluded jobs, and deterministic reason codes before approval.
+
+![Career Plans deterministic candidate-selection audit](docs/screenshots/milestone-8-1/candidate-selection-audit.svg)
+
+#### Career Plans 3 — Safe cancellation and retry
+
+A production run was cancelled after search and successfully completed as attempt two without duplicated actions or lost audit history.
+
+![Career Plans cancellation and retry recovery](docs/screenshots/milestone-8-1/cancellation-retry-recovery.svg)
+
+#### Career Plans 4 — Edited approval persistence
+
+User edits remain separate from the immutable generated proposal and persist after approval, refresh, and reopening.
+
+![Career Plans approved edited action](docs/screenshots/milestone-8-1/approved-edited-action.svg)
+
+These privacy-safe Career Plans visuals reproduce the exact captured production states and measured values from the July 30, 2026 authenticated session while excluding raw résumé text and account details. Responsive behavior was separately validated at a 400 × 770 viewport after the mobile authentication-overlay fix in PR #98.
+
+'''
+
+          path.write_text(text[:start] + replacement + text[end:])
+          PY
+          rm .github/workflows/format-readme-screenshot-groups.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add README.md .github/workflows/format-readme-screenshot-groups.yml
+          git commit -m "Clarify README screenshot workspaces"
+          git push
