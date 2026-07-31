@@ -1,16 +1,16 @@
 name: Fix Career Plan tablet layout
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/fix-career-plan-tablet-overlap
+      - main
 
 permissions:
   contents: write
 
 jobs:
   repair:
-    if: ${{ github.actor != 'github-actions[bot]' }}
+    if: ${{ github.head_ref == 'agent/fix-career-plan-tablet-overlap' && github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
