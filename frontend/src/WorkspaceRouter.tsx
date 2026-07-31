@@ -4,6 +4,7 @@ import App from "./App";
 import CareerPlanSelectionAudit from "./CareerPlanSelectionAudit";
 import CareerPlanWorkspace from "./CareerPlanWorkspace";
 import "./workspaceRouter.css";
+import "./careerPlanTabletLayout.css";
 
 type ProductWorkspace = "analysis" | "career-plans";
 
