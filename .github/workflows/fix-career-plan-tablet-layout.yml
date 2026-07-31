@@ -24,75 +24,20 @@ jobs:
           css_path = Path('frontend/src/careerPlanWorkspace.css')
           css = css_path.read_text(encoding='utf-8')
 
-          old_columns = '''.career-plan-sidebar,
-          .career-plan-main {
-            display: grid;
-            gap: 18px;
-          }
-          '''
-          new_columns = '''.career-plan-sidebar,
-          .career-plan-main {
-            display: grid;
-            min-width: 0;
-            gap: 18px;
-          }
-          '''
+          old_columns = ".career-plan-sidebar,\n.career-plan-main {\n  display: grid;\n  gap: 18px;\n}"
+          new_columns = ".career-plan-sidebar,\n.career-plan-main {\n  display: grid;\n  min-width: 0;\n  gap: 18px;\n}"
           if old_columns not in css:
               raise SystemExit('column shrink contract anchor not found')
           css = css.replace(old_columns, new_columns, 1)
 
-          old_form = '''.career-plan-form-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 12px;
-          }
-          '''
-          new_form = '''.career-plan-form-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 12px;
-          }
-
-          .career-plan-form-grid > *,
-          .career-plan-field,
-          .career-plan-card,
-          .career-plan-section-heading > *,
-          .career-plan-run-header > * {
-            min-width: 0;
-          }
-          '''
+          old_form = ".career-plan-form-grid {\n  display: grid;\n  grid-template-columns: repeat(2, minmax(0, 1fr));\n  gap: 12px;\n}"
+          new_form = ".career-plan-form-grid {\n  display: grid;\n  grid-template-columns: repeat(2, minmax(0, 1fr));\n  gap: 12px;\n}\n\n.career-plan-form-grid > *,\n.career-plan-field,\n.career-plan-card,\n.career-plan-section-heading > *,\n.career-plan-run-header > * {\n  min-width: 0;\n}"
           if old_form not in css:
               raise SystemExit('form grid anchor not found')
           css = css.replace(old_form, new_form, 1)
 
-          old_tablet = '''@media (max-width: 1120px) {
-            .career-plan-layout {
-              grid-template-columns: 320px minmax(0, 1fr);
-            }
-
-            .career-plan-metric-grid {
-              grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-          }
-
-          @media (max-width: 940px) {
-          '''
-          new_tablet = '''@media (max-width: 1120px) {
-            .career-plan-layout {
-              grid-template-columns: 320px minmax(0, 1fr);
-            }
-
-            .career-plan-form-grid {
-              grid-template-columns: 1fr;
-            }
-
-            .career-plan-metric-grid {
-              grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-          }
-
-          @media (max-width: 1040px) {
-          '''
+          old_tablet = "@media (max-width: 1120px) {\n  .career-plan-layout {\n    grid-template-columns: 320px minmax(0, 1fr);\n  }\n\n  .career-plan-metric-grid {\n    grid-template-columns: repeat(2, minmax(0, 1fr));\n  }\n}\n\n@media (max-width: 940px) {"
+          new_tablet = "@media (max-width: 1120px) {\n  .career-plan-layout {\n    grid-template-columns: 320px minmax(0, 1fr);\n  }\n\n  .career-plan-form-grid {\n    grid-template-columns: 1fr;\n  }\n\n  .career-plan-metric-grid {\n    grid-template-columns: repeat(2, minmax(0, 1fr));\n  }\n}\n\n@media (max-width: 1040px) {"
           if old_tablet not in css:
               raise SystemExit('tablet breakpoint anchor not found')
           css = css.replace(old_tablet, new_tablet, 1)
@@ -135,9 +80,9 @@ def test_career_plan_tablet_layout_reduces_density_before_stacking() -> None:
     assert "position: static;" in stacked
 ''', encoding='utf-8')
           PY
-          rm .github/workflows/fix-career-plan-tablet-layout.yml
+          rm -f .github/workflows/fix-career-plan-tablet-layout.yml .tablet-layout-trigger
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add frontend/src/careerPlanWorkspace.css backend/tests/test_career_plan_tablet_layout_contract.py .github/workflows/fix-career-plan-tablet-layout.yml
+          git add frontend/src/careerPlanWorkspace.css backend/tests/test_career_plan_tablet_layout_contract.py .github/workflows/fix-career-plan-tablet-layout.yml .tablet-layout-trigger
           git commit -m "Fix Career Plan tablet layout overlap"
           git push
