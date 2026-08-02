@@ -11,8 +11,7 @@ from .safe_logging import install_safe_log_record_factory
 # Install process-wide output safety before application modules create loggers or
 # the main module imports FastAPI.
 install_safe_log_record_factory()
-install_safe_http_defaults = install_safe_fastapi_defaults
-install_safe_http_defaults()
+install_safe_fastapi_defaults()
 
 from . import job_search as _job_search
 from . import job_search_source_expansion as _source_expansion
