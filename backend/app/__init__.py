@@ -11,7 +11,8 @@ from .safe_logging import install_safe_log_record_factory
 # Install process-wide output safety before application modules create loggers or
 # the main module imports FastAPI.
 install_safe_log_record_factory()
-install_safe_fastapi_defaults()
+install_safe_http_defaults = install_safe_fastapi_defaults
+install_safe_http_defaults()
 
 from . import job_search as _job_search
 from . import job_search_source_expansion as _source_expansion
@@ -33,7 +34,11 @@ from .job_search_universal_compatibility import (
     capture_legacy_search_functions,
 )
 from .job_search_universal_occupation import apply_universal_occupation_search
-from .occupation_precision_patch import apply_occupation_precision_guards
+from .occupation_catalog_runtime import (
+    interpret_occupation_query as _interpret_occupation_query,
+    normalize_occupation_text as _normalize_occupation_text,
+    title_matches_occupation as _title_matches_occupation,
+)
 from .smartrecruiters_live_shape_patch import apply_smartrecruiters_live_shape_patch
 from .smartrecruiters_source_extensions import apply_smartrecruiters_source_extensions
 
@@ -52,7 +57,11 @@ apply_smartrecruiters_source_extensions(
 )
 _source_expansion.apply_job_search_source_expansion(_job_search)
 capture_legacy_search_functions(_job_search, _source_expansion)
-apply_occupation_precision_guards(_universal_occupation)
+# The adapter originally imported the raw catalog callables. Replace those
+# module globals with the cached production runtime before applying wrappers.
+_universal_occupation.interpret_occupation_query = _interpret_occupation_query
+_universal_occupation.normalize_occupation_text = _normalize_occupation_text
+_universal_occupation.title_matches_occupation = _title_matches_occupation
 apply_universal_occupation_search(_job_search, _source_expansion)
 apply_universal_compatibility(_job_search, _source_expansion)
 apply_broad_sector_search(_job_search)
