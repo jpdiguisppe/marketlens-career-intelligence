@@ -94,7 +94,8 @@ def sector_for_query(query: str) -> SectorQuery | None:
     normalized = normalize_occupation_text(query)
     ignored = {
         "career", "careers", "entry", "entry level", "intern", "internship",
-        "job", "jobs", "junior", "new grad", "role", "roles", "senior",
+        "internships", "job", "jobs", "junior", "new grad", "opening",
+        "openings", "position", "positions", "role", "roles", "senior",
     }
     for phrase in sorted(ignored, key=len, reverse=True):
         normalized = re.sub(r"(?<![a-z0-9])" + re.escape(phrase) + r"(?![a-z0-9])", " ", normalized)
