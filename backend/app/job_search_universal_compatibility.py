@@ -86,6 +86,16 @@ def apply_universal_compatibility(job_search: Any, source_expansion: Any) -> Non
         if legacy.query_job_function(query) is not None or legacy.query_role_family(query) is not None:
             return False
 
+        core_tokens = [
+            token
+            for token in normalized.split()
+            if token not in {"career", "careers", "entry", "intern", "internship", "job", "jobs", "role", "roles"}
+        ]
+        if len(core_tokens) == 1 and core_tokens[0].isalpha() and 2 <= len(core_tokens[0]) <= 5:
+            # Unsupported short abbreviations need an explicit clarification or
+            # unknown-abbreviation response rather than a provider fan-out.
+            return True
+
         interpretation = interpret_occupation_query(query)
         if interpretation.status == "ambiguous":
             return True
