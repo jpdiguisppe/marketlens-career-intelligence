@@ -3,10 +3,8 @@ from __future__ import annotations
 from app import job_search
 from app import job_search_source_expansion as source_expansion
 from app.job_search_universal_occupation import _occupation_external_links
-from app.occupation_catalog import (
-    AMBIGUOUS_ACRONYMS,
-    OCCUPATIONS,
-    SOC_MAJOR_GROUPS,
+from app.occupation_catalog import AMBIGUOUS_ACRONYMS, OCCUPATIONS, SOC_MAJOR_GROUPS
+from app.occupation_catalog_runtime import (
     interpret_occupation_query,
     registry_summary,
     title_matches_occupation,
