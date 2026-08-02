@@ -15,6 +15,7 @@ install_safe_fastapi_defaults()
 
 from . import job_search as _job_search
 from . import job_search_source_expansion as _source_expansion
+from . import job_search_universal_occupation as _universal_occupation
 from . import smartrecruiters_sources as _smartrecruiters_sources
 from .job_search_abbreviation_guard import apply_job_search_abbreviation_guard
 from .job_search_correctness_patch import apply_job_search_correctness_patch
@@ -28,6 +29,7 @@ from .job_search_specific_occupation_patch import (
     apply_job_search_specific_occupation_patch,
 )
 from .job_search_universal_occupation import apply_universal_occupation_search
+from .occupation_precision_patch import apply_occupation_precision_guards
 from .smartrecruiters_live_shape_patch import apply_smartrecruiters_live_shape_patch
 from .smartrecruiters_source_extensions import apply_smartrecruiters_source_extensions
 
@@ -45,5 +47,6 @@ apply_smartrecruiters_source_extensions(
     _source_expansion,
 )
 _source_expansion.apply_job_search_source_expansion(_job_search)
+apply_occupation_precision_guards(_universal_occupation)
 apply_universal_occupation_search(_job_search, _source_expansion)
 apply_broad_sector_search(_job_search)
