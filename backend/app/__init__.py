@@ -26,6 +26,7 @@ from .job_search_query_interpretation import apply_job_search_query_interpretati
 from .job_search_specific_occupation_patch import (
     apply_job_search_specific_occupation_patch,
 )
+from .job_search_universal_occupation import apply_universal_occupation_search
 from .smartrecruiters_live_shape_patch import apply_smartrecruiters_live_shape_patch
 from .smartrecruiters_source_extensions import apply_smartrecruiters_source_extensions
 
@@ -43,3 +44,4 @@ apply_smartrecruiters_source_extensions(
     _source_expansion,
 )
 _source_expansion.apply_job_search_source_expansion(_job_search)
+apply_universal_occupation_search(_job_search, _source_expansion)
