@@ -1,14 +1,15 @@
 """Preserve proven search behavior while adding universal occupation fallback.
 
-The existing search stack has years of product-specific rules for early-career
-programs, regulated legal roles, healthcare aliases, grade-level teaching,
-sports industry matching, and safe abbreviations. The universal catalog should
-fill unsupported occupation gaps, not replace those established paths.
+The existing search stack has product-specific rules for early-career programs,
+regulated legal roles, healthcare aliases, grade-level teaching, sports industry
+matching, and safe abbreviations. The universal catalog fills unsupported
+occupation gaps; it does not replace those established paths.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any, Callable
 
 from . import occupation_catalog as catalog
@@ -26,6 +27,14 @@ class LegacySearchFunctions:
 
 
 _FORCE_UNIVERSAL_CONCEPTS = frozenset({"systems_application_engineer"})
+_FORCE_UNIVERSAL_PHRASES = frozenset(
+    {
+        "application systems engineer",
+        "system application engineer",
+        "systems application engineer",
+        "systems applications engineer",
+    }
+)
 
 
 def capture_legacy_search_functions(job_search: Any, source_expansion: Any) -> None:
@@ -57,18 +66,25 @@ def apply_universal_compatibility(job_search: Any, source_expansion: Any) -> Non
     universal_score = job_search._score_job
     universal_source_terms = source_expansion._search_terms
 
+    @lru_cache(maxsize=1_024)
     def should_use_universal(query: str) -> bool:
+        normalized = catalog.normalize_occupation_text(query)
+        if catalog._pure_acronym(query) is not None:
+            return True
+        if any(phrase in normalized for phrase in _FORCE_UNIVERSAL_PHRASES):
+            return True
+
+        # Fast path: the established engine already understands this role. Avoid
+        # walking the larger occupation catalog for every benchmark candidate.
+        if legacy.query_job_function(query) is not None or legacy.query_role_family(query) is not None:
+            return False
+
         interpretation = catalog.interpret_occupation_query(query)
         if interpretation.status == "ambiguous":
             return True
         if interpretation.concept_key in _FORCE_UNIVERSAL_CONCEPTS:
             return True
-        if not interpretation.recognized:
-            return False
-        # Existing product rules retain authority whenever they already identify
-        # a job function. This preserves nuanced role, level, industry, and
-        # credential behavior while the catalog fills genuinely unsupported gaps.
-        return legacy.query_job_function(query) is None and legacy.query_role_family(query) is None
+        return interpretation.recognized
 
     def query_role_family(query: str) -> Any:
         return (
