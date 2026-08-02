@@ -12,7 +12,11 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any, Callable
 
-from . import occupation_catalog as catalog
+from .occupation_catalog_runtime import (
+    interpret_occupation_query,
+    is_ambiguous_occupation_query,
+    normalize_occupation_text,
+)
 
 
 @dataclass(frozen=True)
@@ -24,6 +28,7 @@ class LegacySearchFunctions:
     matches_requested_role: Callable[..., Any]
     score_job: Callable[..., Any]
     source_search_terms: Callable[..., Any]
+    search_external_jobs: Callable[..., Any]
 
 
 _FORCE_UNIVERSAL_CONCEPTS = frozenset({"systems_application_engineer"})
@@ -48,6 +53,7 @@ def capture_legacy_search_functions(job_search: Any, source_expansion: Any) -> N
         matches_requested_role=job_search._matches_requested_role,
         score_job=job_search._score_job,
         source_search_terms=source_expansion._search_terms,
+        search_external_jobs=job_search.search_external_jobs,
     )
 
 
@@ -65,21 +71,22 @@ def apply_universal_compatibility(job_search: Any, source_expansion: Any) -> Non
     universal_matches = job_search._matches_requested_role
     universal_score = job_search._score_job
     universal_source_terms = source_expansion._search_terms
+    universal_search = job_search.search_external_jobs
 
     @lru_cache(maxsize=1_024)
     def should_use_universal(query: str) -> bool:
-        normalized = catalog.normalize_occupation_text(query)
-        if catalog._pure_acronym(query) is not None:
+        normalized = normalize_occupation_text(query)
+        if is_ambiguous_occupation_query(query):
             return True
         if any(phrase in normalized for phrase in _FORCE_UNIVERSAL_PHRASES):
             return True
 
         # Fast path: the established engine already understands this role. Avoid
-        # walking the larger occupation catalog for every benchmark candidate.
+        # walking the larger occupation catalog for every provider candidate.
         if legacy.query_job_function(query) is not None or legacy.query_role_family(query) is not None:
             return False
 
-        interpretation = catalog.interpret_occupation_query(query)
+        interpretation = interpret_occupation_query(query)
         if interpretation.status == "ambiguous":
             return True
         if interpretation.concept_key in _FORCE_UNIVERSAL_CONCEPTS:
@@ -87,43 +94,18 @@ def apply_universal_compatibility(job_search: Any, source_expansion: Any) -> Non
         return interpretation.recognized
 
     def query_role_family(query: str) -> Any:
-        return (
-            universal_query_role_family(query)
-            if should_use_universal(query)
-            else legacy.query_role_family(query)
-        )
+        return universal_query_role_family(query) if should_use_universal(query) else legacy.query_role_family(query)
 
     def query_job_function(query: str) -> Any:
-        return (
-            universal_query_job_function(query)
-            if should_use_universal(query)
-            else legacy.query_job_function(query)
-        )
+        return universal_query_job_function(query) if should_use_universal(query) else legacy.query_job_function(query)
 
-    def parse_intent(
-        query: str,
-        location: str | None = None,
-        level: str | None = None,
-    ) -> Any:
-        return (
-            universal_parse_intent(query, location, level)
-            if should_use_universal(query)
-            else legacy.parse_intent(query, location, level)
-        )
+    def parse_intent(query: str, location: str | None = None, level: str | None = None) -> Any:
+        return universal_parse_intent(query, location, level) if should_use_universal(query) else legacy.parse_intent(query, location, level)
 
     def query_terms(query: str) -> Any:
-        return (
-            universal_query_terms(query)
-            if should_use_universal(query)
-            else legacy.query_terms(query)
-        )
+        return universal_query_terms(query) if should_use_universal(query) else legacy.query_terms(query)
 
-    def matches_requested_role(
-        title: str,
-        description: str,
-        query: str,
-        level: Any = None,
-    ) -> bool:
+    def matches_requested_role(title: str, description: str, query: str, level: Any = None) -> bool:
         function = universal_matches if should_use_universal(query) else legacy.matches_requested_role
         return function(title, description, query, level)
 
@@ -144,11 +126,19 @@ def apply_universal_compatibility(job_search: Any, source_expansion: Any) -> Non
         )
 
     def source_search_terms(query: str) -> Any:
-        return (
-            universal_source_terms(query)
-            if should_use_universal(query)
-            else legacy.source_search_terms(query)
-        )
+        return universal_source_terms(query) if should_use_universal(query) else legacy.source_search_terms(query)
+
+    def search_external_jobs(
+        query: str,
+        location: str | None = None,
+        limit: int = 15,
+        level: str | None = None,
+    ) -> Any:
+        # Universal search interprets before provider fan-out. Proven legacy
+        # queries bypass it entirely so established behavior and latency remain
+        # unchanged.
+        function = universal_search if should_use_universal(query) else legacy.search_external_jobs
+        return function(query=query, location=location, limit=limit, level=level)
 
     job_search._query_role_family = query_role_family
     job_search._query_job_function = query_job_function
@@ -157,5 +147,6 @@ def apply_universal_compatibility(job_search: Any, source_expansion: Any) -> Non
     job_search._matches_requested_role = matches_requested_role
     job_search._score_job = score_job
     source_expansion._search_terms = source_search_terms
+    job_search.search_external_jobs = search_external_jobs
     job_search._should_use_universal_occupation = should_use_universal
     job_search._UNIVERSAL_COMPATIBILITY_APPLIED = True
