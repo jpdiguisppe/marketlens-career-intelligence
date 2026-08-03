@@ -63,3 +63,41 @@ def test_ai_ml_compound_skill_language_still_resolves() -> None:
     )
 
     assert "Machine Learning" in skills
+
+
+def test_explicit_machine_learning_skill_list_still_resolves() -> None:
+    skills = extract_skills("Required skills: Python, SQL, machine learning.")
+
+    assert "Machine Learning" in skills
+
+
+def test_company_ai_ml_marketing_does_not_create_badge() -> None:
+    skills = extract_skills(
+        "Our company builds AI/ML products. The accountant prepares journal entries."
+    )
+
+    assert "Machine Learning" not in skills
+
+
+def test_unrelated_nearby_experience_does_not_ground_company_ai() -> None:
+    skills = extract_skills(
+        "Our company uses AI to improve access. Experience preparing journal entries is required."
+    )
+
+    assert "Machine Learning" not in skills
+
+
+def test_class_c_license_near_software_does_not_create_c_badge() -> None:
+    skills = extract_skills(
+        "Sell software to local clients; a Class C driver's license is required."
+    )
+
+    assert "C" not in skills
+
+
+def test_electrical_unit_testing_does_not_create_software_testing_badge() -> None:
+    skills = extract_skills(
+        "Perform unit testing of electrical equipment before installation."
+    )
+
+    assert "Testing" not in skills
