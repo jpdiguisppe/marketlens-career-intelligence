@@ -41,10 +41,49 @@ _FORCE_UNIVERSAL_PHRASES = frozenset(
         "systems applications engineer",
     }
 )
+_LEGACY_SPECIALTY_QUERIES = frozenset(
+    {
+        "copywriter",
+        "electrical engineer",
+        "elementary school teacher",
+        "journalism",
+    }
+)
+_QUERY_CONTEXT_WORDS = frozenset(
+    {
+        "career",
+        "careers",
+        "entry",
+        "entry-level",
+        "intern",
+        "internship",
+        "internships",
+        "job",
+        "jobs",
+        "junior",
+        "level",
+        "new",
+        "opening",
+        "openings",
+        "role",
+        "roles",
+        "senior",
+        "sr",
+        "staff",
+    }
+)
 _LEGACY_PROBE_DEPTH: ContextVar[int] = ContextVar(
     "marketlens_universal_legacy_probe_depth",
     default=0,
 )
+
+
+def _core_query(query: str) -> str:
+    return " ".join(
+        token
+        for token in normalize_occupation_text(query).split()
+        if token not in _QUERY_CONTEXT_WORDS
+    )
 
 
 def capture_legacy_search_functions(job_search: Any, source_expansion: Any) -> None:
@@ -85,6 +124,11 @@ def apply_universal_compatibility(job_search: Any, source_expansion: Any) -> Non
             return True
         if any(phrase in normalized for phrase in _FORCE_UNIVERSAL_PHRASES):
             return True
+        if _core_query(query) in _LEGACY_SPECIALTY_QUERIES:
+            # These established paths contain richer product behavior than a
+            # title catalog alone: grade evidence, newsroom families,
+            # unlevelled entry-role scoring, and narrow writing-role precision.
+            return False
 
         # Several proven legacy adapters call the currently installed role-family
         # helpers internally. Mark this probe so those callbacks route directly
@@ -100,11 +144,7 @@ def apply_universal_compatibility(job_search: Any, source_expansion: Any) -> Non
         if legacy_understands_query:
             return False
 
-        core_tokens = [
-            token
-            for token in normalized.split()
-            if token not in {"career", "careers", "entry", "intern", "internship", "job", "jobs", "role", "roles"}
-        ]
+        core_tokens = _core_query(query).split()
         if len(core_tokens) == 1 and core_tokens[0].isalpha() and 2 <= len(core_tokens[0]) <= 5:
             # Unsupported short abbreviations need an explicit clarification or
             # unknown-abbreviation response rather than a provider fan-out.
