@@ -25,6 +25,7 @@ from .job_search_intent_patch import apply_job_search_intent_patch
 from .job_search_level_patch import apply_job_search_level_patch
 from .job_search_location_patch import apply_job_search_location_patch
 from .job_search_occupation_overrides import apply_job_search_occupation_overrides
+from .job_search_production_hotfix import apply_job_search_production_hotfix
 from .job_search_query_interpretation import apply_job_search_query_interpretation
 from .job_search_sector_breadth import apply_broad_sector_search
 from .job_search_specific_occupation_patch import (
@@ -74,3 +75,4 @@ _universal_occupation.title_matches_occupation = (
 apply_universal_occupation_search(_job_search, _source_expansion)
 apply_universal_compatibility(_job_search, _source_expansion)
 apply_broad_sector_search(_job_search)
+apply_job_search_production_hotfix(_job_search, _occupation_runtime)
