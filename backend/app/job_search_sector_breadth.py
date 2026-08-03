@@ -20,7 +20,7 @@ SECTOR_QUERIES: dict[str, SectorQuery] = {
     "accounting": SectorQuery(
         "accounting",
         "finance",
-        frozenset({"accountant", "auditor", "bookkeeper", "payroll", "billing", "controller"}),
+        frozenset({"accountant", "accounting", "audit", "auditor", "bookkeeper", "payroll", "billing", "controller"}),
     ),
     "business": SectorQuery(
         "business",
@@ -45,7 +45,7 @@ SECTOR_QUERIES: dict[str, SectorQuery] = {
     "finance": SectorQuery(
         "finance",
         "finance",
-        frozenset({"financial analyst", "finance", "accountant", "auditor", "loan officer", "investment", "banking"}),
+        frozenset({"financial analyst", "finance", "accounting", "accountant", "audit", "auditor", "tax", "treasury", "loan officer", "investment", "banking"}),
     ),
     "healthcare": SectorQuery(
         "healthcare",
@@ -205,7 +205,7 @@ def apply_broad_sector_search(job_search: Any) -> None:
             warnings = [warning for warning in warnings if not warning.startswith("No matching")]
             warnings.insert(
                 0,
-                f"MarketLens understood the broad {sector.canonical} career sphere, but its configured public sources did not return a current matching posting for these filters.",
+                f"MarketLens understood the broad {sector.canonical} career sphere, but its configured API-friendly public sources did not return a current matching posting for these filters.",
             )
         return job_search.JobSearchResults(
             query=query.strip(),
