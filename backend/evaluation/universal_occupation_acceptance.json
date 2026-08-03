@@ -1,0 +1,38 @@
+{
+  "version": "8.1g-foundation-1",
+  "source_model": "BLS 2018 SOC major groups and O*NET-style occupation/title interpretation",
+  "required_major_groups": 23,
+  "required_occupation_concepts": 200,
+  "required_accepted_titles": 450,
+  "required_ambiguous_acronyms": 30,
+  "friend_acceptance_spheres": [
+    "finance",
+    "accounting",
+    "law enforcement",
+    "healthcare",
+    "business",
+    "skilled trades",
+    "engineering",
+    "education",
+    "law",
+    "marketing",
+    "sports",
+    "economics"
+  ],
+  "sae_required_variants": [
+    "System Application Engineer",
+    "Systems Application Engineer",
+    "Systems Applications Engineer",
+    "Application Systems Engineer"
+  ],
+  "sae_rejected_neighbors": [
+    "Sales Engineer",
+    "Systems Administrator"
+  ],
+  "honest_zero_result_states": [
+    "ambiguous abbreviation",
+    "unrecognized short abbreviation",
+    "understood occupation with no current public-source match",
+    "provider failure with no current match"
+  ]
+}
