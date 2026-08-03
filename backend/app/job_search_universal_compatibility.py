@@ -8,6 +8,7 @@ occupation gaps; it does not replace those established paths.
 
 from __future__ import annotations
 
+from contextvars import ContextVar
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any, Callable
@@ -39,6 +40,10 @@ _FORCE_UNIVERSAL_PHRASES = frozenset(
         "systems application engineer",
         "systems applications engineer",
     }
+)
+_LEGACY_PROBE_DEPTH: ContextVar[int] = ContextVar(
+    "marketlens_universal_legacy_probe_depth",
+    default=0,
 )
 
 
@@ -74,16 +79,25 @@ def apply_universal_compatibility(job_search: Any, source_expansion: Any) -> Non
     universal_search = job_search.search_external_jobs
 
     @lru_cache(maxsize=1_024)
-    def should_use_universal(query: str) -> bool:
+    def cached_should_use_universal(query: str) -> bool:
         normalized = normalize_occupation_text(query)
         if is_ambiguous_occupation_query(query):
             return True
         if any(phrase in normalized for phrase in _FORCE_UNIVERSAL_PHRASES):
             return True
 
-        # Fast path: the established engine already understands this role. Avoid
-        # walking the larger occupation catalog for every provider candidate.
-        if legacy.query_job_function(query) is not None or legacy.query_role_family(query) is not None:
+        # Several proven legacy adapters call the currently installed role-family
+        # helpers internally. Mark this probe so those callbacks route directly
+        # through the captured legacy stack instead of recursively probing again.
+        probe_token = _LEGACY_PROBE_DEPTH.set(_LEGACY_PROBE_DEPTH.get() + 1)
+        try:
+            legacy_understands_query = (
+                legacy.query_job_function(query) is not None
+                or legacy.query_role_family(query) is not None
+            )
+        finally:
+            _LEGACY_PROBE_DEPTH.reset(probe_token)
+        if legacy_understands_query:
             return False
 
         core_tokens = [
@@ -102,6 +116,14 @@ def apply_universal_compatibility(job_search: Any, source_expansion: Any) -> Non
         if interpretation.concept_key in _FORCE_UNIVERSAL_CONCEPTS:
             return True
         return interpretation.recognized
+
+    def should_use_universal(query: str) -> bool:
+        # A callback reached while probing the captured legacy stack must stay on
+        # that stack. Keeping this check outside the cached function prevents a
+        # temporary recursion-break decision from being cached as product logic.
+        if _LEGACY_PROBE_DEPTH.get() > 0:
+            return False
+        return cached_should_use_universal(query)
 
     def query_role_family(query: str) -> Any:
         return universal_query_role_family(query) if should_use_universal(query) else legacy.query_role_family(query)
