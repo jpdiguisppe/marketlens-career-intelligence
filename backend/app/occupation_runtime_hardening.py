@@ -1,10 +1,4 @@
-"""Final precision hardening for the cached universal occupation runtime.
-
-The runtime deliberately supports descriptive occupations that are not yet in the
-curated catalog. These guards preserve the user's complete phrase when a known
-catalog title appears only as a subset, and they normalize harmless conjunctions
-when an accepted catalog title is an otherwise exact match.
-"""
+"""Precision hardening for the cached universal occupation runtime."""
 
 from __future__ import annotations
 
@@ -22,42 +16,20 @@ from .occupation_catalog import (
 
 _QUERY_NOISE = frozenset(
     {
-        "a",
-        "an",
-        "and",
-        "career",
-        "careers",
-        "entry",
-        "entry-level",
-        "for",
-        "grad",
-        "graduate",
-        "intern",
-        "internship",
-        "internships",
-        "job",
-        "jobs",
-        "junior",
-        "level",
-        "mid",
-        "new",
-        "opening",
-        "openings",
-        "position",
-        "positions",
-        "role",
-        "roles",
-        "senior",
-        "sr",
-        "staff",
+        "a", "an", "and", "career", "careers", "entry", "entry-level",
+        "for", "grad", "graduate", "intern", "internship", "internships",
+        "job", "jobs", "junior", "level", "mid", "new", "opening",
+        "openings", "position", "positions", "role", "roles", "senior",
+        "sr", "staff",
     }
 )
-_SAFE_CONTEXTUAL_SINGLE_WORD_CONCEPTS = frozenset(
+_CONTEXT_SENSITIVE_CONCEPTS = frozenset(
     {"architect", "coach", "education_administrator", "server"}
 )
 _COMPLETE_PHRASE_REASON = (
     "Preserved the complete occupation phrase instead of dropping a meaningful qualifier."
 )
+_FUZZY_MATCH_REASON = "Matched a high-confidence spelling variant."
 
 
 def _semantic_tokens(value: str) -> tuple[str, ...]:
@@ -71,22 +43,28 @@ def _semantic_tokens(value: str) -> tuple[str, ...]:
 def _accepted_titles(concept: OccupationConcept) -> tuple[str, ...]:
     return tuple(
         sorted(
-            {normalize_occupation_text(value) for value in {*concept.aliases, concept.canonical_title}},
+            {
+                normalize_occupation_text(value)
+                for value in {*concept.aliases, concept.canonical_title}
+            },
             key=lambda value: (-len(value.split()), -len(value), value),
         )
     )
 
 
-_SEMANTIC_ALIASES_MUTABLE: dict[tuple[str, ...], list[tuple[str, OccupationConcept]]] = defaultdict(list)
+_SEMANTIC_ALIASES_MUTABLE: dict[
+    tuple[str, ...], list[tuple[str, OccupationConcept]]
+] = defaultdict(list)
 for _concept in OCCUPATIONS:
     for _alias in {*_concept.aliases, _concept.canonical_title}:
         _key = _semantic_tokens(_alias)
         if _key:
-            _SEMANTIC_ALIASES_MUTABLE[_key].append((normalize_occupation_text(_alias), _concept))
+            _SEMANTIC_ALIASES_MUTABLE[_key].append(
+                (normalize_occupation_text(_alias), _concept)
+            )
 
 _SEMANTIC_ALIASES = {
-    key: tuple(values)
-    for key, values in _SEMANTIC_ALIASES_MUTABLE.items()
+    key: tuple(values) for key, values in _SEMANTIC_ALIASES_MUTABLE.items()
 }
 
 
@@ -96,10 +74,10 @@ def _exact_semantic_concept(query: str) -> tuple[str, OccupationConcept] | None:
     if len(concepts) != 1:
         return None
     concept = next(iter(concepts.values()))
-    matching_aliases = sorted(
+    aliases = sorted(
         alias for alias, candidate in candidates if candidate.key == concept.key
     )
-    return matching_aliases[0], concept
+    return aliases[0], concept
 
 
 def _recognized_concept(
@@ -161,7 +139,9 @@ def apply_occupation_runtime_hardening(
         interpretation = original_interpret(query)
         if not interpretation.recognized or interpretation.concept_key is None:
             return interpretation
-        if interpretation.concept_key in _SAFE_CONTEXTUAL_SINGLE_WORD_CONCEPTS:
+        if interpretation.concept_key in _CONTEXT_SENSITIVE_CONCEPTS:
+            return interpretation
+        if interpretation.reason == _FUZZY_MATCH_REASON:
             return interpretation
 
         query_tokens = _semantic_tokens(query)
@@ -170,10 +150,6 @@ def apply_occupation_runtime_hardening(
         }
         if query_tokens in accepted_token_sets:
             return interpretation
-
-        # A catalog alias was only a subset of the user's request. Retain every
-        # meaningful token so a query such as "police software engineer" cannot
-        # silently become the broader "software engineer" occupation.
         return _complete_generic(query, interpretation)
 
     def title_match(
@@ -181,10 +157,30 @@ def apply_occupation_runtime_hardening(
         interpretation: OccupationInterpretation,
     ) -> bool:
         if interpretation.reason == _COMPLETE_PHRASE_REASON:
-            requested = set(_semantic_tokens(interpretation.occupation_phrase or ""))
+            requested = set(
+                _semantic_tokens(interpretion_phrase)
+                if (interpretion_phrase := interpretation.occupation_phrase)
+                else ()
+            )
             candidate = set(_semantic_tokens(title))
             return bool(requested) and requested.issubset(candidate)
-        return original_title_match(title, interpretation)
+
+        if original_title_match(title, interpretation):
+            return True
+        if (
+            interpretation.concept_key is None
+            or interpretation.concept_key in _CONTEXT_SENSITIVE_CONCEPTS
+        ):
+            return False
+
+        candidate_tokens = set(_semantic_tokens(title))
+        for accepted_title in interpretation.accepted_titles:
+            accepted_tokens = set(_semantic_tokens(accepted_title))
+            if len(accepted_tokens) >= 2 and accepted_tokens.issubset(
+                candidate_tokens
+            ):
+                return True
+        return False
 
     runtime_module.interpret_occupation_query = interpret
     runtime_module.title_matches_occupation = title_match
