@@ -39,6 +39,26 @@ def test_principal_software_engineer_uses_complete_technology_context() -> None:
     assert not title_matches_occupation("High School Principal", interpretation)
 
 
+def test_conflicting_occupation_qualifier_is_never_silently_dropped() -> None:
+    interpretation = interpret_occupation_query("police software engineer")
+    assert interpretation.status == "recognized"
+    assert interpretation.concept_key is None
+    assert interpretation.search_family == "software"
+    assert title_matches_occupation("Police Software Engineer", interpretation)
+    assert not title_matches_occupation("Software Engineer", interpretation)
+    assert not title_matches_occupation("Police Officer", interpretation)
+
+
+def test_conjunction_in_catalog_title_still_resolves_exact_concept() -> None:
+    interpretation = interpret_occupation_query("medical and health services manager")
+    assert interpretation.status == "recognized"
+    assert interpretation.concept_key == "medical_services_manager"
+    assert title_matches_occupation(
+        "Medical and Health Services Manager",
+        interpretation,
+    )
+
+
 def test_software_architect_is_not_a_building_architect() -> None:
     interpretation = interpret_occupation_query("software architect")
     assert interpretation.status == "recognized"
