@@ -1,0 +1,644 @@
+{
+  "version": 1,
+  "minimum_queries": 150,
+  "required_major_groups": [
+    "11",
+    "13",
+    "15",
+    "17",
+    "19",
+    "21",
+    "23",
+    "25",
+    "27",
+    "29",
+    "31",
+    "33",
+    "35",
+    "37",
+    "39",
+    "41",
+    "43",
+    "45",
+    "47",
+    "49",
+    "51",
+    "53",
+    "55"
+  ],
+  "minimum_career_spheres": 12,
+  "seed_query_forms": [
+    "canonical",
+    "modifier",
+    "typo"
+  ],
+  "seeds": [
+    {
+      "id": "mgmt-general-manager",
+      "canonical_query": "general manager",
+      "concept_key": "general_manager",
+      "soc_major_group": "11",
+      "career_sphere": "business",
+      "typo_query": "general managr",
+      "positive_title": "Senior General Manager",
+      "negative_title": "General Ledger Accountant"
+    },
+    {
+      "id": "mgmt-project-manager",
+      "canonical_query": "project manager",
+      "concept_key": "project_manager",
+      "soc_major_group": "11",
+      "career_sphere": "business",
+      "typo_query": "project manger",
+      "positive_title": "Technical Project Manager",
+      "negative_title": "Product Marketing Manager"
+    },
+    {
+      "id": "finance-accountant",
+      "canonical_query": "accountant",
+      "concept_key": "accountant",
+      "soc_major_group": "13",
+      "career_sphere": "accounting",
+      "typo_query": "acountant",
+      "positive_title": "Senior Staff Accountant",
+      "negative_title": "Account Executive"
+    },
+    {
+      "id": "finance-financial-analyst",
+      "canonical_query": "financial analyst",
+      "concept_key": "financial_analyst",
+      "soc_major_group": "13",
+      "career_sphere": "finance",
+      "typo_query": "financial anaylst",
+      "positive_title": "Senior Financial Analyst",
+      "negative_title": "Sports Analyst"
+    },
+    {
+      "id": "tech-software-engineer",
+      "canonical_query": "software engineer",
+      "concept_key": "software_engineer",
+      "soc_major_group": "15",
+      "career_sphere": "technology",
+      "typo_query": "software enginer",
+      "positive_title": "Senior Software Engineer",
+      "negative_title": "Sales Engineer"
+    },
+    {
+      "id": "tech-data-scientist",
+      "canonical_query": "data scientist",
+      "concept_key": "data_scientist",
+      "soc_major_group": "15",
+      "career_sphere": "technology",
+      "typo_query": "data scientst",
+      "positive_title": "Lead Data Scientist",
+      "negative_title": "Research Scientist"
+    },
+    {
+      "id": "eng-civil-engineer",
+      "canonical_query": "civil engineer",
+      "concept_key": "civil_engineer",
+      "soc_major_group": "17",
+      "career_sphere": "engineering",
+      "typo_query": "civil enginer",
+      "positive_title": "Senior Civil Engineer",
+      "negative_title": "Mechanical Engineer"
+    },
+    {
+      "id": "eng-mechanical-engineer",
+      "canonical_query": "mechanical engineer",
+      "concept_key": "mechanical_engineer",
+      "soc_major_group": "17",
+      "career_sphere": "engineering",
+      "typo_query": "mechanical enginer",
+      "positive_title": "Lead Mechanical Engineer",
+      "negative_title": "Mechanical Technician"
+    },
+    {
+      "id": "science-biologist",
+      "canonical_query": "biologist",
+      "concept_key": "biologist",
+      "soc_major_group": "19",
+      "career_sphere": "science",
+      "typo_query": "biologst",
+      "positive_title": "Research Biologist",
+      "negative_title": "Biological Technician"
+    },
+    {
+      "id": "science-economist",
+      "canonical_query": "economist",
+      "concept_key": "economist",
+      "soc_major_group": "19",
+      "career_sphere": "economics",
+      "typo_query": "economst",
+      "positive_title": "Senior Economist",
+      "negative_title": "Financial Analyst"
+    },
+    {
+      "id": "social-social-worker",
+      "canonical_query": "social worker",
+      "concept_key": "social_worker",
+      "soc_major_group": "21",
+      "career_sphere": "social services",
+      "typo_query": "social workr",
+      "positive_title": "Clinical Social Worker",
+      "negative_title": "Warehouse Worker"
+    },
+    {
+      "id": "social-school-counselor",
+      "canonical_query": "school counselor",
+      "concept_key": "school_counselor",
+      "soc_major_group": "21",
+      "career_sphere": "education",
+      "typo_query": "school counslor",
+      "positive_title": "Senior School Counselor",
+      "negative_title": "Mental Health Counselor"
+    },
+    {
+      "id": "legal-attorney",
+      "canonical_query": "attorney",
+      "concept_key": "attorney",
+      "soc_major_group": "23",
+      "career_sphere": "law",
+      "typo_query": "attorny",
+      "positive_title": "Senior Attorney",
+      "negative_title": "Legal Assistant"
+    },
+    {
+      "id": "legal-paralegal",
+      "canonical_query": "paralegal",
+      "concept_key": "paralegal",
+      "soc_major_group": "23",
+      "career_sphere": "law",
+      "typo_query": "paralegl",
+      "positive_title": "Senior Paralegal",
+      "negative_title": "Legal Assistant"
+    },
+    {
+      "id": "education-elementary-teacher",
+      "canonical_query": "elementary school teacher",
+      "concept_key": "elementary_school_teacher",
+      "soc_major_group": "25",
+      "career_sphere": "education",
+      "typo_query": "elementary school teachr",
+      "positive_title": "Lead Elementary School Teacher",
+      "negative_title": "College Professor"
+    },
+    {
+      "id": "education-librarian",
+      "canonical_query": "librarian",
+      "concept_key": "librarian",
+      "soc_major_group": "25",
+      "career_sphere": "education",
+      "typo_query": "libraran",
+      "positive_title": "Senior Librarian",
+      "negative_title": "Library Assistant"
+    },
+    {
+      "id": "media-graphic-designer",
+      "canonical_query": "graphic designer",
+      "concept_key": "graphic_designer",
+      "soc_major_group": "27",
+      "career_sphere": "marketing",
+      "typo_query": "graphic desiger",
+      "positive_title": "Senior Graphic Designer",
+      "negative_title": "Product Designer"
+    },
+    {
+      "id": "media-sports-analyst",
+      "canonical_query": "sports analyst",
+      "concept_key": "sports_analyst",
+      "soc_major_group": "27",
+      "career_sphere": "sports",
+      "typo_query": "sports anaylst",
+      "positive_title": "Senior Sports Analyst",
+      "negative_title": "Financial Analyst"
+    },
+    {
+      "id": "health-rn",
+      "canonical_query": "registered nurse",
+      "concept_key": "registered_nurse",
+      "soc_major_group": "29",
+      "career_sphere": "healthcare",
+      "typo_query": "registered nuse",
+      "positive_title": "Senior Registered Nurse",
+      "negative_title": "Nurse Practitioner"
+    },
+    {
+      "id": "health-pharmacist",
+      "canonical_query": "pharmacist",
+      "concept_key": "pharmacist",
+      "soc_major_group": "29",
+      "career_sphere": "healthcare",
+      "typo_query": "pharmacst",
+      "positive_title": "Staff Pharmacist",
+      "negative_title": "Pharmacy Technician"
+    },
+    {
+      "id": "health-support-medical-assistant",
+      "canonical_query": "medical assistant",
+      "concept_key": "medical_assistant",
+      "soc_major_group": "31",
+      "career_sphere": "healthcare",
+      "typo_query": "medical assitant",
+      "positive_title": "Senior Medical Assistant",
+      "negative_title": "Medical Director"
+    },
+    {
+      "id": "health-support-pharmacy-tech",
+      "canonical_query": "pharmacy technician",
+      "concept_key": "pharmacy_technician",
+      "soc_major_group": "31",
+      "career_sphere": "healthcare",
+      "typo_query": "pharmacy technican",
+      "positive_title": "Lead Pharmacy Technician",
+      "negative_title": "Pharmacist"
+    },
+    {
+      "id": "safety-police-officer",
+      "canonical_query": "police officer",
+      "concept_key": "police_officer",
+      "soc_major_group": "33",
+      "career_sphere": "law enforcement",
+      "typo_query": "police offcer",
+      "positive_title": "Senior Police Officer",
+      "negative_title": "Probation Officer"
+    },
+    {
+      "id": "safety-firefighter",
+      "canonical_query": "firefighter",
+      "concept_key": "firefighter",
+      "soc_major_group": "33",
+      "career_sphere": "public safety",
+      "typo_query": "firefigher",
+      "positive_title": "Senior Firefighter",
+      "negative_title": "Fire Safety Inspector"
+    },
+    {
+      "id": "food-chef",
+      "canonical_query": "chef",
+      "concept_key": "chef",
+      "soc_major_group": "35",
+      "career_sphere": "hospitality",
+      "typo_query": "executive cheff",
+      "positive_title": "Executive Chef",
+      "negative_title": "Cook"
+    },
+    {
+      "id": "food-bartender",
+      "canonical_query": "bartender",
+      "concept_key": "bartender",
+      "soc_major_group": "35",
+      "career_sphere": "hospitality",
+      "typo_query": "bartendr",
+      "positive_title": "Lead Bartender",
+      "negative_title": "Barista"
+    },
+    {
+      "id": "grounds-janitor",
+      "canonical_query": "janitor",
+      "concept_key": "janitor",
+      "soc_major_group": "37",
+      "career_sphere": "facilities",
+      "typo_query": "janitr",
+      "positive_title": "Senior Janitor",
+      "negative_title": "Facilities Manager"
+    },
+    {
+      "id": "grounds-landscaper",
+      "canonical_query": "landscaper",
+      "concept_key": "landscaper",
+      "soc_major_group": "37",
+      "career_sphere": "facilities",
+      "typo_query": "landscapr",
+      "positive_title": "Lead Landscaper",
+      "negative_title": "Landscape Architect"
+    },
+    {
+      "id": "personal-barber",
+      "canonical_query": "barber",
+      "concept_key": "barber",
+      "soc_major_group": "39",
+      "career_sphere": "personal care",
+      "typo_query": "barbr",
+      "positive_title": "Senior Barber",
+      "negative_title": "Hair Stylist"
+    },
+    {
+      "id": "personal-fitness-trainer",
+      "canonical_query": "fitness trainer",
+      "concept_key": "fitness_trainer",
+      "soc_major_group": "39",
+      "career_sphere": "sports",
+      "typo_query": "fitness traner",
+      "positive_title": "Lead Fitness Trainer",
+      "negative_title": "Athletic Coach"
+    },
+    {
+      "id": "sales-representative",
+      "canonical_query": "sales representative",
+      "concept_key": "sales_representative",
+      "soc_major_group": "41",
+      "career_sphere": "sales",
+      "typo_query": "sales representativ",
+      "positive_title": "Senior Sales Representative",
+      "negative_title": "Customer Service Representative"
+    },
+    {
+      "id": "sales-real-estate-agent",
+      "canonical_query": "real estate agent",
+      "concept_key": "real_estate_agent",
+      "soc_major_group": "41",
+      "career_sphere": "real estate",
+      "typo_query": "real estate agnt",
+      "positive_title": "Senior Real Estate Agent",
+      "negative_title": "Insurance Sales Agent"
+    },
+    {
+      "id": "office-admin-assistant",
+      "canonical_query": "administrative assistant",
+      "concept_key": "administrative_assistant",
+      "soc_major_group": "43",
+      "career_sphere": "business",
+      "typo_query": "administrative assitant",
+      "positive_title": "Senior Administrative Assistant",
+      "negative_title": "Executive Assistant"
+    },
+    {
+      "id": "office-bookkeeper",
+      "canonical_query": "bookkeeper",
+      "concept_key": "bookkeeper",
+      "soc_major_group": "43",
+      "career_sphere": "accounting",
+      "typo_query": "bookkeper",
+      "positive_title": "Senior Bookkeeper",
+      "negative_title": "Payroll Clerk"
+    },
+    {
+      "id": "agriculture-farmer",
+      "canonical_query": "farmer",
+      "concept_key": "farmer",
+      "soc_major_group": "45",
+      "career_sphere": "agriculture",
+      "typo_query": "farmr",
+      "positive_title": "Senior Farmer",
+      "negative_title": "Farm Worker"
+    },
+    {
+      "id": "agriculture-forestry-tech",
+      "canonical_query": "forestry technician",
+      "concept_key": "forestry_technician",
+      "soc_major_group": "45",
+      "career_sphere": "agriculture",
+      "typo_query": "forestry technican",
+      "positive_title": "Senior Forestry Technician",
+      "negative_title": "Agricultural Technician"
+    },
+    {
+      "id": "trades-electrician",
+      "canonical_query": "electrician",
+      "concept_key": "electrician",
+      "soc_major_group": "47",
+      "career_sphere": "skilled trades",
+      "typo_query": "electrican",
+      "positive_title": "Journeyman Electrician",
+      "negative_title": "Electrical Engineer"
+    },
+    {
+      "id": "trades-plumber",
+      "canonical_query": "plumber",
+      "concept_key": "plumber",
+      "soc_major_group": "47",
+      "career_sphere": "skilled trades",
+      "typo_query": "plumbr",
+      "positive_title": "Master Plumber",
+      "negative_title": "Pipefitter"
+    },
+    {
+      "id": "repair-auto-tech",
+      "canonical_query": "automotive technician",
+      "concept_key": "automotive_technician",
+      "soc_major_group": "49",
+      "career_sphere": "automotive",
+      "typo_query": "automotive technican",
+      "positive_title": "Senior Automotive Technician",
+      "negative_title": "Automotive Engineer"
+    },
+    {
+      "id": "repair-aircraft-mechanic",
+      "canonical_query": "aircraft mechanic",
+      "concept_key": "aircraft_mechanic",
+      "soc_major_group": "49",
+      "career_sphere": "aviation",
+      "typo_query": "aircraft mechanik",
+      "positive_title": "Senior Aircraft Mechanic",
+      "negative_title": "Aircraft Pilot"
+    },
+    {
+      "id": "production-machinist",
+      "canonical_query": "machinist",
+      "concept_key": "machinist",
+      "soc_major_group": "51",
+      "career_sphere": "manufacturing",
+      "typo_query": "machinst",
+      "positive_title": "Senior Machinist",
+      "negative_title": "CNC Operator"
+    },
+    {
+      "id": "production-welder",
+      "canonical_query": "welder",
+      "concept_key": "welder",
+      "soc_major_group": "51",
+      "career_sphere": "manufacturing",
+      "typo_query": "weldr",
+      "positive_title": "Senior Welder",
+      "negative_title": "Welding Engineer"
+    },
+    {
+      "id": "transport-truck-driver",
+      "canonical_query": "truck driver",
+      "concept_key": "truck_driver",
+      "soc_major_group": "53",
+      "career_sphere": "transportation",
+      "typo_query": "truck drivr",
+      "positive_title": "Senior Truck Driver",
+      "negative_title": "Delivery Driver"
+    },
+    {
+      "id": "transport-warehouse-worker",
+      "canonical_query": "warehouse worker",
+      "concept_key": "warehouse_worker",
+      "soc_major_group": "53",
+      "career_sphere": "logistics",
+      "typo_query": "warehouse workr",
+      "positive_title": "Senior Warehouse Worker",
+      "negative_title": "Construction Worker"
+    },
+    {
+      "id": "military-army-officer",
+      "canonical_query": "army officer",
+      "concept_key": "army_officer",
+      "soc_major_group": "55",
+      "career_sphere": "military",
+      "typo_query": "army offcer",
+      "positive_title": "Senior Army Officer",
+      "negative_title": "Police Officer"
+    },
+    {
+      "id": "military-cyber-specialist",
+      "canonical_query": "cyber operations specialist",
+      "concept_key": "cyber_operations_specialist",
+      "soc_major_group": "55",
+      "career_sphere": "military",
+      "typo_query": "cyber operations specialst",
+      "positive_title": "Senior Cyber Operations Specialist",
+      "negative_title": "Cybersecurity Analyst"
+    }
+  ],
+  "ambiguous_acronyms": [
+    "ae",
+    "am",
+    "ba",
+    "bd",
+    "bm",
+    "ca",
+    "ce",
+    "cm",
+    "cs",
+    "da",
+    "de",
+    "ea",
+    "ee",
+    "fa",
+    "fe",
+    "hr",
+    "ia",
+    "ie",
+    "ma",
+    "me",
+    "na",
+    "ot",
+    "pa",
+    "pe",
+    "pm",
+    "pt",
+    "ra",
+    "re",
+    "sa",
+    "sae",
+    "se",
+    "ta",
+    "te"
+  ],
+  "safe_acronym_cases": [
+    {
+      "id": "safe-rn",
+      "query": "RN jobs",
+      "concept_key": "registered_nurse",
+      "soc_major_group": "29",
+      "career_sphere": "healthcare"
+    },
+    {
+      "id": "safe-dba",
+      "query": "DBA openings",
+      "concept_key": "database_administrator",
+      "soc_major_group": "15",
+      "career_sphere": "technology"
+    },
+    {
+      "id": "safe-emt",
+      "query": "EMT careers",
+      "concept_key": "emergency_medical_technician",
+      "soc_major_group": "29",
+      "career_sphere": "healthcare"
+    },
+    {
+      "id": "safe-cna",
+      "query": "CNA jobs",
+      "concept_key": "nursing_assistant",
+      "soc_major_group": "31",
+      "career_sphere": "healthcare"
+    },
+    {
+      "id": "safe-hvac",
+      "query": "HVAC technician positions",
+      "concept_key": "hvac_installer",
+      "soc_major_group": "47",
+      "career_sphere": "skilled trades"
+    },
+    {
+      "id": "safe-ux",
+      "query": "UX designer roles",
+      "concept_key": "user_experience_designer",
+      "soc_major_group": "27",
+      "career_sphere": "design"
+    },
+    {
+      "id": "safe-qa",
+      "query": "QA engineer jobs",
+      "concept_key": "quality_assurance_engineer",
+      "soc_major_group": "15",
+      "career_sphere": "technology"
+    },
+    {
+      "id": "safe-cnc",
+      "query": "CNC operator openings",
+      "concept_key": "cnc_operator",
+      "soc_major_group": "51",
+      "career_sphere": "manufacturing"
+    }
+  ],
+  "unknown_queries": [
+    {
+      "id": "unknown-01",
+      "query": "XYZ jobs"
+    },
+    {
+      "id": "unknown-02",
+      "query": "quantum llama wrangler"
+    },
+    {
+      "id": "unknown-03",
+      "query": "cloud happiness ninja"
+    },
+    {
+      "id": "unknown-04",
+      "query": "synergy wizard openings"
+    },
+    {
+      "id": "unknown-05",
+      "query": "banana logistics oracle"
+    },
+    {
+      "id": "unknown-06",
+      "query": "purple moon navigator"
+    },
+    {
+      "id": "unknown-07",
+      "query": "hyperloop dream guide"
+    },
+    {
+      "id": "unknown-08",
+      "query": "cosmic spreadsheet hero"
+    },
+    {
+      "id": "unknown-09",
+      "query": "future vibes alchemist"
+    },
+    {
+      "id": "unknown-10",
+      "query": "mystery role 9000"
+    }
+  ],
+  "thresholds": {
+    "query_accuracy": 1.0,
+    "recognized_accuracy": 1.0,
+    "modifier_accuracy": 1.0,
+    "typo_accuracy": 1.0,
+    "ambiguous_accuracy": 1.0,
+    "safe_acronym_accuracy": 1.0,
+    "unknown_accuracy": 1.0,
+    "title_precision": 1.0,
+    "title_recall": 1.0,
+    "negative_rejection_rate": 1.0
+  }
+}
