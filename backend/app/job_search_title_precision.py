@@ -63,7 +63,11 @@ def title_satisfies_occupation_precision(
         )
 
     if concept_key == "registered_nurse":
-        if not re.search(r"\bnurse\b", normalized_title):
+        has_registered_nurse_title = bool(
+            re.search(r"\bnurse\b", normalized_title)
+            or re.search(r"\brn\b", normalized_title)
+        )
+        if not has_registered_nurse_title:
             return False
         return not any(
             pattern.search(normalized_title)
