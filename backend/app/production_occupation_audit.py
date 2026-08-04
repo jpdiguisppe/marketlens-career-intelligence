@@ -11,6 +11,7 @@ from typing import Any
 
 import httpx
 
+from . import job_search
 from . import occupation_catalog_runtime as occupation_runtime
 from .production_canary import DEFAULT_BACKEND_URL, normalize_base_url, normalize_revision
 
@@ -193,6 +194,26 @@ class ProductionOccupationAudit:
                 )
         return interpretation
 
+    @staticmethod
+    def _title_is_relevant(
+        *,
+        case: dict[str, Any],
+        interpretation: Any,
+        title: str,
+        description: str,
+    ) -> bool:
+        occupation_match = occupation_runtime.title_matches_occupation(
+            title,
+            interpretation,
+        )
+        final_search_match = job_search._matches_requested_role(
+            title,
+            description,
+            case["query"],
+            case.get("level"),
+        )
+        return bool(occupation_match and final_search_match)
+
     def _run_case(self, case: dict[str, Any]) -> dict[str, Any]:
         interpretation = self._validate_interpretation(case)
         max_results = int(self.audit["max_results_per_case"])
@@ -256,9 +277,20 @@ class ProductionOccupationAudit:
                         "unexpected_result_shape",
                         "Production result did not include a title.",
                     )
+                if not isinstance(result.get("description"), str):
+                    raise ProductionOccupationAuditError(
+                        "unexpected_result_shape",
+                        "Production result did not include a description.",
+                    )
                 title = result["title"].strip()
+                description = result["description"]
                 returned_titles.append(title)
-                if not occupation_runtime.title_matches_occupation(title, interpretation):
+                if not self._title_is_relevant(
+                    case=case,
+                    interpretation=interpretation,
+                    title=title,
+                    description=description,
+                ):
                     raise ProductionOccupationAuditError(
                         "irrelevant_result_title",
                         f"Production returned an unrelated title for {case['id']}.",
@@ -364,10 +396,7 @@ class ProductionOccupationAudit:
         for result in results:
             provider_statuses.update(result.coverage_statuses)
         latencies = [result.latency_ms for result in results]
-        career_spheres = {
-            result.career_sphere
-            for result in recognized_results
-        }
+        career_spheres = {result.career_sphere for result in recognized_results}
         return {
             "version": self.audit["version"],
             "backend_url": self.backend_url,
@@ -388,12 +417,8 @@ class ProductionOccupationAudit:
             },
             "metrics": {
                 "case_accuracy": passed_cases / len(results) if results else 0.0,
-                "returned_title_precision": (
-                    relevant_titles / total_titles if total_titles else 1.0
-                ),
-                "average_case_latency_ms": (
-                    round(sum(latencies) / len(latencies), 3) if latencies else 0.0
-                ),
+                "returned_title_precision": relevant_titles / total_titles if total_titles else 1.0,
+                "average_case_latency_ms": round(sum(latencies) / len(latencies), 3) if latencies else 0.0,
                 "maximum_case_latency_ms": max(latencies, default=0.0),
                 "total_measured_latency_ms": round(sum(latencies), 3),
             },
