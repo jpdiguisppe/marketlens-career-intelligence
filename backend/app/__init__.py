@@ -31,6 +31,7 @@ from .job_search_sector_breadth import apply_broad_sector_search
 from .job_search_specific_occupation_patch import (
     apply_job_search_specific_occupation_patch,
 )
+from .job_search_title_precision import apply_job_search_title_precision
 from .job_search_universal_compatibility import (
     apply_universal_compatibility,
     capture_legacy_search_functions,
@@ -76,3 +77,4 @@ apply_universal_occupation_search(_job_search, _source_expansion)
 apply_universal_compatibility(_job_search, _source_expansion)
 apply_broad_sector_search(_job_search)
 apply_job_search_production_hotfix(_job_search, _occupation_runtime)
+apply_job_search_title_precision(_job_search, _occupation_runtime)
