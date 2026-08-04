@@ -1,8 +1,32 @@
 from __future__ import annotations
 
 import httpx
+import pytest
 
+from app import job_search, occupation_catalog_runtime
 from app.production_occupation_audit import ProductionOccupationAudit
+
+
+def test_live_audit_uses_final_search_matcher_as_authority(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        occupation_catalog_runtime,
+        "title_matches_occupation",
+        lambda *_args, **_kwargs: False,
+    )
+    monkeypatch.setattr(
+        job_search,
+        "_matches_requested_role",
+        lambda *_args, **_kwargs: True,
+    )
+
+    assert ProductionOccupationAudit._title_is_relevant(
+        case={"query": "Financial Analyst", "level": "any"},
+        interpretation=object(),
+        title="Senior Analyst, Strategic Finance",
+        description="Own forecasting, financial planning, and business analysis.",
+    )
 
 
 def test_production_audit_rejects_accountant_partner_program_title() -> None:

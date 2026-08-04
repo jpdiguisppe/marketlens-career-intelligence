@@ -202,17 +202,18 @@ class ProductionOccupationAudit:
         title: str,
         description: str,
     ) -> bool:
-        occupation_match = occupation_runtime.title_matches_occupation(
-            title,
-            interpretation,
+        # Interpretation identity is validated separately above. Live result
+        # relevance must use the complete final production matcher because it
+        # includes proven legacy aliases and all post-stack precision guards.
+        del interpretation
+        return bool(
+            job_search._matches_requested_role(
+                title,
+                description,
+                case["query"],
+                case.get("level"),
+            )
         )
-        final_search_match = job_search._matches_requested_role(
-            title,
-            description,
-            case["query"],
-            case.get("level"),
-        )
-        return bool(occupation_match and final_search_match)
 
     def _run_case(self, case: dict[str, Any]) -> dict[str, Any]:
         interpretation = self._validate_interpretation(case)
