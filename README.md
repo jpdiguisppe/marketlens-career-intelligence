@@ -10,6 +10,8 @@ The product has two connected workspaces:
 ## Project highlights
 
 - **Deployed full-stack product:** React + TypeScript, FastAPI, SQLAlchemy, Clerk authentication, Docker, PostgreSQL, and Railway.
+- **Universal occupation search foundation:** a deterministic SOC-aligned registry represents all 23 major occupational groups through 214 occupation concepts, 454 accepted titles, and 33 explicitly ambiguous acronyms.
+- **Cross-sector precision:** specific occupations require title-level evidence, ambiguous acronyms are clarified instead of guessed, zero-result states explain interpretation and provider coverage, and unrelated technical skill badges are rejected.
 - **Bounded Career Planning Agent:** a durable seven-step workflow that orchestrates the existing search and Smart Fit systems rather than reproducing their logic inside prompts.
 - **Deterministic authority:** job selection, scores, evidence, hard requirements, provenance, opportunity categories, and the action set remain deterministic.
 - **Optional AI organization:** one strict-schema model call may organize existing IDs and priorities but cannot create facts, alter scores, approve a plan, or take external action.
@@ -188,7 +190,11 @@ The model cannot:
 
 MarketLens evaluates occupation, experience level, industry, and location as separate concerns.
 
+The universal occupation layer recognizes canonical titles, accepted alternate titles, spelling variants, reordered phrases, and safe abbreviations across every SOC major group. Bare ambiguous acronyms such as `SAE` are not silently expanded; MarketLens asks the user to choose a meaning before any provider search.
+
 Specific occupations require title-level evidence. A shared word such as `engineer`, `analyst`, `assistant`, `technician`, `editor`, or `manager` is not sufficient by itself. Protected distinctions include electrical engineer vs. analytics engineer, electrician vs. electrical engineer, medical assistant vs. registered nurse, policy analyst vs. data analyst, and journalism editor vs. video editor.
+
+When a valid occupation produces no current configured-source result, MarketLens distinguishes an understood occupation with limited provider coverage from an unknown or ambiguous query and generates canonical external-search fallbacks. It does not return loosely related jobs merely to avoid an empty result.
 
 Supported experience levels are `any`, `intern`, `entry`, `mid`, and `senior`. Explicit city searches are strict, with bounded metro-area aliases rather than unrestricted location matching.
 
@@ -208,7 +214,8 @@ All visitors can:
 
 - upload `.txt`, `.md`, `.pdf`, or `.docx` résumés for request-time extraction
 - paste résumé text manually
-- search configured public sources
+- search configured public sources across a SOC-aligned cross-sector occupation registry
+- receive clarification rather than guessed results for ambiguous occupation acronyms
 - inspect provider-by-provider coverage, warnings, and continuation links
 - compare one to ten searched or manually pasted jobs through Smart Fit
 - review requirements, evidence, rankings, gaps, limitations, and coaching actions
@@ -275,7 +282,7 @@ See [`SECURITY.md`](SECURITY.md) for the security policy and limitations.
 
 ## Evaluation and production validation
 
-Milestone 8.1 passed:
+The Milestone 8.1 Career Planning Agent sign-off passed with:
 
 - ten representative career sectors
 - ten committed task-level cases
@@ -286,7 +293,7 @@ Milestone 8.1 passed:
 - cancellation and failed-run retry recovery without duplicated actions
 - automated and production ownership-isolation checks
 - provider telemetry, cost, token, payload, and latency policies
-- **447 backend tests**
+- **447 backend tests at the original Career Planning Agent sign-off**
 - frontend TypeScript/Vite production build
 - backend and frontend Docker builds
 - Career Plan Agent Evaluation
@@ -296,9 +303,22 @@ Milestone 8.1 passed:
 - Provider Telemetry
 - Secret and Log Safety
 
-The exact-revision Railway canaries passed on validated runtime revision `31acd2b7a587cf4fdc9c2cebe0dbf4b7dce567f1`. Authenticated production browser validation covered deterministic and AI-assisted plans, all seven steps, explanations, edit/approve/reopen persistence, reject/delete, cancellation/retry, prompt-injection resistance, second-account isolation, and 400-pixel responsive behavior.
+The exact-revision Railway canaries passed on validated Career Planning Agent runtime revision `31acd2b7a587cf4fdc9c2cebe0dbf4b7dce567f1`. Authenticated production browser validation covered deterministic and AI-assisted plans, all seven steps, explanations, edit/approve/reopen persistence, reject/delete, cancellation/retry, prompt-injection resistance, second-account isolation, and 400-pixel responsive behavior.
 
-See [`docs/milestone-8-1-completion.md`](docs/milestone-8-1-completion.md) for measured latency, cost, fallback, residual-risk, and GO evidence.
+The later universal-search foundation and precision work added:
+
+- all 23 SOC major groups
+- 214 occupation concepts and 454 accepted titles
+- 33 ambiguous acronyms with explicit clarification behavior
+- cross-sector title matching, provider routing, and honest fallback states
+- production regressions for unsupported abbreviations and accountant false positives
+- cross-sector skill-badge precision for `C`, `Testing`, and AI/ML evidence
+- **497 backend tests on the Milestone 8.1H candidate revision**
+- exact-revision Railway deployment and public production canary at `436adf981af04bb7818e4448d6d083178e07400a`
+
+The remaining universal-search validation is tracked in [Milestone 8.1I](https://github.com/jpdiguisppe/marketlens-career-intelligence/issues/110), followed by final repository and production sign-off in [Milestone 8.1J](https://github.com/jpdiguisppe/marketlens-career-intelligence/issues/112).
+
+See [`docs/milestone-8-1-completion.md`](docs/milestone-8-1-completion.md) for measured Career Planning Agent latency, cost, fallback, residual-risk, and GO evidence.
 
 ## Running locally
 
@@ -356,12 +376,12 @@ Full automated authenticated mode additionally requires short-lived canary beare
 
 ## Portfolio and interview summary
 
-MarketLens is a deployed, stateful career-intelligence product. It combines public job-source integrations, evidence-aware analysis, private workflow persistence, and a bounded AI agent that orchestrates search and Smart Fit tools while preserving deterministic authority and human approval.
+MarketLens is a deployed, stateful career-intelligence product. It combines SOC-aligned cross-sector occupation interpretation, public job-source integrations, evidence-aware analysis, private workflow persistence, and a bounded AI agent that orchestrates search and Smart Fit tools while preserving deterministic authority and human approval.
 
 Suggested résumé bullet:
 
 ```text
-Built and deployed MarketLens, a React/FastAPI career-intelligence platform with a bounded AI planning agent that orchestrates public job search and evidence-based résumé analysis, persists resumable user-owned workflows, falls back deterministically on model failure, and is validated through adversarial, privacy, recovery, Docker, and exact-revision production canary gates.
+Built and deployed MarketLens, a React/FastAPI career-intelligence platform with SOC-aligned cross-sector occupation search and a bounded AI planning agent that orchestrates public job sources and evidence-based résumé analysis, persists resumable user-owned workflows, falls back deterministically on provider or model failure, and is validated through adversarial, privacy, recovery, Docker, and exact-revision production canary gates.
 ```
 
 ## Milestone status
@@ -370,11 +390,20 @@ Completed:
 
 - Milestones 1–7.1: search, Smart Fit, deployment, authentication, private saving, source coverage, and cross-sector correctness
 - Milestone 8: optional model-assisted extraction and personalized coaching foundations
-- **Milestone 8.1A–8.1F: bounded Career Planning Agent architecture, orchestration, optional AI organization, authenticated UI, permanent evaluation, and production sign-off**
+- Milestone 8.1A–8.1F: bounded Career Planning Agent architecture, orchestration, optional AI organization, authenticated UI, permanent evaluation, and production sign-off
+- Milestone 8.1G: universal occupation-search production foundation
+- **Milestone 8.1H: cross-sector skill-badge precision**
+
+In progress:
+
+- **Milestone 8.1I:** independent held-out occupation evaluation across all 23 SOC groups and at least 12 career spheres
+- **Milestone 8.1J:** measured universal-search production sign-off, final documentation, and Milestone 8 closure
+
+The Milestone 8 workstream will be considered fully complete only after 8.1I and 8.1J are finished and the umbrella issue records a final GO decision.
 
 ## Explicit post-launch roadmap
 
-The following are not implemented by Milestone 8.1:
+The following are not implemented by the current Milestone 8 production scope:
 
 - autonomous or mass job applications
 - recruiter messaging or email automation
@@ -382,6 +411,7 @@ The following are not implemented by Milestone 8.1:
 - course or service purchasing
 - unrestricted multi-agent delegation
 - closed-platform scraping
+- full O*NET-generated occupation-registry importer
 - full Career Evidence Graph
 - GitHub evidence verification
 - résumé claim verification
