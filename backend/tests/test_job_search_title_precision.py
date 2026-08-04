@@ -84,6 +84,7 @@ def test_production_observed_title_false_positives_are_rejected(
         ("Senior Analyst, Strategic Finance", "Financial Analyst"),
         ("Senior Financial Analyst", "senior financial analyst"),
         ("School Nurse (RN) - Camden", "Registered Nurse"),
+        ("Emergency Department RN", "RN jobs"),
         ("Registered Nurse - Emergency Department", "Registered Nurse"),
         ("Certified Medical Assistant", "Medical Assistant"),
         ("Clinical Medical Assistant", "Medical Assistant"),
