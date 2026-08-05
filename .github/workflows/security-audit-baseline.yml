@@ -121,3 +121,164 @@ jobs:
         run: |
           echo "One or more baseline scanners reported findings. Review the uploaded JSON evidence before merging."
           exit 1
+
+  safe-production-surface-audit:
+    name: Safe production surface audit
+    runs-on: ubuntu-24.04
+    env:
+      BACKEND_URL: https://marketlens-career-intelligence-production.up.railway.app
+      FRONTEND_URL: https://marketlens-career-intelligence-production-8a34.up.railway.app
+
+    steps:
+      - name: Collect bounded public and unauthenticated evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          output=/tmp/marketlens-production-security-surface
+          mkdir -p "$output"
+
+          probe_get() {
+            name="$1"
+            url="$2"
+            code=$(curl --silent --show-error --max-time 30 \
+              --dump-header "$output/$name.headers" \
+              --output "$output/$name.body" \
+              --write-out '%{http_code}' \
+              "$url")
+            printf '%s' "$code" > "$output/$name.status"
+          }
+
+          probe_get frontend-root "$FRONTEND_URL/"
+          probe_get backend-health "$BACKEND_URL/health"
+          probe_get backend-deployment-status "$BACKEND_URL/deployment/status"
+          probe_get backend-docs "$BACKEND_URL/docs"
+          probe_get backend-openapi "$BACKEND_URL/openapi.json"
+          probe_get private-me "$BACKEND_URL/me"
+          probe_get private-saved-jobs "$BACKEND_URL/saved-jobs"
+          probe_get private-saved-reports "$BACKEND_URL/saved-reports"
+          probe_get private-career-plans "$BACKEND_URL/career-plans"
+
+          hostile_code=$(curl --silent --show-error --max-time 30 \
+            --request OPTIONS \
+            --header 'Origin: https://attacker.invalid' \
+            --header 'Access-Control-Request-Method: GET' \
+            --dump-header "$output/cors-hostile.headers" \
+            --output "$output/cors-hostile.body" \
+            --write-out '%{http_code}' \
+            "$BACKEND_URL/jobs/search")
+          printf '%s' "$hostile_code" > "$output/cors-hostile.status"
+
+          allowed_code=$(curl --silent --show-error --max-time 30 \
+            --request OPTIONS \
+            --header "Origin: $FRONTEND_URL" \
+            --header 'Access-Control-Request-Method: GET' \
+            --dump-header "$output/cors-allowed.headers" \
+            --output "$output/cors-allowed.body" \
+            --write-out '%{http_code}' \
+            "$BACKEND_URL/jobs/search")
+          printf '%s' "$allowed_code" > "$output/cors-allowed.status"
+
+      - name: Evaluate security surface
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path('/tmp/marketlens-production-security-surface')
+
+          def status(name: str) -> int:
+              return int((root / f'{name}.status').read_text().strip())
+
+          def headers(name: str) -> dict[str, str]:
+              parsed: dict[str, str] = {}
+              for raw_line in (root / f'{name}.headers').read_text(errors='replace').splitlines():
+                  if ':' not in raw_line:
+                      continue
+                  key, value = raw_line.split(':', 1)
+                  parsed[key.strip().lower()] = value.strip()
+              return parsed
+
+          frontend_headers = headers('frontend-root')
+          backend_headers = headers('backend-health')
+          hostile_headers = headers('cors-hostile')
+          allowed_headers = headers('cors-allowed')
+
+          private_statuses = {
+              name: status(name)
+              for name in (
+                  'private-me',
+                  'private-saved-jobs',
+                  'private-saved-reports',
+                  'private-career-plans',
+              )
+          }
+          failures: list[str] = []
+          for name, value in private_statuses.items():
+              if value not in {401, 403}:
+                  failures.append(f'{name} returned HTTP {value} without authentication')
+
+          hostile_origin = hostile_headers.get('access-control-allow-origin')
+          if hostile_origin in {'*', 'https://attacker.invalid'}:
+              failures.append('hostile CORS origin was allowed')
+
+          allowed_origin = allowed_headers.get('access-control-allow-origin')
+          expected_origin = 'https://marketlens-career-intelligence-production-8a34.up.railway.app'
+          if allowed_origin != expected_origin:
+              failures.append(
+                  f'production frontend CORS origin was not explicitly allowed; got {allowed_origin!r}'
+              )
+
+          security_header_names = (
+              'strict-transport-security',
+              'content-security-policy',
+              'x-content-type-options',
+              'x-frame-options',
+              'referrer-policy',
+              'permissions-policy',
+          )
+          report = {
+              'private_route_statuses': private_statuses,
+              'cors': {
+                  'hostile_status': status('cors-hostile'),
+                  'hostile_allow_origin': hostile_origin,
+                  'allowed_status': status('cors-allowed'),
+                  'allowed_allow_origin': allowed_origin,
+              },
+              'public_exposure': {
+                  'frontend_root': status('frontend-root'),
+                  'backend_health': status('backend-health'),
+                  'backend_deployment_status': status('backend-deployment-status'),
+                  'backend_docs': status('backend-docs'),
+                  'backend_openapi': status('backend-openapi'),
+              },
+              'frontend_security_headers': {
+                  name: frontend_headers.get(name)
+                  for name in security_header_names
+              },
+              'backend_security_headers': {
+                  name: backend_headers.get(name)
+                  for name in security_header_names
+              },
+              'server_headers': {
+                  'frontend': frontend_headers.get('server'),
+                  'backend': backend_headers.get('server'),
+              },
+              'failures': failures,
+          }
+          (root / 'marketlens-production-security-surface.json').write_text(
+              json.dumps(report, indent=2, sort_keys=True) + '\n'
+          )
+          print(json.dumps(report, indent=2, sort_keys=True))
+          if failures:
+              raise SystemExit(1)
+          PY
+
+      - name: Upload safe production surface evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: marketlens-production-security-surface
+          path: /tmp/marketlens-production-security-surface
+          if-no-files-found: error
+          retention-days: 90
