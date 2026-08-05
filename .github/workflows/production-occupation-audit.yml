@@ -13,6 +13,8 @@ on:
       - backend/tests/test_job_search*.py
       - backend/tests/test_production_occupation_audit*.py
       - backend/tests/test_production_search_hotfix.py
+      - docs/milestone-8-1i-held-out-occupation-evaluation.md
+      - docs/milestone-8-universal-search-signoff.md
   workflow_dispatch:
 
 permissions:
