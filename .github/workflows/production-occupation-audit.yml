@@ -6,10 +6,13 @@ on:
       - main
     paths:
       - .github/workflows/production-occupation-audit.yml
-      - backend/app/production_occupation_audit.py
+      - backend/app/job_search*.py
+      - backend/app/occupation*.py
       - backend/evaluation/production_occupation_audit.json
       - backend/scripts/run_production_occupation_audit.py
-      - backend/tests/test_production_occupation_audit.py
+      - backend/tests/test_job_search*.py
+      - backend/tests/test_production_occupation_audit*.py
+      - backend/tests/test_production_search_hotfix.py
   workflow_dispatch:
 
 permissions:
