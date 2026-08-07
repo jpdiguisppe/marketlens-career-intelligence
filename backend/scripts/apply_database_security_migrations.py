@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -27,6 +28,16 @@ RLS_TABLES = (
     "career_plan_steps",
     "career_plan_audit_events",
 )
+ROOT_RLS_POLICIES = {
+    "saved_jobs": "marketlens_saved_jobs_owner",
+    "saved_reports": "marketlens_saved_reports_owner",
+    "career_plan_runs": "marketlens_career_plan_runs_owner",
+}
+CHILD_RLS_POLICIES = {
+    "career_plan_steps": "marketlens_career_plan_steps_owner",
+    "career_plan_audit_events": "marketlens_career_plan_audit_events_owner",
+}
+EXPECTED_RLS_POLICIES = ROOT_RLS_POLICIES | CHILD_RLS_POLICIES
 
 
 def _normalize_psycopg2_dsn(value: str) -> str:
@@ -77,6 +88,21 @@ def _ensure_migration_table(cursor: object) -> None:
     )
 
 
+def _runtime_role_memberships(cursor: object, role_name: str) -> list[str]:
+    cursor.execute(
+        """
+        SELECT parent_role.rolname
+        FROM pg_auth_members AS membership
+        JOIN pg_roles AS member_role ON member_role.oid = membership.member
+        JOIN pg_roles AS parent_role ON parent_role.oid = membership.roleid
+        WHERE member_role.rolname = %s
+        ORDER BY parent_role.rolname
+        """,
+        (role_name,),
+    )
+    return [row[0] for row in cursor.fetchall()]
+
+
 def _ensure_runtime_role(cursor: object, role_name: str, password: str) -> None:
     cursor.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (role_name,))
     role_exists = cursor.fetchone() is not None
@@ -94,6 +120,12 @@ def _ensure_runtime_role(cursor: object, role_name: str, password: str) -> None:
     else:
         cursor.execute(
             sql.SQL("CREATE ROLE {} WITH ").format(role_identifier) + hardened_options
+        )
+
+    memberships = _runtime_role_memberships(cursor, role_name)
+    if memberships:
+        raise RuntimeError(
+            "Database runtime role has role memberships that could permit SET ROLE escalation."
         )
 
     cursor.execute("SELECT current_database()")
@@ -158,6 +190,81 @@ def _apply_versioned_migrations(cursor: object, role_name: str) -> list[str]:
     return applied_versions
 
 
+def _normalized_policy_expression(value: str | None) -> str:
+    if not value:
+        return ""
+    normalized = re.sub(r"\s+", "", value.lower())
+    normalized = normalized.replace("::text", "")
+    normalized = normalized.replace("::name", "")
+    return normalized
+
+
+def _verify_root_policy_expression(expression: str, table_name: str) -> bool:
+    normalized = _normalized_policy_expression(expression)
+    return all(
+        token in normalized
+        for token in (
+            "user_id",
+            "nullif(",
+            "current_setting('app.current_user_id',true)",
+            "''",
+            "=",
+        )
+    ) and "true" not in normalized.replace("current_setting('app.current_user_id',true)", "")
+
+
+def _verify_child_policy_expression(expression: str, table_name: str) -> bool:
+    normalized = _normalized_policy_expression(expression)
+    return all(
+        token in normalized
+        for token in (
+            "exists(",
+            "career_plan_runs",
+            f"career_plan_runs.id={table_name}.run_id",
+            "career_plan_runs.user_id",
+            "nullif(",
+            "current_setting('app.current_user_id',true)",
+            "''",
+        )
+    ) and "true" not in normalized.replace("current_setting('app.current_user_id',true)", "")
+
+
+def _verify_policy_definitions(cursor: object, role_name: str) -> None:
+    for table_name, expected_policy_name in EXPECTED_RLS_POLICIES.items():
+        cursor.execute(
+            """
+            SELECT policyname, permissive, roles, cmd, qual, with_check
+            FROM pg_policies
+            WHERE schemaname = 'public' AND tablename = %s
+            ORDER BY policyname
+            """,
+            (table_name,),
+        )
+        policies = cursor.fetchall()
+        if len(policies) != 1:
+            raise RuntimeError(
+                f"RLS policy verification expected exactly one policy for {table_name}."
+            )
+
+        policy_name, permissive, roles, command, using_expression, check_expression = policies[0]
+        if policy_name != expected_policy_name:
+            raise RuntimeError(f"Unexpected RLS policy name for {table_name}.")
+        if permissive != "PERMISSIVE" or command != "ALL":
+            raise RuntimeError(f"Unexpected RLS policy mode for {table_name}.")
+        if set(roles or []) != {role_name}:
+            raise RuntimeError(f"Unexpected RLS policy role scope for {table_name}.")
+        if not using_expression or not check_expression:
+            raise RuntimeError(f"RLS policy predicates are incomplete for {table_name}.")
+
+        verifier = (
+            _verify_root_policy_expression
+            if table_name in ROOT_RLS_POLICIES
+            else _verify_child_policy_expression
+        )
+        if not verifier(using_expression, table_name) or not verifier(check_expression, table_name):
+            raise RuntimeError(f"RLS policy predicate verification failed for {table_name}.")
+
+
 def _verify_security_posture(cursor: object, role_name: str) -> None:
     cursor.execute(
         """
@@ -174,6 +281,9 @@ def _verify_security_posture(cursor: object, role_name: str) -> None:
     rolsuper, rolcreatedb, rolcreaterole, rolinherit, rolbypassrls, rolcanlogin = role_row
     if any((rolsuper, rolcreatedb, rolcreaterole, rolinherit, rolbypassrls)) or not rolcanlogin:
         raise RuntimeError("Database runtime role has unsafe PostgreSQL attributes.")
+
+    if _runtime_role_memberships(cursor, role_name):
+        raise RuntimeError("Database runtime role retains unsafe role memberships.")
 
     cursor.execute(
         "SELECT has_schema_privilege(%s, 'public', 'CREATE')",
@@ -208,6 +318,8 @@ def _verify_security_posture(cursor: object, role_name: str) -> None:
             raise RuntimeError(f"Forced RLS verification failed for {table_name}.")
         if owner_name == role_name:
             raise RuntimeError(f"Runtime role must not own RLS table {table_name}.")
+
+    _verify_policy_definitions(cursor, role_name)
 
 
 def apply_database_security_migrations(
