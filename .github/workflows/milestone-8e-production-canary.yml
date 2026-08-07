@@ -73,7 +73,7 @@ jobs:
 
       - name: Publish production canary commit status
         if: always() && github.event_name == 'push'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const passed = '${{ job.status }}' === 'success';
