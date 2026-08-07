@@ -2,7 +2,9 @@
 
 ## Status
 
-Initial defensive audit baseline. This document records confirmed controls, unverified production assumptions, and prioritized hardening work. It does not claim that MarketLens is unhackable or that a destructive penetration test was performed.
+The initial threat model and defensive audit baseline are complete. Immediate dependency and production-authentication remediations are implemented on PR #121. PostgreSQL RLS, least-privilege database roles, browser/API headers, parser and abuse controls, container hardening, and final production sign-off remain open.
+
+This document records confirmed controls, trust boundaries, attacker goals, and prioritized hardening work. It does not claim that MarketLens is unhackable or that a destructive penetration test was performed.
 
 ## Scope and safety boundary
 
@@ -60,13 +62,14 @@ Raw résumé text is intended to be processed only for the request and is not st
 - production authentication uses Clerk and requires configured authorized parties
 - missing or invalid authentication fails closed
 - development-token comparison and admin-key comparison use constant-time checks
+- development authentication now refuses to start in an explicit production or Railway runtime
 
 ### Application-level user authorization
 
 - saved-job reads and deletes query by both object ID and authenticated user ID
 - saved-report reads and deletes query by both object ID and authenticated user ID
 - Career Plan reads, execution, explanation, cancellation, decisions, and deletion load the run through an ID-plus-user-ID ownership query
-- another user's missing/unauthorized object is returned as `404`
+- another user's missing or unauthorized object is returned as `404`
 - cross-user saved-job, saved-report, and Career Plan behavior has automated coverage
 
 ### Injection and unsafe execution
@@ -91,12 +94,17 @@ Raw résumé text is intended to be processed only for the request and is not st
 - safe logging and safe HTTP behavior have permanent tests
 - Dependabot is configured for Python, npm, and GitHub Actions
 - backend tests, frontend build, and both Docker builds are permanent gates
+- Python runtime and development dependencies are audited separately
+- npm production and full dependency trees are audited
+- Bandit records low findings and blocks medium/high findings
+- CodeQL security-extended analysis covers Python and JavaScript/TypeScript
+- exact reviewed dependency exceptions are documented and time bounded
 
 ## Findings and risk classification
 
 ### SEC-01 — No database-native row-level security
 
-**Priority:** High defense-in-depth gap
+**Priority:** High defense-in-depth gap — open
 
 User-owned tables contain `user_id`, and the application consistently filters by it, but no PostgreSQL RLS policy, request-scoped database user context, or direct database-level isolation test is present. Application authorization currently provides the primary isolation boundary.
 
@@ -117,21 +125,17 @@ Required hardening:
 - protect Career Plan child tables through ownership-aware policies
 - test the policies directly using two users and the real restricted runtime role
 
-### SEC-02 — Development authentication needs an explicit production startup prohibition
+### SEC-02 — Development authentication production prohibition
 
-**Priority:** High configuration risk
+**Priority:** High configuration risk — remediated on PR #121
 
-Development authentication is intentionally available for tests and local work. If `AUTH_DEV_MODE=true` and a shared development token were accidentally configured in production, Clerk would be bypassed for private routes.
+Development authentication remains available for tests and local work, but startup now fails when it is enabled in an explicit production or Railway runtime. Permanent tests cover explicit production, each Railway marker, local development, Clerk mode, and secret-safe failure text.
 
-Required hardening:
-
-- refuse startup when development authentication is enabled in a Railway/production environment
-- add permanent startup/configuration tests
-- verify the exact Clerk authorized-party allowlist and rotate/remove any unused development token from production settings
+Production deployment evidence remains required after merge.
 
 ### SEC-03 — Rate limiting is process-local and proxy trust is not explicit
 
-**Priority:** Medium to high availability/cost risk
+**Priority:** Medium to high availability/cost risk — open
 
 The existing limiter is bounded and useful, but it is in memory, resets on deployment, does not coordinate across replicas, and derives the client address from forwarded headers without an explicit trusted-proxy boundary. Several public read or analysis routes are not uniformly covered.
 
@@ -151,7 +155,7 @@ Required hardening:
 
 ### SEC-04 — PDF and DOCX parser resource exhaustion
 
-**Priority:** Medium availability risk
+**Priority:** Medium availability risk — open
 
 Upload byte size is limited, and files are not persisted, but a small compressed DOCX or pathological PDF may expand or parse disproportionately. Page count, decompressed member size, XML relationships, parser time, and worker isolation are not explicitly bounded.
 
@@ -164,7 +168,7 @@ Required hardening:
 
 ### SEC-05 — Browser security headers are not explicitly configured
 
-**Priority:** Medium defense-in-depth gap
+**Priority:** Medium defense-in-depth gap — open
 
 The Nginx configuration contains SPA routing only. An application-controlled CSP, frame restriction, MIME-sniffing protection, referrer policy, permissions policy, and sensitive-response caching policy are not present in the repository.
 
@@ -178,7 +182,7 @@ Required hardening:
 
 ### SEC-06 — Backend container does not declare a non-root runtime user
 
-**Priority:** Medium container-hardening gap
+**Priority:** Medium container-hardening gap — open
 
 The backend image runs the Uvicorn process as the image default user. A container breakout is not implied, but running as non-root reduces the impact of an application compromise.
 
@@ -189,23 +193,22 @@ Required hardening:
 - use a read-only root filesystem and writable temporary/data paths where the platform supports them
 - scan final images rather than only source manifests
 
-### SEC-07 — Automated vulnerability/SAST/container scanning is incomplete
+### SEC-07 — Automated vulnerability and SAST coverage
 
-**Priority:** Medium supply-chain visibility gap
+**Priority:** Medium supply-chain visibility gap — substantially remediated on PR #121
 
-Dependabot and custom secret scanning exist, but CI does not currently run a blocking Python dependency audit, npm production-dependency audit, Python/JavaScript SAST, or image vulnerability scan.
+PR #121 adds reviewed Python runtime/development dependency audits, npm production/full audits, Bandit policy, CodeQL analysis, machine-readable evidence, and documented exceptions. The patched candidate has no unreviewed dependency finding and no medium/high Bandit finding.
 
-Required hardening:
+Remaining work:
 
-- add pinned `pip-audit` and npm production audits
-- add CodeQL or a reviewed equivalent for Python and JavaScript/TypeScript
 - scan built backend and frontend images
-- publish machine-readable artifacts and an SBOM
-- establish a documented exception process rather than silently ignoring advisories
+- publish SBOMs
+- establish final branch-protection expectations
+- review and pin third-party Actions/base images where practical
 
 ### SEC-08 — Static admin key has broad destructive authority
 
-**Priority:** Medium credential/authorization risk
+**Priority:** Medium credential/authorization risk — open
 
 The admin key protects shared-posting create, CSV import, and delete operations and uses constant-time comparison. It is still a single static credential with broad authority and no principal-level attribution.
 
@@ -219,7 +222,7 @@ Required hardening:
 
 ### SEC-09 — Production documentation and configuration evidence are stale or incomplete
 
-**Priority:** Low to medium governance risk
+**Priority:** Low to medium governance risk — open
 
 `SECURITY.md` still says real authentication, ownership, and structured security logging are missing, although they now exist. Exact production database role privileges, RLS state, TLS mode, backup access, Clerk configuration, admin-key rotation, security headers, and incident response are not recorded in the repository.
 
@@ -229,22 +232,36 @@ Required hardening:
 - document data retention, deletion, breach response, credential rotation, backup/restore, and responsible disclosure
 - keep the live demo restricted to non-sensitive résumé-style information until the final security sign-off
 
-## No confirmed critical exploit from static review
+### SEC-10 — Published dependency advisories
 
-The initial source review did not identify a confirmed authentication bypass in the intended production configuration, a confirmed cross-user IDOR in the reviewed private endpoints, raw SQL injection, arbitrary server-side URL fetching, command execution, or direct secret exposure.
+**Priority:** High initial finding — directly remediable findings fixed on PR #121
 
-This does not prove the absence of vulnerabilities. Automated scans, real PostgreSQL role/RLS tests, exact production configuration verification, browser-header inspection, and safe production authorization canaries remain required.
+PR #121 upgrades FastAPI/Starlette and `python-multipart`, removes pytest from the runtime image, upgrades pytest in development dependencies, upgrades Vite/esbuild through a validated lockfile, and moves build tooling to development dependencies.
 
-## Planned validation evidence
+Three Clerk-transitive `cryptography` advisories remain under exact, time-bounded exceptions because the Clerk SDK currently constrains the dependency below fixed versions and MarketLens does not use the affected APIs. See [`security-dependency-exceptions.md`](security-dependency-exceptions.md).
 
-- Python dependency audit report
-- npm production and full dependency audit reports
-- Python static security report
-- CodeQL Python and JavaScript/TypeScript results
-- backend and frontend image vulnerability reports
-- two-user API authorization matrix
-- direct PostgreSQL RLS isolation matrix
-- production auth-mode and Clerk-party assertions
-- upload parser abuse regressions
-- production header and route-exposure report
-- final severity table, accepted limitations, and GO/NO-GO decision
+## No confirmed critical exploit from review
+
+The source and bounded production review did not identify a confirmed authentication bypass in the intended production configuration, a confirmed cross-user IDOR in the reviewed private endpoints, raw SQL injection, arbitrary server-side URL fetching, command execution, or direct secret exposure.
+
+This does not prove the absence of vulnerabilities. Real PostgreSQL role/RLS tests, container scans, exact production configuration verification, authenticated two-user canaries, browser-header validation, and final deployment evidence remain required.
+
+## Current validation evidence
+
+The functional remediation candidate passed:
+
+- 535 backend tests
+- frontend production build
+- backend and frontend Docker builds
+- runtime and development Python dependency gates
+- npm production and full dependency gates
+- Bandit medium/high gate
+- CodeQL Python and JavaScript/TypeScript
+- secret/log safety
+- provider resilience and telemetry
+- operational reliability
+- Career Plan agent evaluation
+- semantic extraction, personalized coaching, and evidence provenance
+- bounded unauthenticated production-route and CORS checks
+
+See [`milestone-8-2a-security-scan-results.md`](milestone-8-2a-security-scan-results.md) for the measured result and remaining work.
