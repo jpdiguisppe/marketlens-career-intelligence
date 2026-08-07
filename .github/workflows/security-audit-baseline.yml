@@ -1,0 +1,320 @@
+name: Security Audit Baseline
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-and-python-security-audit:
+    name: Dependency and Python security audit
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pinned audit tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pip-audit==2.10.0 bandit==1.9.4
+
+      - name: Audit Python runtime dependencies
+        id: pip_runtime_audit
+        shell: bash
+        run: |
+          set +e
+          python -m pip_audit \
+            --requirement backend/requirements.txt \
+            --ignore-vuln PYSEC-2026-3552 \
+            --ignore-vuln PYSEC-2026-3553 \
+            --ignore-vuln PYSEC-2026-3554 \
+            --format json \
+            --output /tmp/marketlens-pip-runtime-audit.json
+          status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Audit Python development dependencies
+        id: pip_development_audit
+        shell: bash
+        run: |
+          set +e
+          python -m pip_audit \
+            --requirement backend/requirements-dev.txt \
+            --ignore-vuln PYSEC-2026-3552 \
+            --ignore-vuln PYSEC-2026-3553 \
+            --ignore-vuln PYSEC-2026-3554 \
+            --format json \
+            --output /tmp/marketlens-pip-development-audit.json
+          status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Record all reviewed Python source findings
+        shell: bash
+        run: |
+          bandit \
+            --recursive backend/app \
+            --severity-level low \
+            --confidence-level medium \
+            --format json \
+            --output /tmp/marketlens-bandit-all.json \
+            --exit-zero
+
+      - name: Block medium and high Python source findings
+        id: bandit_blocking
+        shell: bash
+        run: |
+          set +e
+          bandit \
+            --recursive backend/app \
+            --severity-level medium \
+            --confidence-level medium \
+            --format json \
+            --output /tmp/marketlens-bandit-blocking.json
+          status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Audit production npm dependencies
+        id: npm_production_audit
+        working-directory: frontend
+        shell: bash
+        run: |
+          set +e
+          npm audit --omit=dev --json > /tmp/marketlens-npm-production-audit.json
+          status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Audit full npm dependency tree
+        id: npm_full_audit
+        working-directory: frontend
+        shell: bash
+        run: |
+          set +e
+          npm audit --json > /tmp/marketlens-npm-full-audit.json
+          status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Write audit status summary
+        shell: bash
+        run: |
+          cat > /tmp/marketlens-security-audit-status.txt <<EOF
+          pip_runtime_audit_status=${{ steps.pip_runtime_audit.outputs.status }}
+          pip_development_audit_status=${{ steps.pip_development_audit.outputs.status }}
+          bandit_medium_high_status=${{ steps.bandit_blocking.outputs.status }}
+          npm_production_audit_status=${{ steps.npm_production_audit.outputs.status }}
+          npm_full_audit_status=${{ steps.npm_full_audit.outputs.status }}
+          reviewed_cryptography_exceptions=PYSEC-2026-3552,PYSEC-2026-3553,PYSEC-2026-3554
+          EOF
+          cat /tmp/marketlens-security-audit-status.txt
+
+      - name: Upload audit evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: marketlens-security-audit-baseline
+          path: |
+            /tmp/marketlens-pip-runtime-audit.json
+            /tmp/marketlens-pip-development-audit.json
+            /tmp/marketlens-bandit-all.json
+            /tmp/marketlens-bandit-blocking.json
+            /tmp/marketlens-npm-production-audit.json
+            /tmp/marketlens-npm-full-audit.json
+            /tmp/marketlens-security-audit-status.txt
+            docs/security-dependency-exceptions.md
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Fail on unreviewed security findings
+        if: >-
+          steps.pip_runtime_audit.outputs.status != '0' ||
+          steps.pip_development_audit.outputs.status != '0' ||
+          steps.bandit_blocking.outputs.status != '0' ||
+          steps.npm_production_audit.outputs.status != '0' ||
+          steps.npm_full_audit.outputs.status != '0'
+        run: |
+          echo "One or more unreviewed dependency or medium/high source findings remain."
+          exit 1
+
+  safe-production-surface-audit:
+    name: Safe production surface audit
+    runs-on: ubuntu-24.04
+    env:
+      BACKEND_URL: https://marketlens-career-intelligence-production.up.railway.app
+      FRONTEND_URL: https://marketlens-career-intelligence-production-8a34.up.railway.app
+
+    steps:
+      - name: Collect bounded public and unauthenticated evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          output=/tmp/marketlens-production-security-surface
+          mkdir -p "$output"
+
+          probe_get() {
+            name="$1"
+            url="$2"
+            code=$(curl --silent --show-error --max-time 30 \
+              --dump-header "$output/$name.headers" \
+              --output "$output/$name.body" \
+              --write-out '%{http_code}' \
+              "$url")
+            printf '%s' "$code" > "$output/$name.status"
+          }
+
+          probe_get frontend-root "$FRONTEND_URL/"
+          probe_get backend-health "$BACKEND_URL/health"
+          probe_get backend-deployment-status "$BACKEND_URL/deployment/status"
+          probe_get backend-docs "$BACKEND_URL/docs"
+          probe_get backend-openapi "$BACKEND_URL/openapi.json"
+          probe_get private-me "$BACKEND_URL/me"
+          probe_get private-saved-jobs "$BACKEND_URL/saved-jobs"
+          probe_get private-saved-reports "$BACKEND_URL/saved-reports"
+          probe_get private-career-plans "$BACKEND_URL/career-plans"
+
+          hostile_code=$(curl --silent --show-error --max-time 30 \
+            --request OPTIONS \
+            --header 'Origin: https://attacker.invalid' \
+            --header 'Access-Control-Request-Method: GET' \
+            --dump-header "$output/cors-hostile.headers" \
+            --output "$output/cors-hostile.body" \
+            --write-out '%{http_code}' \
+            "$BACKEND_URL/jobs/search")
+          printf '%s' "$hostile_code" > "$output/cors-hostile.status"
+
+          allowed_code=$(curl --silent --show-error --max-time 30 \
+            --request OPTIONS \
+            --header "Origin: $FRONTEND_URL" \
+            --header 'Access-Control-Request-Method: GET' \
+            --dump-header "$output/cors-allowed.headers" \
+            --output "$output/cors-allowed.body" \
+            --write-out '%{http_code}' \
+            "$BACKEND_URL/jobs/search")
+          printf '%s' "$allowed_code" > "$output/cors-allowed.status"
+
+      - name: Evaluate security surface
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path('/tmp/marketlens-production-security-surface')
+
+          def status(name: str) -> int:
+              return int((root / f'{name}.status').read_text().strip())
+
+          def headers(name: str) -> dict[str, str]:
+              parsed: dict[str, str] = {}
+              for raw_line in (root / f'{name}.headers').read_text(errors='replace').splitlines():
+                  if ':' not in raw_line:
+                      continue
+                  key, value = raw_line.split(':', 1)
+                  parsed[key.strip().lower()] = value.strip()
+              return parsed
+
+          frontend_headers = headers('frontend-root')
+          backend_headers = headers('backend-health')
+          hostile_headers = headers('cors-hostile')
+          allowed_headers = headers('cors-allowed')
+
+          private_statuses = {
+              name: status(name)
+              for name in (
+                  'private-me',
+                  'private-saved-jobs',
+                  'private-saved-reports',
+                  'private-career-plans',
+              )
+          }
+          failures: list[str] = []
+          for name, value in private_statuses.items():
+              if value not in {401, 403}:
+                  failures.append(f'{name} returned HTTP {value} without authentication')
+
+          hostile_origin = hostile_headers.get('access-control-allow-origin')
+          if hostile_origin in {'*', 'https://attacker.invalid'}:
+              failures.append('hostile CORS origin was allowed')
+
+          allowed_origin = allowed_headers.get('access-control-allow-origin')
+          expected_origin = 'https://marketlens-career-intelligence-production-8a34.up.railway.app'
+          if allowed_origin != expected_origin:
+              failures.append(
+                  f'production frontend CORS origin was not explicitly allowed; got {allowed_origin!r}'
+              )
+
+          security_header_names = (
+              'strict-transport-security',
+              'content-security-policy',
+              'x-content-type-options',
+              'x-frame-options',
+              'referrer-policy',
+              'permissions-policy',
+          )
+          report = {
+              'private_route_statuses': private_statuses,
+              'cors': {
+                  'hostile_status': status('cors-hostile'),
+                  'hostile_allow_origin': hostile_origin,
+                  'allowed_status': status('cors-allowed'),
+                  'allowed_allow_origin': allowed_origin,
+              },
+              'public_exposure': {
+                  'frontend_root': status('frontend-root'),
+                  'backend_health': status('backend-health'),
+                  'backend_deployment_status': status('backend-deployment-status'),
+                  'backend_docs': status('backend-docs'),
+                  'backend_openapi': status('backend-openapi'),
+              },
+              'frontend_security_headers': {
+                  name: frontend_headers.get(name)
+                  for name in security_header_names
+              },
+              'backend_security_headers': {
+                  name: backend_headers.get(name)
+                  for name in security_header_names
+              },
+              'server_headers': {
+                  'frontend': frontend_headers.get('server'),
+                  'backend': backend_headers.get('server'),
+              },
+              'failures': failures,
+          }
+          (root / 'marketlens-production-security-surface.json').write_text(
+              json.dumps(report, indent=2, sort_keys=True) + '\n'
+          )
+          print(json.dumps(report, indent=2, sort_keys=True))
+          if failures:
+              raise SystemExit(1)
+          PY
+
+      - name: Upload safe production surface evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: marketlens-production-security-surface
+          path: /tmp/marketlens-production-security-surface
+          if-no-files-found: error
+          retention-days: 90

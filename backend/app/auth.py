@@ -16,6 +16,15 @@ AUTH_PROVIDER_ENV = "AUTH_PROVIDER"
 CLERK_SECRET_KEY_ENV = "CLERK_SECRET_KEY"
 CLERK_AUTHORIZED_PARTIES_ENV = "CLERK_AUTHORIZED_PARTIES"
 
+MARKETLENS_ENVIRONMENT_ENV = "MARKETLENS_ENVIRONMENT"
+_PRODUCTION_ENVIRONMENT_NAMES = {"prod", "production"}
+_RAILWAY_RUNTIME_ENVIRONMENT_VARIABLES = (
+    "RAILWAY_PROJECT_ID",
+    "RAILWAY_SERVICE_ID",
+    "RAILWAY_ENVIRONMENT_ID",
+    "RAILWAY_ENVIRONMENT_NAME",
+)
+
 
 @dataclass(frozen=True)
 class AuthenticatedUser:
@@ -27,6 +36,31 @@ class AuthenticatedUser:
 
 def _is_enabled(value: str | None) -> bool:
     return (value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _is_production_or_railway_runtime() -> bool:
+    explicit_environment = (
+        os.getenv(MARKETLENS_ENVIRONMENT_ENV) or ""
+    ).strip().lower()
+    if explicit_environment in _PRODUCTION_ENVIRONMENT_NAMES:
+        return True
+
+    return any(
+        bool((os.getenv(variable_name) or "").strip())
+        for variable_name in _RAILWAY_RUNTIME_ENVIRONMENT_VARIABLES
+    )
+
+
+def validate_auth_runtime_configuration() -> None:
+    """Fail closed when development authentication reaches a deployed runtime."""
+
+    if _is_enabled(os.getenv(AUTH_DEV_MODE_ENV)) and _is_production_or_railway_runtime():
+        raise RuntimeError(
+            "Development authentication cannot be enabled in a production or Railway runtime."
+        )
+
+
+validate_auth_runtime_configuration()
 
 
 def _extract_bearer_token(authorization: str | None) -> str:
