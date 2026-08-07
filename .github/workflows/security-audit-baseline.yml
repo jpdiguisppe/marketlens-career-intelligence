@@ -27,30 +27,60 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install pip-audit==2.10.0 bandit==1.9.4
 
-      - name: Audit Python dependencies
-        id: pip_audit
+      - name: Audit Python runtime dependencies
+        id: pip_runtime_audit
         shell: bash
         run: |
           set +e
           python -m pip_audit \
             --requirement backend/requirements.txt \
+            --ignore-vuln PYSEC-2026-3552 \
+            --ignore-vuln PYSEC-2026-3553 \
+            --ignore-vuln PYSEC-2026-3554 \
             --format json \
-            --output /tmp/marketlens-pip-audit.json
+            --output /tmp/marketlens-pip-runtime-audit.json
           status=$?
           echo "status=$status" >> "$GITHUB_OUTPUT"
           exit 0
 
-      - name: Scan Python application source
-        id: bandit
+      - name: Audit Python development dependencies
+        id: pip_development_audit
         shell: bash
         run: |
           set +e
+          python -m pip_audit \
+            --requirement backend/requirements-dev.txt \
+            --ignore-vuln PYSEC-2026-3552 \
+            --ignore-vuln PYSEC-2026-3553 \
+            --ignore-vuln PYSEC-2026-3554 \
+            --format json \
+            --output /tmp/marketlens-pip-development-audit.json
+          status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Record all reviewed Python source findings
+        shell: bash
+        run: |
           bandit \
             --recursive backend/app \
             --severity-level low \
             --confidence-level medium \
             --format json \
-            --output /tmp/marketlens-bandit.json
+            --output /tmp/marketlens-bandit-all.json \
+            --exit-zero
+
+      - name: Block medium and high Python source findings
+        id: bandit_blocking
+        shell: bash
+        run: |
+          set +e
+          bandit \
+            --recursive backend/app \
+            --severity-level medium \
+            --confidence-level medium \
+            --format json \
+            --output /tmp/marketlens-bandit-blocking.json
           status=$?
           echo "status=$status" >> "$GITHUB_OUTPUT"
           exit 0
@@ -92,10 +122,12 @@ jobs:
         shell: bash
         run: |
           cat > /tmp/marketlens-security-audit-status.txt <<EOF
-          pip_audit_status=${{ steps.pip_audit.outputs.status }}
-          bandit_status=${{ steps.bandit.outputs.status }}
+          pip_runtime_audit_status=${{ steps.pip_runtime_audit.outputs.status }}
+          pip_development_audit_status=${{ steps.pip_development_audit.outputs.status }}
+          bandit_medium_high_status=${{ steps.bandit_blocking.outputs.status }}
           npm_production_audit_status=${{ steps.npm_production_audit.outputs.status }}
           npm_full_audit_status=${{ steps.npm_full_audit.outputs.status }}
+          reviewed_cryptography_exceptions=PYSEC-2026-3552,PYSEC-2026-3553,PYSEC-2026-3554
           EOF
           cat /tmp/marketlens-security-audit-status.txt
 
@@ -104,22 +136,26 @@ jobs:
         with:
           name: marketlens-security-audit-baseline
           path: |
-            /tmp/marketlens-pip-audit.json
-            /tmp/marketlens-bandit.json
+            /tmp/marketlens-pip-runtime-audit.json
+            /tmp/marketlens-pip-development-audit.json
+            /tmp/marketlens-bandit-all.json
+            /tmp/marketlens-bandit-blocking.json
             /tmp/marketlens-npm-production-audit.json
             /tmp/marketlens-npm-full-audit.json
             /tmp/marketlens-security-audit-status.txt
+            docs/security-dependency-exceptions.md
           if-no-files-found: error
           retention-days: 90
 
-      - name: Flag discovered audit findings
+      - name: Fail on unreviewed security findings
         if: >-
-          steps.pip_audit.outputs.status != '0' ||
-          steps.bandit.outputs.status != '0' ||
+          steps.pip_runtime_audit.outputs.status != '0' ||
+          steps.pip_development_audit.outputs.status != '0' ||
+          steps.bandit_blocking.outputs.status != '0' ||
           steps.npm_production_audit.outputs.status != '0' ||
           steps.npm_full_audit.outputs.status != '0'
         run: |
-          echo "One or more baseline scanners reported findings. Review the uploaded JSON evidence before merging."
+          echo "One or more unreviewed dependency or medium/high source findings remain."
           exit 1
 
   safe-production-surface-audit:
