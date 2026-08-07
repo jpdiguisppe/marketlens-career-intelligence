@@ -1,97 +1,118 @@
-# Milestone 8.2A — Initial Security Scan Results
+# Milestone 8.2A — Security Audit and Immediate Hardening Results
 
-## Candidate revision
+## Validated functional candidate
 
-`d4da9d3865046d49bf61bb905c148e6133eac485`
+`afdeb545c1a4fbfd84ff33a3cc49a088d6234976`
 
-This record summarizes the first defensive scan of the completed Milestone 8 codebase. The audit PR remains unmerged while findings are classified and remediated.
+Documentation-only descendants must rerun the same gates before merge.
 
-## Executive result
+## Decision
 
 ```text
 NO CONFIRMED ACTIVE DATA BREACH OR CRITICAL EXPLOIT FOUND
-SECURITY SIGN-OFF: NO-GO UNTIL HIGH-PRIORITY DEPENDENCY AND DATABASE-ISOLATION WORK IS COMPLETE
+8.2A AUDIT BASELINE AND IMMEDIATE DEPENDENCY/AUTH HARDENING: GO
+OVERALL MILESTONE 8.2 SECURITY SIGN-OFF: NO-GO UNTIL RLS AND REMAINING HARDENING COMPLETE
 ```
 
-The public deployment correctly rejected unauthenticated access to all four private route groups tested and correctly rejected a hostile CORS origin. Static application analysis did not identify a high-severity Python source finding. The audit did identify outdated framework/upload dependencies with published advisories, missing PostgreSQL RLS, missing browser/API security headers, and several defense-in-depth gaps that should be fixed before MarketLens is described as hardened for sensitive user data.
+The initial audit found vulnerable framework, upload-parser, test, and frontend build dependencies. This branch patches the directly remediable findings, separates runtime and development dependencies, adds a production authentication startup boundary, and establishes permanent security gates. PostgreSQL-native RLS, least-privilege database roles, browser headers, parser resource controls, distributed abuse protection, container hardening, and final production validation remain separate workstreams.
 
-## Scanner execution
+## Validated results
 
-| Scanner | Result | Interpretation |
-| --- | --- | --- |
-| `pip-audit` 2.10.0 | Findings | Production and development Python dependencies include packages with published advisories |
-| Bandit 1.9.4 | Four low findings | No medium or high Python source finding; reported items are reviewed below |
-| npm production audit | Findings | Vite/esbuild development/build tooling has published advisories |
-| npm full audit | Findings | Same Vite/esbuild set; no additional dependency category |
-| CodeQL `security-extended` — Python | Completed successfully | Analysis initialized and uploaded successfully; no workflow-blocking analysis failure |
-| CodeQL `security-extended` — JavaScript/TypeScript | Completed successfully | Analysis initialized and uploaded successfully; no workflow-blocking analysis failure |
-| Existing secret/log safety | Passed | Full-history secret scan and safe-log/error tests remained green |
-| Existing CI and permanent evaluations | Passed | Product tests/builds remained green; the audit-only changes did not alter runtime behavior |
+| Check | Result |
+| --- | ---: |
+| Backend tests | 535 / 535 passed |
+| Frontend production build | Passed |
+| Backend Docker image | Passed |
+| Frontend Docker image | Passed |
+| Python runtime dependency audit | 0 unreviewed findings |
+| Python development dependency audit | 0 unreviewed findings |
+| npm production dependency audit | 0 findings |
+| npm full dependency audit | 0 findings |
+| Bandit medium/high findings | 0 |
+| Bandit recorded low findings | 4 reviewed |
+| CodeQL Python | Passed |
+| CodeQL JavaScript/TypeScript | Passed |
+| Secret and log safety | Passed |
+| Provider resilience | Passed |
+| Provider telemetry | Passed |
+| Operational reliability | Passed |
+| Career Plan agent evaluation | Passed |
+| Semantic extraction | Passed |
+| Personalized coaching | Passed |
+| Evidence provenance | Passed |
 
-## Python dependency findings
+## Dependency remediation
 
-### `python-multipart==0.0.20`
+### Backend runtime
 
-**Classification:** High-priority production remediation
+The following internet-facing dependencies were upgraded:
 
-The scanner reported six advisories with fixes spread through versions 0.0.22 to 0.0.31. The most relevant MarketLens exposure is denial of service during multipart and form parsing. MarketLens accepts public résumé files and administrative CSV uploads, so this parser is on a reachable request path.
+- `fastapi`: `0.115.6` → `0.139.2`
+- `starlette`: `0.41.3` → `1.3.1`
+- `python-multipart`: `0.0.20` → `0.0.32`
 
-One advisory concerns path traversal only when non-default upload-directory/keep-filename options are used; MarketLens reads bounded uploads into memory and does not use that configuration, so that specific path-traversal scenario does not appear directly applicable. The multipart parsing denial-of-service advisories remain relevant.
+The previous Starlette and multipart advisories no longer appear in the candidate audit.
 
-**Required action:** upgrade to the current reviewed release, rerun all upload tests, and add malformed multipart/decompression resource regressions.
+### Backend development dependencies
 
-### `starlette==0.41.3`
+`pytest` was removed from the production requirements and moved to `backend/requirements-dev.txt` at version `9.1.1`. The backend production image therefore no longer intentionally ships test tooling.
 
-**Classification:** High-priority framework remediation
+Every workflow that runs pytest now installs `requirements-dev.txt`; evaluation-only workflows continue using runtime dependencies.
 
-The scanner reported advisories involving unvalidated host/path URL reconstruction, multipart spool/resource behavior, HTTP Range processing, and Windows-specific static-file/handler cases.
+### Frontend dependency tree
 
-Not every advisory maps directly to MarketLens:
+Production dependencies are now limited to Clerk and React packages. Build tooling was moved to `devDependencies` and refreshed through an Actions-generated lockfile:
 
-- the Windows UNC/static-file cases do not match the Linux Railway backend deployment and its current backend routing
-- the Range/FileResponse case may not be reachable through a MarketLens endpoint that serves arbitrary files
-- multipart resource handling and URL reconstruction are framework-level concerns on an internet-facing API and should not be left on an old release
+- `@clerk/react`: `6.12.8`
+- `vite`: `7.3.6`
+- `@vitejs/plugin-react`: `5.2.0`
+- resolved `esbuild`: `0.28.1`
+- `typescript`: `5.6.3`
 
-Starlette is installed through FastAPI compatibility, so it should not be independently forced to an incompatible major version. The repair should upgrade FastAPI and Starlette together, then run the complete API, upload, auth, provider, and production-canary suites.
+The generated tree passed `npm ci`, the production build, `npm audit --omit=dev`, and the full npm audit.
 
-### `cryptography==48.0.1`
+## Reviewed cryptography exceptions
 
-**Classification:** Medium-priority transitive remediation
+`clerk-backend-api==6.0.1` currently constrains its transitive `cryptography` dependency below the fully fixed versions. Three exact advisories are temporarily excluded from the blocking result:
 
-Three advisories were reported involving PKCS#7 decryption and certificate-chain/name-constraint processing. MarketLens does not directly call those APIs in application code. The package is transitive, most likely through authentication/JWT dependencies. Direct exploitability has not been established, but the dependency should be upgraded through its owning dependency chain rather than ignored.
+- `PYSEC-2026-3552`
+- `PYSEC-2026-3553`
+- `PYSEC-2026-3554`
 
-### `pytest==8.3.4`
+MarketLens does not call the affected PKCS#7 decryption or certificate-chain verification APIs. These are not blanket package exceptions: every other advisory remains blocking. The rationale, affected code paths, expiration, and required removal conditions are recorded in [`security-dependency-exceptions.md`](security-dependency-exceptions.md).
 
-**Classification:** Development/CI-only remediation
+The exception expires on 2026-09-30 or at Milestone 8.2B completion, whichever comes first. The preferred resolution is an updated Clerk dependency chain or a reviewed replacement authentication verification path.
 
-The reported local temporary-directory denial-of-service issue affects test execution on shared Unix systems. Pytest is not installed as an application runtime dependency by design intent, but it is currently listed in the shared requirements file used by the backend image, so the production image may contain unnecessary test tooling.
+## Production authentication boundary
 
-**Required action:** upgrade pytest and split runtime dependencies from development/test dependencies so test-only packages do not ship in the backend image.
+Development authentication now fails during module startup when either condition is true:
 
-## Frontend/build dependency findings
+- `MARKETLENS_ENVIRONMENT` is `prod` or `production`; or
+- any recognized Railway runtime marker is present.
 
-### `vite` and `esbuild`
+Permanent tests verify:
 
-**Classification:** Medium build/development remediation; lower direct production exploitability
+- local development authentication remains available for tests;
+- explicit production rejects development authentication;
+- each Railway runtime marker rejects development authentication;
+- Clerk/non-development mode remains valid on Railway; and
+- the startup error never contains the configured development bearer token.
 
-The npm audit reported one high and one moderate dependency entry covering Vite path/Windows development-server behaviors and esbuild development-server request exposure. Railway serves the compiled frontend through Nginx, not the Vite development server, so the vulnerable server behavior is not the deployed production serving path.
+## Static source analysis
 
-The packages still participate in the build supply chain and should be upgraded. Vite and TypeScript build tooling should also be moved from `dependencies` to `devDependencies` so production-dependency reports accurately represent what is shipped.
+Bandit records four low findings while blocking every medium/high finding:
 
-## Bandit findings
+1. two environment-variable names mistaken for hardcoded passwords;
+2. one bounded deployment-canary polling exception handler; and
+3. one bounded occupation-audit polling exception handler.
 
-Bandit reported four low-severity findings and no medium or high finding:
+The credential-name findings contain no secret values. The two polling findings are limited to validation tooling and remain visible for future cleanup. The medium/high Bandit report is empty.
 
-1. environment-variable name `AUTH_DEV_BEARER_TOKEN` was mistaken for a hardcoded password
-2. environment-variable name `CLERK_SECRET_KEY` was mistaken for a hardcoded password
-3. a bounded deployment-canary polling loop contains `except Exception: pass`
-4. the production occupation-audit polling loop contains the same intentional pattern
+CodeQL `security-extended` analysis completed successfully for Python and JavaScript/TypeScript.
 
-The first two are false positives: the source contains environment-variable names, not secret values. The two canary findings are low-risk but should be made more explicit by catching expected network/parse exceptions or recording the last safe error rather than silently passing.
+## Safe production surface baseline
 
-## Safe production surface results
-
-The non-destructive live check made only bounded GET and OPTIONS requests.
+The bounded live probe used only GET and OPTIONS requests against the currently deployed pre-remediation revision.
 
 ### Authentication boundary
 
@@ -102,60 +123,43 @@ The non-destructive live check made only bounded GET and OPTIONS requests.
 | `/saved-reports` | 401 |
 | `/career-plans` | 401 |
 
-All tested private route groups rejected unauthenticated access.
-
 ### CORS
 
-- configured production frontend origin: explicitly allowed
-- hostile origin `https://attacker.invalid`: rejected with HTTP 400
-- hostile response did not include `Access-Control-Allow-Origin`
-- wildcard origin was not observed
+- the configured production frontend origin was explicitly allowed;
+- `https://attacker.invalid` was rejected;
+- no wildcard origin was observed.
 
-### Public route exposure
+### Remaining public exposure and headers
 
-- frontend root: 200
-- backend health: 200
-- deployment status: 200
-- Swagger UI `/docs`: 200
-- OpenAPI schema `/openapi.json`: 200
+- `/docs` and `/openapi.json` remain public;
+- the frontend and backend do not yet send the complete planned CSP, frame, MIME-sniffing, referrer, permissions, and HSTS header set.
 
-Public API documentation is not itself an authentication bypass, but it improves endpoint enumeration. The final hardening decision should either disable it in production or explicitly accept and document the exposure.
+These are tracked for 8.2D and must be retested after deployment.
 
-### Security headers
+## Database isolation status
 
-Neither the frontend root response nor backend health response included:
+Application-level ownership checks remain present for saved jobs, saved reports, and Career Plans, and no reviewed cross-user IDOR was found. PostgreSQL-native RLS is still absent.
 
-- `Strict-Transport-Security`
-- `Content-Security-Policy`
-- `X-Content-Type-Options`
-- `X-Frame-Options`
-- `Referrer-Policy`
-- `Permissions-Policy`
+Therefore this branch does **not** claim database-enforced tenant isolation. A compromised runtime database credential or future missing ownership predicate would not yet be independently stopped by PostgreSQL.
 
-Both responses exposed `Server: railway-hikari`. This server header is low severity. The missing security headers are a medium defense-in-depth gap, especially the frontend CSP/frame/MIME protections.
+Milestone 8.2C must add:
 
-## Database and user-data isolation result
+- versioned migrations;
+- separate owner/migration and restricted runtime roles;
+- request-local authenticated user context;
+- enabled and forced RLS on user-owned root tables;
+- ownership-aware child-table policies;
+- revoked unnecessary privileges; and
+- direct two-user tests using the real restricted runtime role.
 
-Application-level ownership is consistently implemented in the reviewed saved-job, saved-report, and Career Plan endpoints. No confirmed cross-user IDOR was found in those routes, and existing two-user tests support that conclusion.
+## Remaining work before overall security GO
 
-PostgreSQL-native RLS is not implemented in the repository. The database connection does not set a request-local authenticated user, migrations do not create RLS policies, and a restricted non-owner runtime role is not defined. Therefore:
+1. Complete 8.2C PostgreSQL RLS and least privilege.
+2. Add parser/decompression limits for PDF and DOCX uploads.
+3. Replace or supplement process-local rate limiting and document trusted proxy behavior.
+4. Add browser/API security headers and decide whether production docs remain public.
+5. Run containers as non-root and add image/SBOM scanning.
+6. Update `SECURITY.md`, incident-response guidance, data-handling documentation, and residual-risk records.
+7. Deploy an exact candidate revision and rerun authenticated, unauthenticated, RLS, header, leakage, and production-canary checks.
 
-- a normal API request is protected by application filters today
-- a future forgotten ownership predicate would not be stopped by the database
-- a compromised runtime database credential may be able to read all user-owned rows
-- the current codebase cannot claim database-enforced tenant isolation
-
-RLS must be enabled and forced using a runtime role that is neither the table owner nor a `BYPASSRLS` role. Direct two-user database tests are required; API tests alone are insufficient for this control.
-
-## Immediate remediation order
-
-1. Upgrade FastAPI/Starlette, `python-multipart`, cryptography dependency chain, pytest, Vite, and esbuild; split runtime and development dependencies.
-2. Add a production startup guard that rejects development authentication.
-3. Introduce migrations, a restricted runtime database role, request-local user context, and forced PostgreSQL RLS.
-4. Add CSP and the remaining browser/API security headers; decide whether production docs remain public.
-5. Harden parser resource limits, rate limiting, trusted-proxy handling, and the backend non-root container.
-6. Add reviewed container scanning and SBOM generation before final sign-off.
-
-## Current user guidance
-
-Until Milestone 8.2 is signed off, MarketLens should continue being treated as a portfolio/demo application. Users should not upload secrets, government identifiers, medical records, confidential employer data, or other highly sensitive personal information.
+Until the final 8.2 sign-off, MarketLens remains a portfolio/demo service and should not receive secrets, government identifiers, medical records, confidential employer data, or other highly sensitive information.
