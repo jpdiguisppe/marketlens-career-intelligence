@@ -8,10 +8,10 @@ from sqlalchemy.orm import Session
 from app.analysis.schemas import CategoryCoverage, CoachingActionType, FitSummary, GapGroup
 from app.auth import AuthenticatedUser, get_current_user
 from app.career_plans.router import router as career_plans_router
-from app.database import get_db
 from app.deployment_status import router as deployment_status_router
 from app.external_urls import require_external_https_url, sanitize_external_https_url
 from app.models import SavedReportDB
+from app.private_database import get_user_db
 
 router = APIRouter()
 saved_reports_router = APIRouter(prefix="/saved-reports", tags=["saved-reports"])
@@ -96,7 +96,7 @@ def _get_owned_saved_report(db: Session, saved_report_id: int, user_id: str) -> 
 def create_saved_report(
     report: SavedReportCreate,
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_user_db),
 ) -> SavedReport:
     saved_report = SavedReportDB(
         user_id=current_user.user_id,
@@ -118,7 +118,7 @@ def create_saved_report(
 @saved_reports_router.get("", response_model=list[SavedReport])
 def list_saved_reports(
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_user_db),
 ) -> list[SavedReport]:
     saved_reports = (
         db.query(SavedReportDB)
@@ -133,7 +133,7 @@ def list_saved_reports(
 def get_saved_report(
     saved_report_id: int,
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_user_db),
 ) -> SavedReport:
     return _to_saved_report_response(_get_owned_saved_report(db, saved_report_id, current_user.user_id))
 
@@ -142,7 +142,7 @@ def get_saved_report(
 def delete_saved_report(
     saved_report_id: int,
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_user_db),
 ) -> dict[str, str]:
     saved_report = _get_owned_saved_report(db, saved_report_id, current_user.user_id)
     db.delete(saved_report)

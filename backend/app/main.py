@@ -20,7 +20,7 @@ from app.analysis import (
 )
 from app.analysis.model_extractor import is_model_assisted_configured
 from app.auth import AuthenticatedUser, get_current_user
-from app.database import Base, engine, get_db
+from app.database import Base, engine, get_db, initialize_database_schema
 from app.job_search import ExternalJobResult, JobSearchResults, search_external_jobs
 from app.models import JobPostingDB
 from app.resume_files import ResumeFileExtractionError, extract_resume_text_from_upload
@@ -28,7 +28,7 @@ from app.saved_jobs import router as saved_jobs_router
 from app.saved_reports import router as saved_reports_router
 from app.skill_extractor import count_skills, extract_skills
 
-Base.metadata.create_all(bind=engine)
+initialize_database_schema()
 
 ADMIN_API_KEY_ENV = "ADMIN_API_KEY"
 MAX_CSV_FILE_SIZE_BYTES = 1_000_000

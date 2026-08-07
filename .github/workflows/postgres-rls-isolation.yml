@@ -1,0 +1,104 @@
+name: PostgreSQL RLS Isolation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/app/database.py"
+      - "backend/app/private_database.py"
+      - "backend/app/models.py"
+      - "backend/app/saved_jobs.py"
+      - "backend/app/saved_reports.py"
+      - "backend/app/career_plans/**"
+      - "backend/migrations/**"
+      - "backend/scripts/apply_database_security_migrations.py"
+      - "backend/tests/test_postgres_rls_*.py"
+      - "backend/requirements.txt"
+      - "backend/requirements-dev.txt"
+      - ".github/workflows/postgres-rls-isolation.yml"
+  push:
+    branches: [main]
+    paths:
+      - "backend/app/database.py"
+      - "backend/app/private_database.py"
+      - "backend/app/models.py"
+      - "backend/app/saved_jobs.py"
+      - "backend/app/saved_reports.py"
+      - "backend/app/career_plans/**"
+      - "backend/migrations/**"
+      - "backend/scripts/apply_database_security_migrations.py"
+      - "backend/tests/test_postgres_rls_*.py"
+      - "backend/requirements.txt"
+      - "backend/requirements-dev.txt"
+      - ".github/workflows/postgres-rls-isolation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-rls-isolation:
+    name: Direct two-user PostgreSQL isolation
+    runs-on: ubuntu-24.04
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: marketlens_rls_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d marketlens_rls_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      - name: Install backend test dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Run direct PostgreSQL RLS and least-privilege tests
+        working-directory: backend
+        env:
+          POSTGRES_TEST_USER: postgres
+          POSTGRES_TEST_PASSWORD: postgres
+          POSTGRES_TEST_HOST: 127.0.0.1
+          POSTGRES_TEST_PORT: "5432"
+          POSTGRES_TEST_DATABASE: marketlens_rls_test
+        shell: bash
+        run: |
+          MARKETLENS_POSTGRES_TEST_URL=$(python - <<'PY'
+          import os
+          from urllib.parse import quote
+
+          scheme = "postgres" + "ql://"
+          user = quote(os.environ["POSTGRES_TEST_USER"], safe="")
+          password = quote(os.environ["POSTGRES_TEST_PASSWORD"], safe="")
+          host = os.environ["POSTGRES_TEST_HOST"]
+          port = os.environ["POSTGRES_TEST_PORT"]
+          database = os.environ["POSTGRES_TEST_DATABASE"]
+          print(f"{scheme}{user}:{password}@{host}:{port}/{database}")
+          PY
+          )
+          export MARKETLENS_POSTGRES_TEST_URL
+          python -m pytest -q \
+            tests/test_postgres_rls_isolation.py \
+            tests/test_postgres_rls_verifier.py
