@@ -12,7 +12,7 @@ on:
       - "backend/app/career_plans/**"
       - "backend/migrations/**"
       - "backend/scripts/apply_database_security_migrations.py"
-      - "backend/tests/test_postgres_rls_isolation.py"
+      - "backend/tests/test_postgres_rls_*.py"
       - "backend/requirements.txt"
       - "backend/requirements-dev.txt"
       - ".github/workflows/postgres-rls-isolation.yml"
@@ -27,7 +27,7 @@ on:
       - "backend/app/career_plans/**"
       - "backend/migrations/**"
       - "backend/scripts/apply_database_security_migrations.py"
-      - "backend/tests/test_postgres_rls_isolation.py"
+      - "backend/tests/test_postgres_rls_*.py"
       - "backend/requirements.txt"
       - "backend/requirements-dev.txt"
       - ".github/workflows/postgres-rls-isolation.yml"
@@ -99,4 +99,6 @@ jobs:
           PY
           )
           export MARKETLENS_POSTGRES_TEST_URL
-          python -m pytest -q tests/test_postgres_rls_isolation.py
+          python -m pytest -q \
+            tests/test_postgres_rls_isolation.py \
+            tests/test_postgres_rls_verifier.py
