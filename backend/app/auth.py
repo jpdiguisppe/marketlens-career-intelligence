@@ -60,6 +60,9 @@ def validate_auth_runtime_configuration() -> None:
         )
 
 
+validate_auth_runtime_configuration()
+
+
 def _extract_bearer_token(authorization: str | None) -> str:
     if not authorization:
         raise HTTPException(status_code=401, detail="Missing bearer token.")
