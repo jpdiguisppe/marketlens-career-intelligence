@@ -12,6 +12,8 @@ on:
       - "backend/tests/test_evidence_provenance.py"
       - "backend/tests/test_evidence_provenance_evaluation.py"
       - "frontend/src/types.ts"
+      - "backend/requirements.txt"
+      - "backend/requirements-dev.txt"
       - ".github/workflows/evidence-provenance.yml"
   workflow_dispatch:
 
@@ -27,9 +29,11 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: backend/requirements.txt
-      - name: Install backend dependencies
-        run: pip install -r requirements.txt
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+      - name: Install backend test dependencies
+        run: pip install -r requirements-dev.txt
       - name: Run focused provenance tests
         shell: bash
         run: |
