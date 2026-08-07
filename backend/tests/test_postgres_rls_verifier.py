@@ -5,9 +5,9 @@ import os
 import pytest
 from sqlalchemy import create_engine, text
 
+from app.career_plans.models import CareerPlanAuditEventDB, CareerPlanRunDB, CareerPlanStepDB  # noqa: F401
 from app.database import Base
 from app.models import JobPostingDB, SavedJobDB, SavedReportDB  # noqa: F401
-from app.career_plans.models import CareerPlanAuditEventDB, CareerPlanRunDB, CareerPlanStepDB  # noqa: F401
 from scripts.apply_database_security_migrations import apply_database_security_migrations
 
 POSTGRES_TEST_URL_ENV = "MARKETLENS_POSTGRES_TEST_URL"
@@ -42,8 +42,13 @@ def migrated_admin_engine():
         yield admin_url, engine
     finally:
         with engine.begin() as connection:
-            connection.execute(text(f"REVOKE {PARENT_ROLE} FROM {RUNTIME_ROLE}"))
-            connection.execute(text(f"DROP ROLE IF EXISTS {PARENT_ROLE}"))
+            parent_exists = connection.execute(
+                text("SELECT 1 FROM pg_roles WHERE rolname = :role"),
+                {"role": PARENT_ROLE},
+            ).scalar_one_or_none()
+            if parent_exists:
+                connection.execute(text(f"REVOKE {PARENT_ROLE} FROM {RUNTIME_ROLE}"))
+                connection.execute(text(f"DROP ROLE {PARENT_ROLE}"))
             connection.execute(text("DROP TABLE IF EXISTS marketlens_schema_migrations"))
         Base.metadata.drop_all(bind=engine)
         engine.dispose()
@@ -68,7 +73,6 @@ def test_verifier_rejects_runtime_role_membership(
 
     with engine.begin() as connection:
         connection.execute(text(f"REVOKE {PARENT_ROLE} FROM {RUNTIME_ROLE}"))
-        connection.execute(text(f"DROP ROLE {PARENT_ROLE}"))
 
     assert apply_database_security_migrations(
         admin_url,
