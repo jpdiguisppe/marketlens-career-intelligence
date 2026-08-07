@@ -5,10 +5,10 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app.auth import AuthenticatedUser, get_current_user
-from app.database import get_db
 from app.deployment_status import deployment_revision
 from app.external_urls import require_external_https_url, sanitize_external_https_url
 from app.models import SavedJobDB
+from app.private_database import get_user_db
 from app.skill_extractor import extract_skills
 
 MAX_SAVED_JOB_DESCRIPTION_LENGTH = 50_000
@@ -98,7 +98,7 @@ def deployment_status_alias() -> dict[str, str]:
 def create_saved_job(
     job: SavedJobCreate,
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_user_db),
 ) -> SavedJob:
     if job.source_job_id:
         existing_saved_job = (
@@ -130,7 +130,7 @@ def create_saved_job(
 @router.get("", response_model=list[SavedJob])
 def list_saved_jobs(
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_user_db),
 ) -> list[SavedJob]:
     saved_jobs = (
         db.query(SavedJobDB)
@@ -146,7 +146,7 @@ def list_saved_jobs(
 def get_saved_job(
     saved_job_id: int,
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_user_db),
 ) -> SavedJob:
     saved_job = _get_owned_saved_job(
         db,
@@ -160,7 +160,7 @@ def get_saved_job(
 def delete_saved_job(
     saved_job_id: int,
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_user_db),
 ) -> dict[str, str]:
     saved_job = _get_owned_saved_job(
         db,

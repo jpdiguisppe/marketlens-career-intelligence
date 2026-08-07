@@ -36,7 +36,7 @@ from app.career_plans.schemas import (
     CareerPlanStepResponse,
 )
 from app.career_plans.state_machine import InvalidCareerPlanTransition, ensure_run_transition
-from app.database import get_db
+from app.private_database import get_user_db
 
 router = APIRouter(prefix="/career-plans", tags=["career-plans"])
 
@@ -100,7 +100,7 @@ def _to_response(run: CareerPlanRunDB) -> CareerPlanRunResponse:
 def create_career_plan(
     request: CareerPlanCreate,
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_user_db),
 ) -> CareerPlanRunResponse:
     if request.idempotency_key:
         existing = (
@@ -162,7 +162,7 @@ def create_career_plan(
 @router.get("", response_model=list[CareerPlanRunSummary])
 def list_career_plans(
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_user_db),
 ) -> list[CareerPlanRunSummary]:
     runs = (
         db.query(CareerPlanRunDB)
@@ -177,7 +177,7 @@ def list_career_plans(
 def get_career_plan(
     run_id: int,
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_user_db),
 ) -> CareerPlanRunResponse:
     return _to_response(_get_owned_run(db, run_id, current_user.user_id))
 
@@ -187,7 +187,7 @@ def execute_or_resume_career_plan(
     run_id: int,
     request: CareerPlanExecuteRequest,
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_user_db),
 ) -> CareerPlanRunResponse:
     run = _get_owned_run(db, run_id, current_user.user_id)
     return _to_response(execute_career_plan(db, run, request))
@@ -198,7 +198,7 @@ def explain_career_plan(
     run_id: int,
     request: CareerPlanExplanationRequest,
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_user_db),
 ) -> CareerPlanExplanationResponse:
     run = _get_owned_run(db, run_id, current_user.user_id)
     if not run.proposal:
@@ -226,7 +226,7 @@ def explain_career_plan(
 def request_career_plan_cancellation(
     run_id: int,
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_user_db),
 ) -> CareerPlanRunResponse:
     run = _get_owned_run(db, run_id, current_user.user_id)
     if run.status != CareerPlanRunStatus.RUNNING.value:
@@ -250,7 +250,7 @@ def decide_career_plan(
     run_id: int,
     request: CareerPlanDecisionRequest,
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_user_db),
 ) -> CareerPlanRunResponse:
     run = _get_owned_run(db, run_id, current_user.user_id)
     if run.status != CareerPlanRunStatus.AWAITING_APPROVAL.value:
@@ -292,7 +292,7 @@ def decide_career_plan(
 def delete_career_plan(
     run_id: int,
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_user_db),
 ) -> dict[str, str]:
     run = _get_owned_run(db, run_id, current_user.user_id)
     db.delete(run)
