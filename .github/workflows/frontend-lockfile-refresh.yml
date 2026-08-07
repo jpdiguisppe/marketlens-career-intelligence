@@ -1,0 +1,56 @@
+name: Frontend Lockfile Refresh
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "frontend/package.json"
+      - "frontend/package-lock.json"
+      - ".github/workflows/frontend-lockfile-refresh.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  generate-and-validate:
+    name: Generate and validate frontend lockfile
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Generate candidate lockfile
+        working-directory: frontend
+        run: npm install --package-lock-only --ignore-scripts
+
+      - name: Install exact candidate dependency tree
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Audit production dependencies
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=moderate
+
+      - name: Audit complete dependency tree
+        working-directory: frontend
+        run: npm audit --audit-level=moderate
+
+      - name: Upload generated lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: marketlens-frontend-lockfile-candidate
+          path: frontend/package-lock.json
+          if-no-files-found: error
+          retention-days: 7
