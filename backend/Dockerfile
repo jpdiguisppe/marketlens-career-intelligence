@@ -1,3 +1,4 @@
+\
 FROM python:3.12-slim
 
 WORKDIR /app
@@ -7,11 +8,15 @@ ENV PYTHONUNBUFFERED=1
 
 COPY requirements.txt .
 RUN python -m pip install --upgrade pip \
-    && python -m pip install --no-cache-dir -r requirements.txt
+    && python -m pip install --no-cache-dir -r requirements.txt \
+    && addgroup --system marketlens \
+    && adduser --system --ingroup marketlens --home /app marketlens
 
-COPY app ./app
+COPY --chown=marketlens:marketlens app ./app
 
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data && chown -R marketlens:marketlens /app/data
+
+USER marketlens
 
 EXPOSE 8000
 

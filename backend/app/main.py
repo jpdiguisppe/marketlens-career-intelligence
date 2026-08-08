@@ -1,9 +1,7 @@
 import csv
 import io
-import ipaddress
 import os
 import secrets
-import time
 from collections import defaultdict
 from typing import Annotated, Literal, Optional
 
@@ -26,6 +24,15 @@ from app.models import JobPostingDB
 from app.resume_files import ResumeFileExtractionError, extract_resume_text_from_upload
 from app.saved_jobs import router as saved_jobs_router
 from app.saved_reports import router as saved_reports_router
+from app.security import (
+    RequestBodyLimitMiddleware,
+    SecurityHeadersMiddleware,
+    enforce_admin_rate_limit,
+    enforce_expensive_rate_limit,
+    enforce_private_rate_limit,
+    enforce_public_rate_limit,
+    fastapi_docs_configuration,
+)
 from app.skill_extractor import count_skills, extract_skills
 
 initialize_database_schema()
@@ -40,10 +47,6 @@ MAX_SMART_JOB_DESCRIPTION_LENGTH = 50_000
 MAX_SMART_BATCH_JOBS = 10
 MAX_RESUME_UPLOAD_BYTES = 1_500_000
 MAX_EXTRACTED_RESUME_TEXT_LENGTH = 25_000
-RATE_LIMIT_WINDOW_SECONDS = 60
-RATE_LIMIT_MAX_REQUESTS = 30
-RATE_LIMIT_GLOBAL_MAX_REQUESTS = 300
-RATE_LIMIT_MAX_TRACKED_CLIENTS = 5_000
 
 REQUIRED_CSV_COLUMNS = {"company", "title", "description"}
 OPTIONAL_CSV_COLUMNS = {"location", "role_category", "experience_level"}
@@ -81,9 +84,11 @@ def _get_allowed_origins() -> list[str]:
 
 
 def require_admin_api_key(
+    request: Request,
     x_admin_api_key: Annotated[str | None, Header(alias="X-Admin-API-Key")] = None,
 ) -> None:
-    """Protect admin-only write endpoints with a server-side API key."""
+    """Protect admin-only write endpoints with a server-side API key and abuse bound."""
+    enforce_admin_rate_limit(request)
     expected_api_key = os.getenv(ADMIN_API_KEY_ENV)
 
     if not expected_api_key:
@@ -96,104 +101,22 @@ def require_admin_api_key(
         raise HTTPException(status_code=401, detail="Invalid or missing admin API key.")
 
 
-def _validated_ip(value: str | None) -> str | None:
-    if not value:
-        return None
-    candidate = value.strip()
-    try:
-        return str(ipaddress.ip_address(candidate))
-    except ValueError:
-        return None
-
-
-def _get_rate_limit_identifier(request: Request) -> str:
-    forwarded_for = request.headers.get("x-forwarded-for")
-    if forwarded_for:
-        forwarded_ip = _validated_ip(forwarded_for.split(",", maxsplit=1)[0])
-        if forwarded_ip:
-            return forwarded_ip
-
-    if request.client and request.client.host:
-        return _validated_ip(request.client.host) or request.client.host[:120]
-
-    return "unknown-client"
-
-
-def _prune_rate_limit_state(window_start: float) -> None:
-    global _global_rate_limit_timestamps
-    _global_rate_limit_timestamps = [
-        timestamp
-        for timestamp in _global_rate_limit_timestamps
-        if timestamp >= window_start
-    ]
-
-    stale_identifiers = [
-        identifier
-        for identifier, timestamps in _rate_limit_buckets.items()
-        if not timestamps or timestamps[-1] < window_start
-    ]
-    for identifier in stale_identifiers:
-        _rate_limit_buckets.pop(identifier, None)
-
-    if len(_rate_limit_buckets) > RATE_LIMIT_MAX_TRACKED_CLIENTS:
-        oldest = sorted(
-            _rate_limit_buckets,
-            key=lambda identifier: _rate_limit_buckets[identifier][-1]
-            if _rate_limit_buckets[identifier]
-            else 0.0,
-        )
-        for identifier in oldest[: len(_rate_limit_buckets) - RATE_LIMIT_MAX_TRACKED_CLIENTS]:
-            _rate_limit_buckets.pop(identifier, None)
-
-
-def enforce_public_rate_limit(request: Request) -> None:
-    """Bounded instance-level abuse protection for public endpoints.
-
-    Railway or another edge proxy should still provide platform-level rate
-    limiting for high-volume production traffic. This guard prevents one client
-    or a burst across many clients from fan-out triggering unlimited providers.
-    """
-
-    identifier = _get_rate_limit_identifier(request)
-    now = time.monotonic()
-    window_start = now - RATE_LIMIT_WINDOW_SECONDS
-    _prune_rate_limit_state(window_start)
-
-    if len(_global_rate_limit_timestamps) >= RATE_LIMIT_GLOBAL_MAX_REQUESTS:
-        raise HTTPException(
-            status_code=429,
-            detail="Service-wide rate limit exceeded. Please wait before trying again.",
-            headers={"Retry-After": str(RATE_LIMIT_WINDOW_SECONDS)},
-        )
-
-    request_timestamps = _rate_limit_buckets.setdefault(identifier, [])
-    request_timestamps[:] = [
-        timestamp for timestamp in request_timestamps if timestamp >= window_start
-    ]
-
-    if len(request_timestamps) >= RATE_LIMIT_MAX_REQUESTS:
-        raise HTTPException(
-            status_code=429,
-            detail="Rate limit exceeded. Please wait before trying again.",
-            headers={"Retry-After": str(RATE_LIMIT_WINDOW_SECONDS)},
-        )
-
-    request_timestamps.append(now)
-    _global_rate_limit_timestamps.append(now)
-
 
 app = FastAPI(
     title="MarketLens API",
     description="Backend API for analyzing job postings and career skill signals.",
     version="0.9.0",
+    **fastapi_docs_configuration(),
 )
 
+app.add_middleware(RequestBodyLimitMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_get_allowed_origins(),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Admin-API-Key"],
 )
 
 app.include_router(saved_jobs_router)
@@ -587,8 +510,10 @@ def health_check() -> dict[str, str]:
 
 @app.get("/me", response_model=CurrentUserResponse)
 def current_user_profile(
+    request: Request,
     current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> CurrentUserResponse:
+    enforce_private_rate_limit(request, current_user.user_id)
     return CurrentUserResponse(
         user_id=current_user.user_id,
         auth_provider=current_user.auth_provider,
@@ -695,7 +620,11 @@ def skills_by_role(db: Session = Depends(get_db)) -> dict[str, dict[str, int]]:
     return top_skills_by_role(db)
 
 
-@app.post("/skills/extract", response_model=SkillExtractionResponse)
+@app.post(
+    "/skills/extract",
+    response_model=SkillExtractionResponse,
+    dependencies=[Depends(enforce_public_rate_limit)],
+)
 def extract_skills_endpoint(request: SkillExtractionRequest) -> SkillExtractionResponse:
     return SkillExtractionResponse(skills=extract_skills(request.text))
 
@@ -768,8 +697,16 @@ async def import_postings_csv(file: UploadFile = File(...), db: Session = Depend
     )
 
 
-@app.post("/resume/analyze", response_model=ResumeAnalysisResponse)
-@app.post("/analysis/resume", response_model=ResumeAnalysisResponse)
+@app.post(
+    "/resume/analyze",
+    response_model=ResumeAnalysisResponse,
+    dependencies=[Depends(enforce_public_rate_limit)],
+)
+@app.post(
+    "/analysis/resume",
+    response_model=ResumeAnalysisResponse,
+    dependencies=[Depends(enforce_public_rate_limit)],
+)
 def analyze_resume(request: ResumeAnalysisRequest, db: Session = Depends(get_db)) -> ResumeAnalysisResponse:
     query = db.query(JobPostingDB)
     if request.target_role_category:
@@ -792,7 +729,7 @@ def analyze_resume(request: ResumeAnalysisRequest, db: Session = Depends(get_db)
 @app.post(
     "/analysis/resume-file/extract",
     response_model=ResumeFileExtractionResponse,
-    dependencies=[Depends(enforce_public_rate_limit)],
+    dependencies=[Depends(enforce_expensive_rate_limit)],
 )
 async def extract_resume_file(file: UploadFile = File(...)) -> ResumeFileExtractionResponse:
     return await _extract_resume_file_response(file)
@@ -801,7 +738,7 @@ async def extract_resume_file(file: UploadFile = File(...)) -> ResumeFileExtract
 @app.get(
     "/jobs/search",
     response_model=ExternalJobSearchResponse,
-    dependencies=[Depends(enforce_public_rate_limit)],
+    dependencies=[Depends(enforce_expensive_rate_limit)],
 )
 def search_external_job_postings(
     query: Annotated[str, Query(min_length=1, max_length=100)],
