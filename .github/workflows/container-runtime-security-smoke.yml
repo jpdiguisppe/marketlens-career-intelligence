@@ -1,0 +1,136 @@
+name: Container Runtime Security Smoke
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  container-runtime-security-smoke:
+    name: Start containers as non-root and verify hardened surface
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build backend and frontend images
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build -t marketlens-backend-smoke ./backend
+          docker build \
+            --build-arg VITE_API_BASE_URL=http://localhost:8000 \
+            -t marketlens-frontend-smoke \
+            ./frontend
+
+      - name: Start backend as non-root
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --detach \
+            --name marketlens-backend-smoke \
+            --publish 18000:8000 \
+            --env PORT=8000 \
+            --env DATABASE_URL=sqlite:////app/data/marketlens.db \
+            --env AUTH_DEV_MODE=false \
+            marketlens-backend-smoke
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error --max-time 5 \
+              http://127.0.0.1:18000/health \
+              --output /tmp/backend-health.json; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              docker logs marketlens-backend-smoke
+              exit 1
+            fi
+            sleep 2
+          done
+
+          docker exec marketlens-backend-smoke sh -c 'test "$(id -u)" -ne 0'
+          curl --silent --show-error --max-time 10 \
+            --dump-header /tmp/backend.headers \
+            --output /tmp/backend.body \
+            http://127.0.0.1:18000/health
+          grep -Eqi '^x-content-type-options: *nosniff\r?$' /tmp/backend.headers
+          grep -Eqi '^x-frame-options: *DENY\r?$' /tmp/backend.headers
+          grep -Eqi '^cache-control: .*no-store' /tmp/backend.headers
+
+      - name: Start frontend as non-root with local API origin
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --detach \
+            --name marketlens-frontend-smoke \
+            --publish 18080:8080 \
+            --env PORT=8080 \
+            --env VITE_API_BASE_URL=http://localhost:8000 \
+            marketlens-frontend-smoke
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error --max-time 5 \
+              http://127.0.0.1:18080/ \
+              --output /tmp/frontend-root.html; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              docker logs marketlens-frontend-smoke
+              exit 1
+            fi
+            sleep 2
+          done
+
+          docker exec marketlens-frontend-smoke sh -c 'test "$(id -u)" -ne 0'
+
+          curl --silent --show-error --max-time 10 \
+            --dump-header /tmp/frontend.headers \
+            --output /tmp/frontend.body \
+            http://127.0.0.1:18080/
+          curl --fail --silent --show-error --max-time 10 \
+            http://127.0.0.1:18080/config.js \
+            --output /tmp/config.js
+
+          grep -Eqi '^strict-transport-security:' /tmp/frontend.headers
+          grep -Eqi '^x-content-type-options: *nosniff\r?$' /tmp/frontend.headers
+          grep -Eqi '^x-frame-options: *DENY\r?$' /tmp/frontend.headers
+          grep -Eqi '^cache-control: .*no-store' /tmp/frontend.headers
+          grep -Eqi '^content-security-policy: .*frame-ancestors .none.' /tmp/frontend.headers
+          grep -Eqi '^content-security-policy: .*object-src .none.' /tmp/frontend.headers
+          grep -Eqi '^content-security-policy: .*connect-src[^;]*http://localhost:8000' /tmp/frontend.headers
+          grep -Fq 'apiBaseUrl: "http://localhost:8000"' /tmp/config.js
+
+      - name: Upload smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: marketlens-container-runtime-security-smoke
+          path: |
+            /tmp/backend-health.json
+            /tmp/backend.headers
+            /tmp/backend.body
+            /tmp/frontend-root.html
+            /tmp/frontend.headers
+            /tmp/frontend.body
+            /tmp/config.js
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Show container logs on failure
+        if: failure()
+        shell: bash
+        run: |
+          docker logs marketlens-backend-smoke || true
+          docker logs marketlens-frontend-smoke || true
+
+      - name: Clean up containers
+        if: always()
+        shell: bash
+        run: |
+          docker rm --force marketlens-backend-smoke marketlens-frontend-smoke || true
