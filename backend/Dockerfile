@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12.13-slim-bookworm
 
 WORKDIR /app
 
@@ -8,6 +8,7 @@ ENV PYTHONUNBUFFERED=1
 COPY requirements.txt .
 RUN python -m pip install --upgrade pip \
     && python -m pip install --no-cache-dir -r requirements.txt \
+    && python -m pip uninstall --yes setuptools pip \
     && addgroup --system marketlens \
     && adduser --system --ingroup marketlens --home /app marketlens
 
