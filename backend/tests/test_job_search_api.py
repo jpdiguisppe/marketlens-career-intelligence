@@ -2,14 +2,15 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.job_search import ExternalJobResult, JobSearchResults
-from app.main import _rate_limit_buckets, app
+from app.main import app
+from app.security import reset_rate_limit_state_for_tests
 
 client = TestClient(app)
 
 
 @pytest.fixture(autouse=True)
 def clear_rate_limit_buckets() -> None:
-    _rate_limit_buckets.clear()
+    reset_rate_limit_state_for_tests()
 
 
 def test_external_job_search_returns_normalized_results(monkeypatch: pytest.MonkeyPatch) -> None:

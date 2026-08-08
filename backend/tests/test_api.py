@@ -15,7 +15,8 @@ os.environ["AUTH_DEV_BEARER_TOKEN"] = "test-user-token"
 os.environ["AUTH_DEV_USER_ID"] = "test-clerk-user-1"
 
 from app.database import Base, get_db
-from app.main import _rate_limit_buckets, app
+from app.main import app
+from app.security import reset_rate_limit_state_for_tests
 
 TEST_DATABASE_URL = "sqlite://"
 ADMIN_HEADERS = {"X-Admin-API-Key": "test-admin-key"}
@@ -45,10 +46,10 @@ client = TestClient(app)
 def reset_database() -> Generator[None, None, None]:
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
-    _rate_limit_buckets.clear()
+    reset_rate_limit_state_for_tests()
     yield
     Base.metadata.drop_all(bind=engine)
-    _rate_limit_buckets.clear()
+    reset_rate_limit_state_for_tests()
 
 
 def _sample_job_posting_payload() -> dict[str, str]:
