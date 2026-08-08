@@ -34,13 +34,29 @@ MarketLens also retains:
 For each image, CI produces:
 
 - a JSON critical/high vulnerability report
+- a JSON policy-classification report
 - a CycloneDX SBOM
 - scanner version, source revision, and image-ID metadata
-- a blocking critical/high vulnerability gate
+- an enforcement step that rejects every critical/high finding unless it exactly matches a current reviewed exception
 
 The evidence artifacts are retained for 90 days.
 
-The Trivy action is pinned to exact commit `ed142fd0673e97e23eac54620cfb913e5ce36c25`, corresponding to the reviewed v0.36.0 release. Trivy itself is explicitly requested at v0.70.0 in the first scan invocation.
+The Trivy action is pinned to exact commit `ed142fd0673e97e23eac54620cfb913e5ce36c25`, corresponding to the reviewed immutable v0.36.0 release. That action currently carries Trivy v0.70.0.
+
+## Container remediation performed during 8.2E
+
+The first image scan was intentionally allowed to record evidence before enforcement. It found that the previous Debian-based Python runtime and the old Nginx/Alpine runtime carried multiple high/critical base-image findings.
+
+Rather than waive those findings:
+
+- the backend moved to the official Python 3.12.13 Alpine 3.23 line
+- the frontend build moved to Node 24 LTS on Alpine 3.23
+- the frontend runtime moved to stable Nginx 1.30 on Alpine 3.24
+- `pip` and `setuptools` are removed from the final backend runtime after dependency installation
+
+After that remediation, both Alpine OS layers scanned with zero critical/high findings. The only backend high findings remaining are the Clerk-transitive `cryptography==48.0.1` advisories already reviewed in `docs/security-dependency-exceptions.md`.
+
+The container policy does not ignore the package broadly. It allows only the exact backend package name, installed version, CVE identifiers, and review window through 2026-09-30. A different package, version, CVE, image, or expired review blocks the workflow.
 
 ## GitHub Action dependency policy
 
@@ -62,9 +78,10 @@ Digest pinning would further reduce tag-mutation risk and remains a future defen
 ## Finding policy
 
 - Critical/high findings are blocking by default.
-- Scanner evidence is uploaded even when the enforcement step fails so findings can be reviewed.
+- Scanner evidence is uploaded before enforcement so failed findings remain reviewable.
 - An exception must identify the exact finding, affected component/path, exploitability analysis, compensating controls, owner, and review/expiry date.
-- An exception in one scanner does not automatically suppress the same package in another scanner.
+- Container exceptions are machine-checked against exact package/version/CVE/image tuples and an explicit expiry date.
+- An exception in one scanner does not automatically suppress unrelated findings in another scanner.
 - No critical/high finding may be silently ignored to make a workflow green.
 
 ## Relationship to final sign-off
