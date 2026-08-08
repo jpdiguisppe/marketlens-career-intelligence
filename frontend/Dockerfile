@@ -1,4 +1,4 @@
-FROM node:20-alpine AS build
+FROM node:24.16.0-alpine3.23 AS build
 
 WORKDIR /app
 
@@ -13,7 +13,7 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM nginx:1.27-alpine
+FROM nginx:1.30.4-alpine3.24
 
 COPY nginx.conf /etc/nginx/nginx.conf.template
 COPY docker-entrypoint.sh /usr/local/bin/marketlens-entrypoint.sh
