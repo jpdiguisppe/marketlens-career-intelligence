@@ -139,8 +139,40 @@ def safe_log_event(
     logger.log(level, message)
 
 
+def _sanitize_uvicorn_access_record(record: logging.LogRecord) -> bool:
+    """Preserve Uvicorn's five-field access-log formatter contract safely.
+
+    Uvicorn's AccessFormatter reads ``record.args`` directly rather than only
+    formatting ``record.msg``. Rendering the message and clearing args, as we do
+    for ordinary records, makes that formatter fail. Keep only the exact expected
+    five values and sanitize every user-influenced string before handlers see it.
+    """
+
+    if record.name != "uvicorn.access":
+        return False
+    if not isinstance(record.args, tuple) or len(record.args) != 5:
+        return False
+
+    client_addr, method, full_path, http_version, status_code = record.args
+    record.msg = sanitize_log_value(record.msg)
+    record.args = (
+        sanitize_log_value(client_addr),
+        sanitize_log_value(method),
+        sanitize_log_value(full_path),
+        sanitize_log_value(http_version),
+        status_code,
+    )
+    record.exc_info = None
+    record.exc_text = None
+    return True
+
+
 def _safe_log_record_factory(*args: Any, **kwargs: Any) -> logging.LogRecord:
     record = _ORIGINAL_LOG_RECORD_FACTORY(*args, **kwargs)
+
+    if _sanitize_uvicorn_access_record(record):
+        return record
+
     try:
         message = sanitize_log_value(record.getMessage())
     except Exception:
