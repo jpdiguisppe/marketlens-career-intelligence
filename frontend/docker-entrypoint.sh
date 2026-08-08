@@ -1,4 +1,3 @@
-\
 #!/bin/sh
 set -eu
 umask 027
@@ -8,6 +7,13 @@ case "$API_BASE_URL" in
   http://*|https://*) ;;
   *) API_BASE_URL="http://localhost:8000" ;;
 esac
+
+API_ORIGIN="$(printf '%s' "$API_BASE_URL" | sed -E 's#^(https?://[^/]+).*$#\1#')"
+if ! printf '%s' "$API_ORIGIN" | grep -Eq '^https?://[A-Za-z0-9._:-]+$'; then
+  API_BASE_URL="http://localhost:8000"
+  API_ORIGIN="http://localhost:8000"
+fi
+
 SAFE_API_BASE_URL="$(printf '%s' "$API_BASE_URL" | sed 's/\\/\\\\/g; s/"/\\"/g')"
 
 DEPLOYMENT_REVISION="$(printf '%s' "${RAILWAY_GIT_COMMIT_SHA:-}" | tr -cd '0-9a-fA-F' | cut -c1-40)"
@@ -32,5 +38,9 @@ window.__MARKETLENS_CONFIG__ = {
 };
 EOF
 
-sed "s/__PORT__/${PORT_VALUE}/g" /etc/nginx/nginx.conf.template > /tmp/nginx.conf
+sed \
+  -e "s|__PORT__|${PORT_VALUE}|g" \
+  -e "s|__API_ORIGIN__|${API_ORIGIN}|g" \
+  /etc/nginx/nginx.conf.template > /tmp/nginx.conf
+
 exec nginx -c /tmp/nginx.conf -g 'daemon off;'
