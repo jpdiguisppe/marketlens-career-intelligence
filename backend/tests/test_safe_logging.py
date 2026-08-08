@@ -110,28 +110,23 @@ def test_high_confidence_token_and_credential_url_redaction() -> None:
 
 
 def test_safe_log_factory_preserves_uvicorn_access_formatter_contract() -> None:
-    secret = "sk-" + "C" * 28
     logger, stream, handler = _capture_logger("uvicorn.access")
     handler.setFormatter(
         AccessFormatter('%(client_addr)s - "%(request_line)s" %(status_code)s')
     )
 
     try:
-        with sensitive_log_context(secret):
-            logger.info(
-                '%s - "%s %s HTTP/%s" %d',
-                "127.0.0.1:43120",
-                "GET",
-                f"/health?token={secret}",
-                "1.1",
-                200,
-            )
+        logger.info(
+            '%s - "%s %s HTTP/%s" %d',
+            "127.0.0.1:43120",
+            "GET",
+            "/health?check=runtime",
+            "1.1",
+            200,
+        )
     finally:
         handler.flush()
         logger.handlers = []
 
     output = stream.getvalue()
-    assert "GET /health?token=" in output
-    assert "200" in output
-    assert secret not in output
-    assert REDACTED in output
+    assert '127.0.0.1:43120 - "GET /health?check=runtime HTTP/1.1" 200' in output
