@@ -63,10 +63,6 @@ SmartJobDescription = Annotated[
     Field(min_length=1, max_length=MAX_SMART_JOB_DESCRIPTION_LENGTH),
 ]
 
-_rate_limit_buckets: dict[str, list[float]] = {}
-_global_rate_limit_timestamps: list[float] = []
-
-
 def _get_allowed_origins() -> list[str]:
     configured_origins = os.getenv("CORS_ALLOWED_ORIGINS")
 
@@ -783,7 +779,7 @@ def search_external_job_postings(
 @app.post(
     "/analysis/custom",
     response_model=ResumeAnalysisResponse,
-    dependencies=[Depends(enforce_public_rate_limit)],
+    dependencies=[Depends(enforce_expensive_rate_limit)],
 )
 def analyze_custom_job_descriptions(request: CustomAnalysisRequest) -> ResumeAnalysisResponse:
     return _build_resume_analysis_response(
@@ -796,7 +792,7 @@ def analyze_custom_job_descriptions(request: CustomAnalysisRequest) -> ResumeAna
 @app.post(
     "/analysis/smart",
     response_model=SmartFitAnalysisResponse,
-    dependencies=[Depends(enforce_public_rate_limit)],
+    dependencies=[Depends(enforce_expensive_rate_limit)],
 )
 def analyze_smart_fit_endpoint(request: SmartFitAnalysisRequest) -> SmartFitAnalysisResponse:
     try:
@@ -808,7 +804,7 @@ def analyze_smart_fit_endpoint(request: SmartFitAnalysisRequest) -> SmartFitAnal
 @app.post(
     "/analysis/smart/batch",
     response_model=SmartFitBatchAnalysisResponse,
-    dependencies=[Depends(enforce_public_rate_limit)],
+    dependencies=[Depends(enforce_expensive_rate_limit)],
 )
 def analyze_smart_fit_batch_endpoint(request: SmartFitBatchAnalysisRequest) -> SmartFitBatchAnalysisResponse:
     results: list[SmartFitBatchResult] = []
