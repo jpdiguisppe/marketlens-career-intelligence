@@ -17,7 +17,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Build backend and frontend images
         shell: bash
@@ -26,6 +26,7 @@ jobs:
           docker build -t marketlens-backend-smoke ./backend
           docker build \
             --build-arg VITE_API_BASE_URL=http://localhost:8000 \
+            --build-arg RAILWAY_GIT_COMMIT_SHA=0123456789abcdef0123456789abcdef01234567 \
             -t marketlens-frontend-smoke \
             ./frontend
 
@@ -103,6 +104,9 @@ jobs:
           curl --fail --silent --show-error --max-time 10 \
             http://127.0.0.1:18080/config.js \
             --output /tmp/config.js
+          curl --fail --silent --show-error --max-time 10 \
+            http://127.0.0.1:18080/deployment-revision.txt \
+            --output /tmp/frontend-deployment-revision.txt
 
           grep -Eqi '^strict-transport-security:' /tmp/frontend.headers
           grep -Eqi '^x-content-type-options:[[:space:]]*nosniff[[:space:]]*$' /tmp/frontend.headers
@@ -112,6 +116,7 @@ jobs:
           grep -Eqi '^content-security-policy:.*object-src .none.' /tmp/frontend.headers
           grep -Eqi '^content-security-policy:.*connect-src[^;]*http://localhost:8000' /tmp/frontend.headers
           grep -Fq 'apiBaseUrl: "http://localhost:8000"' /tmp/config.js
+          test "$(tr -d '[:space:]' < /tmp/frontend-deployment-revision.txt)" = '0123456789abcdef0123456789abcdef01234567'
 
           docker logs marketlens-frontend-smoke > /tmp/frontend.log 2>&1
           if grep -Eqi '(emerg|crit|alert|exec format error)' /tmp/frontend.log; then
@@ -122,7 +127,7 @@ jobs:
 
       - name: Upload smoke evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: marketlens-container-runtime-security-smoke
           path: |
@@ -135,6 +140,7 @@ jobs:
             /tmp/frontend.body
             /tmp/frontend.log
             /tmp/config.js
+            /tmp/frontend-deployment-revision.txt
           if-no-files-found: warn
           retention-days: 30
 

@@ -1,0 +1,185 @@
+name: Container Supply Chain Security
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  image-security:
+    name: Scan ${{ matrix.name }} image and generate SBOM
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend
+            image: marketlens-backend-security:${{ github.sha }}
+            context: ./backend
+          - name: frontend
+            image: marketlens-frontend-security:${{ github.sha }}
+            context: ./frontend
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Build production image
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ matrix.name }}" = "frontend" ]; then
+            docker build \
+              --build-arg VITE_API_BASE_URL=https://example.invalid \
+              -t "${{ matrix.image }}" \
+              "${{ matrix.context }}"
+          else
+            docker build -t "${{ matrix.image }}" "${{ matrix.context }}"
+          fi
+
+      - name: Record Trivy critical/high vulnerability evidence
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ matrix.image }}
+          scan-type: image
+          scanners: vuln
+          format: json
+          output: trivy-${{ matrix.name }}-critical-high.json
+          severity: CRITICAL,HIGH
+          ignore-unfixed: false
+          exit-code: '0'
+          version: v0.70.0
+
+      - name: Generate CycloneDX image SBOM
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ matrix.image }}
+          scan-type: image
+          format: cyclonedx
+          output: sbom-${{ matrix.name }}.cdx.json
+          skip-setup-trivy: true
+
+      - name: Classify critical/high findings against reviewed exceptions
+        shell: bash
+        env:
+          IMAGE_NAME: ${{ matrix.name }}
+        run: |
+          python - <<'PY'
+          import datetime as dt
+          import json
+          import os
+          from pathlib import Path
+
+          image_name = os.environ['IMAGE_NAME']
+          source = Path(f'trivy-{image_name}-critical-high.json')
+          payload = json.loads(source.read_text())
+
+          # These are the same narrow Clerk-transitive exceptions reviewed in
+          # docs/security-dependency-exceptions.md. The container gate verifies
+          # package, installed version, CVE, image, and review expiry rather than
+          # broadly ignoring cryptography or all unfixed findings.
+          reviewed = {
+              ('backend', 'cryptography', '48.0.1', 'CVE-2026-69247'),
+              ('backend', 'cryptography', '48.0.1', 'CVE-2026-69248'),
+              ('backend', 'cryptography', '48.0.1', 'CVE-2026-69249'),
+          }
+          review_expires = dt.date(2026, 9, 30)
+          today = dt.datetime.now(dt.timezone.utc).date()
+
+          findings = []
+          accepted = []
+          blocking = []
+          for result in payload.get('Results') or []:
+              target = result.get('Target')
+              for vuln in result.get('Vulnerabilities') or []:
+                  finding = {
+                      'target': target,
+                      'package': vuln.get('PkgName'),
+                      'installed_version': vuln.get('InstalledVersion'),
+                      'fixed_version': vuln.get('FixedVersion'),
+                      'vulnerability_id': vuln.get('VulnerabilityID'),
+                      'severity': vuln.get('Severity'),
+                      'status': vuln.get('Status'),
+                  }
+                  findings.append(finding)
+                  key = (
+                      image_name,
+                      finding['package'],
+                      finding['installed_version'],
+                      finding['vulnerability_id'],
+                  )
+                  if key in reviewed and today <= review_expires:
+                      accepted.append({
+                          **finding,
+                          'exception': 'Clerk-transitive cryptography review',
+                          'review_expires': review_expires.isoformat(),
+                      })
+                  else:
+                      reason = 'unreviewed critical/high finding'
+                      if key in reviewed and today > review_expires:
+                          reason = 'reviewed exception expired'
+                      blocking.append({**finding, 'reason': reason})
+
+          report = {
+              'image': image_name,
+              'scan_date_utc': today.isoformat(),
+              'total_critical_high_findings': len(findings),
+              'accepted_reviewed_exceptions': accepted,
+              'blocking_findings': blocking,
+          }
+          Path(f'trivy-{image_name}-policy.json').write_text(
+              json.dumps(report, indent=2, sort_keys=True) + '\n'
+          )
+          print(json.dumps(report, indent=2, sort_keys=True))
+          PY
+
+      - name: Record scanner and image metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "image=${{ matrix.image }}"
+            echo "source_revision=${GITHUB_SHA}"
+            echo "trivy_action_commit=ed142fd0673e97e23eac54620cfb913e5ce36c25"
+            echo "trivy_version=$(trivy --version | head -n 1)"
+            echo "image_id=$(docker image inspect --format '{{.Id}}' '${{ matrix.image }}')"
+          } > "supply-chain-${{ matrix.name }}-metadata.txt"
+
+      - name: Upload vulnerability, policy, and SBOM evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: marketlens-${{ matrix.name }}-supply-chain-security
+          path: |
+            trivy-${{ matrix.name }}-critical-high.json
+            trivy-${{ matrix.name }}-policy.json
+            sbom-${{ matrix.name }}.cdx.json
+            supply-chain-${{ matrix.name }}-metadata.txt
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Block every unreviewed critical/high image finding
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          name = '${{ matrix.name }}'
+          report = json.loads(Path(f'trivy-{name}-policy.json').read_text())
+          blocking = report.get('blocking_findings') or []
+          if blocking:
+              print(json.dumps(blocking, indent=2, sort_keys=True))
+              raise SystemExit(
+                  f'{len(blocking)} unreviewed or expired critical/high finding(s) block the {name} image'
+              )
+          print(
+              f"{name}: no unreviewed critical/high findings; "
+              f"reviewed exceptions={len(report.get('accepted_reviewed_exceptions') or [])}"
+          )
+          PY
