@@ -8,9 +8,12 @@ MarketLens dependency scanners fail on every published advisory except the expli
 | --- | --- |
 | Package | `cryptography==48.0.1` |
 | Dependency owner | `clerk-backend-api==6.0.1` |
-| Constraint | Clerk currently requires `cryptography>=45.0.0,<49.0.0` |
-| Review deadline | 2026-09-30 or Milestone 8.2B completion, whichever comes first |
+| Constraint | Clerk currently requires a `cryptography` release below the fully fixed line available to MarketLens without replacing the SDK path |
+| Last review | 2026-08-08, after Milestone 8.2B completion |
+| Next review deadline | 2026-09-30, or immediately when Clerk publishes a compatible fixed dependency chain |
 | Required action | Upgrade the Clerk dependency chain or replace the SDK verification path, then remove all exceptions |
+
+The 8.2B review checkpoint was completed. The exceptions remain only because the pinned Clerk SDK path has not yet provided a compatible dependency resolution that removes these advisories; they are not being carried forward silently.
 
 ### `PYSEC-2026-3552` / `CVE-2026-69247`
 
@@ -26,4 +29,6 @@ The advisory affects name-constraint validation involving wildcard certificate n
 
 ## Enforcement
 
-The CI workflow ignores only the three exact `PYSEC` identifiers above while continuing to scan both runtime and development requirements. Any additional advisory remains blocking. The exceptions must be removed immediately if MarketLens begins using an affected API, if Clerk releases a compatible fixed dependency chain, or when the review deadline is reached.
+The Python CI audit ignores only the three exact `PYSEC` identifiers above while continuing to scan both runtime and development requirements. Any additional advisory remains blocking. The exceptions must be removed immediately if MarketLens begins using an affected API, if Clerk releases a compatible fixed dependency chain, or when the next review deadline is reached.
+
+Container scanning is an independent gate. A container-image finding is not automatically suppressed merely because the Python audit has a reviewed exception; any image-level critical/high finding must be separately classified before it can be accepted or waived.
