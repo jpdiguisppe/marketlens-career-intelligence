@@ -32,7 +32,7 @@ jobs:
           python scripts/run_smart_fit_evaluation.py 2>&1 | tee smart-fit-evaluation.txt
       - name: Upload Smart Fit report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: smart-fit-evaluation-report
           path: backend/smart-fit-evaluation.txt
