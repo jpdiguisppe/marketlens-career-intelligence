@@ -15,11 +15,19 @@ RUN npm run build
 
 FROM nginx:1.30.4-alpine3.24
 
+# Railway-provided build variables are available to Dockerfiles only when
+# declared as ARG. Baking the source SHA into a static no-store response gives
+# the production verifier a live frontend revision signal instead of inferring
+# it from deployment history.
+ARG RAILWAY_GIT_COMMIT_SHA=unknown
+
 COPY nginx.conf /etc/nginx/nginx.conf.template
 COPY docker-entrypoint.sh /usr/local/bin/marketlens-entrypoint.sh
 COPY --from=build --chown=nginx:nginx /app/dist /usr/share/nginx/html
 
-RUN chmod 0555 /usr/local/bin/marketlens-entrypoint.sh \
+RUN printf '%s\n' "$RAILWAY_GIT_COMMIT_SHA" > /usr/share/nginx/html/deployment-revision.txt \
+    && chmod 0444 /usr/share/nginx/html/deployment-revision.txt \
+    && chmod 0555 /usr/local/bin/marketlens-entrypoint.sh \
     && chown -R nginx:nginx /usr/share/nginx/html
 
 USER nginx
