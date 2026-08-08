@@ -71,7 +71,7 @@ jobs:
             exit 1
           fi
 
-      - name: Start frontend as non-root with local API origin
+      - name: Start frontend as non-root on dynamic port with port-80 compatibility
         shell: bash
         run: |
           set -euo pipefail
@@ -96,6 +96,7 @@ jobs:
           done
 
           docker exec marketlens-frontend-smoke sh -c 'test "$(id -u)" -ne 0'
+          docker exec marketlens-frontend-smoke sh -c 'wget -qO /tmp/port80.html http://127.0.0.1:80/ && test -s /tmp/port80.html'
 
           curl --silent --show-error --max-time 10 \
             --dump-header /tmp/frontend.headers \
@@ -119,9 +120,53 @@ jobs:
           test "$(tr -d '[:space:]' < /tmp/frontend-deployment-revision.txt)" = '0123456789abcdef0123456789abcdef01234567'
 
           docker logs marketlens-frontend-smoke > /tmp/frontend.log 2>&1
-          if grep -Eqi '(emerg|crit|alert|exec format error)' /tmp/frontend.log; then
+          if grep -Eqi '(emerg|crit|alert|exec format error|permission denied)' /tmp/frontend.log; then
             cat /tmp/frontend.log
             echo 'Frontend emitted a fatal runtime error.'
+            exit 1
+          fi
+
+      - name: Start frontend as non-root with Railway-style PORT 80
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --detach \
+            --name marketlens-frontend-port80-smoke \
+            --publish 18081:80 \
+            --env PORT=80 \
+            --env VITE_API_BASE_URL=http://localhost:8000 \
+            marketlens-frontend-smoke
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error --max-time 5 \
+              http://127.0.0.1:18081/ \
+              --output /tmp/frontend-port80-root.html; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              docker logs marketlens-frontend-port80-smoke
+              exit 1
+            fi
+            sleep 2
+          done
+
+          docker exec marketlens-frontend-port80-smoke sh -c 'test "$(id -u)" -ne 0'
+          curl --silent --show-error --max-time 10 \
+            --dump-header /tmp/frontend-port80.headers \
+            --output /tmp/frontend-port80.body \
+            http://127.0.0.1:18081/
+          curl --fail --silent --show-error --max-time 10 \
+            http://127.0.0.1:18081/deployment-revision.txt \
+            --output /tmp/frontend-port80-deployment-revision.txt
+
+          grep -Eqi '^x-content-type-options:[[:space:]]*nosniff[[:space:]]*$' /tmp/frontend-port80.headers
+          grep -Eqi '^content-security-policy:.*frame-ancestors .none.' /tmp/frontend-port80.headers
+          test "$(tr -d '[:space:]' < /tmp/frontend-port80-deployment-revision.txt)" = '0123456789abcdef0123456789abcdef01234567'
+
+          docker logs marketlens-frontend-port80-smoke > /tmp/frontend-port80.log 2>&1
+          if grep -Eqi '(emerg|crit|alert|exec format error|permission denied)' /tmp/frontend-port80.log; then
+            cat /tmp/frontend-port80.log
+            echo 'PORT=80 frontend emitted a fatal runtime error.'
             exit 1
           fi
 
@@ -141,6 +186,11 @@ jobs:
             /tmp/frontend.log
             /tmp/config.js
             /tmp/frontend-deployment-revision.txt
+            /tmp/frontend-port80-root.html
+            /tmp/frontend-port80.headers
+            /tmp/frontend-port80.body
+            /tmp/frontend-port80.log
+            /tmp/frontend-port80-deployment-revision.txt
           if-no-files-found: warn
           retention-days: 30
 
@@ -150,9 +200,14 @@ jobs:
         run: |
           docker logs marketlens-backend-smoke || true
           docker logs marketlens-frontend-smoke || true
+          docker logs marketlens-frontend-port80-smoke || true
 
       - name: Clean up containers
         if: always()
         shell: bash
         run: |
-          docker rm --force marketlens-backend-smoke marketlens-frontend-smoke || true
+          docker rm --force \
+            marketlens-backend-smoke \
+            marketlens-frontend-smoke \
+            marketlens-frontend-port80-smoke \
+            || true
