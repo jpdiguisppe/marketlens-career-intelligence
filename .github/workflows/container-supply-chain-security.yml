@@ -1,0 +1,101 @@
+name: Container Supply Chain Security
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  image-security:
+    name: Scan ${{ matrix.name }} image and generate SBOM
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend
+            image: marketlens-backend-security:${{ github.sha }}
+            context: ./backend
+          - name: frontend
+            image: marketlens-frontend-security:${{ github.sha }}
+            context: ./frontend
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build production image
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ matrix.name }}" = "frontend" ]; then
+            docker build \
+              --build-arg VITE_API_BASE_URL=https://example.invalid \
+              -t "${{ matrix.image }}" \
+              "${{ matrix.context }}"
+          else
+            docker build -t "${{ matrix.image }}" "${{ matrix.context }}"
+          fi
+
+      - name: Record Trivy critical/high vulnerability evidence
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ matrix.image }}
+          scan-type: image
+          scanners: vuln
+          format: json
+          output: trivy-${{ matrix.name }}-critical-high.json
+          severity: CRITICAL,HIGH
+          ignore-unfixed: false
+          exit-code: '0'
+          version: v0.70.0
+
+      - name: Generate CycloneDX image SBOM
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ matrix.image }}
+          scan-type: image
+          format: cyclonedx
+          output: sbom-${{ matrix.name }}.cdx.json
+          skip-setup-trivy: true
+
+      - name: Record scanner and image metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "image=${{ matrix.image }}"
+            echo "source_revision=${GITHUB_SHA}"
+            echo "trivy_action_commit=ed142fd0673e97e23eac54620cfb913e5ce36c25"
+            echo "trivy_version=$(trivy --version | head -n 1)"
+            echo "image_id=$(docker image inspect --format '{{.Id}}' '${{ matrix.image }}')"
+          } > "supply-chain-${{ matrix.name }}-metadata.txt"
+
+      - name: Upload vulnerability and SBOM evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: marketlens-${{ matrix.name }}-supply-chain-security
+          path: |
+            trivy-${{ matrix.name }}-critical-high.json
+            sbom-${{ matrix.name }}.cdx.json
+            supply-chain-${{ matrix.name }}-metadata.txt
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Block unresolved critical/high image vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ matrix.image }}
+          scan-type: image
+          scanners: vuln
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: false
+          exit-code: '1'
+          skip-setup-trivy: true
