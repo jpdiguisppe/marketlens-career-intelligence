@@ -27,8 +27,18 @@ PORT_VALUE="${PORT:-8080}"
 case "$PORT_VALUE" in
   ''|*[!0-9]*) PORT_VALUE="8080" ;;
 esac
-if [ "$PORT_VALUE" -lt 1024 ] || [ "$PORT_VALUE" -gt 65535 ]; then
+if [ "$PORT_VALUE" -lt 1 ] || [ "$PORT_VALUE" -gt 65535 ]; then
   PORT_VALUE="8080"
+fi
+
+# Railway projects created before the non-root migration may still have their
+# public domain target pinned to port 80. Keep the runtime's requested PORT as
+# the primary listener, but also serve port 80 when it differs so a legacy
+# target cannot strand an otherwise healthy deployment behind a 502.
+if [ "$PORT_VALUE" -eq 80 ]; then
+  COMPAT_LISTEN=""
+else
+  COMPAT_LISTEN="listen 80;"
 fi
 
 cat > /usr/share/nginx/html/config.js <<EOF
@@ -40,6 +50,7 @@ EOF
 
 sed \
   -e "s|__PORT__|${PORT_VALUE}|g" \
+  -e "s|__COMPAT_LISTEN__|${COMPAT_LISTEN}|g" \
   -e "s|__API_ORIGIN__|${API_ORIGIN}|g" \
   /etc/nginx/nginx.conf.template > /tmp/nginx.conf
 
