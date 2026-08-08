@@ -1,4 +1,3 @@
-\
 """Resume file text extraction helpers with bounded parser resource use."""
 
 from __future__ import annotations

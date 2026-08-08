@@ -1,4 +1,3 @@
-\
 # Milestone 8.2D — Surface hardening
 
 ## Controls implemented
