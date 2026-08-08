@@ -35,6 +35,12 @@ jobs:
               | python -c 'import json,sys; print(str(json.load(sys.stdin).get("revision", "")).lower())' \
               || true)
 
+            frontend_revision=$(curl --silent --show-error --max-time 20 \
+              "$FRONTEND_URL/deployment-revision.txt" \
+              | tr -d '[:space:]' \
+              | tr 'A-F' 'a-f' \
+              || true)
+
             railway_success_count=$(curl --silent --show-error --max-time 20 \
               --header "Authorization: Bearer $GH_TOKEN" \
               --header 'Accept: application/vnd.github+json' \
@@ -43,16 +49,18 @@ jobs:
               | python -c 'import json,sys; p=json.load(sys.stdin); urls={str(s.get("target_url", "")) for s in p.get("statuses", []) if s.get("state") == "success" and "railway.com/project/" in str(s.get("target_url", ""))}; print(len(urls))' \
               || true)
 
-            printf 'attempt=%s backend_revision=%s railway_success_statuses=%s\n' \
-              "$attempt" "$backend_revision" "$railway_success_count" \
+            printf 'attempt=%s backend_revision=%s frontend_revision=%s railway_success_statuses=%s\n' \
+              "$attempt" "$backend_revision" "$frontend_revision" "$railway_success_count" \
               >> "$output/deployment-wait.txt"
 
-            if [ "$backend_revision" = "$expected" ] && [ "${railway_success_count:-0}" -ge 2 ]; then
-              echo "Backend reports exact revision and both Railway deployment statuses are successful for $expected"
+            if [ "$backend_revision" = "$expected" ] \
+              && [ "$frontend_revision" = "$expected" ] \
+              && [ "${railway_success_count:-0}" -ge 2 ]; then
+              echo "Both live services report exact revision and both Railway deployment statuses are successful for $expected"
               exit 0
             fi
 
-            echo "Waiting for exact deployment (attempt $attempt/60): backend=$backend_revision railway_success_statuses=${railway_success_count:-0}"
+            echo "Waiting for exact deployment (attempt $attempt/60): backend=$backend_revision frontend=$frontend_revision railway_success_statuses=${railway_success_count:-0}"
             sleep 10
           done
 
@@ -78,6 +86,7 @@ jobs:
           }
 
           probe_get frontend-root "$FRONTEND_URL/"
+          probe_get frontend-deployment-revision "$FRONTEND_URL/deployment-revision.txt"
           probe_get backend-health "$BACKEND_URL/health"
           probe_get backend-deployment-status "$BACKEND_URL/deployment/status"
           probe_get backend-docs "$BACKEND_URL/docs"
@@ -113,9 +122,11 @@ jobs:
         run: |
           python - <<'PY'
           import json
+          import os
           from pathlib import Path
 
           root = Path('/tmp/marketlens-production-security-surface')
+          expected_revision = os.environ['GITHUB_SHA'].lower()
 
           def status(name: str) -> int:
               return int((root / f'{name}.status').read_text().strip())
@@ -137,6 +148,7 @@ jobs:
 
           expected_public = {
               'frontend-root': 200,
+              'frontend-deployment-revision': 200,
               'backend-health': 200,
               'backend-deployment-status': 200,
           }
@@ -144,6 +156,12 @@ jobs:
               value = status(name)
               if value != expected:
                   failures.append(f'{name} returned HTTP {value}; expected {expected}')
+
+          frontend_revision = (root / 'frontend-deployment-revision.body').read_text().strip().lower()
+          if frontend_revision != expected_revision:
+              failures.append(
+                  f'live frontend reports revision {frontend_revision!r}; expected {expected_revision}'
+              )
 
           private_statuses = {
               name: status(name)
@@ -200,6 +218,8 @@ jobs:
               failures.append('backend API responses are missing no-store cache protection')
 
           report = {
+              'expected_revision': expected_revision,
+              'live_frontend_revision': frontend_revision,
               'public_route_statuses': {
                   name: status(name) for name in expected_public
               },
@@ -230,7 +250,7 @@ jobs:
 
       - name: Upload production security evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@v7
         with:
           name: marketlens-production-security-surface
           path: /tmp/marketlens-production-security-surface
