@@ -59,9 +59,16 @@ jobs:
             --dump-header /tmp/backend.headers \
             --output /tmp/backend.body \
             http://127.0.0.1:18000/health
-          grep -Eqi '^x-content-type-options: *nosniff\r?$' /tmp/backend.headers
-          grep -Eqi '^x-frame-options: *DENY\r?$' /tmp/backend.headers
-          grep -Eqi '^cache-control: .*no-store' /tmp/backend.headers
+          grep -Eqi '^x-content-type-options:[[:space:]]*nosniff[[:space:]]*$' /tmp/backend.headers
+          grep -Eqi '^x-frame-options:[[:space:]]*DENY[[:space:]]*$' /tmp/backend.headers
+          grep -Eqi '^cache-control:.*no-store' /tmp/backend.headers
+
+          docker logs marketlens-backend-smoke > /tmp/backend.log 2>&1
+          if grep -Fq -- '--- Logging error ---' /tmp/backend.log; then
+            cat /tmp/backend.log
+            echo 'Backend emitted a logging formatter error.'
+            exit 1
+          fi
 
       - name: Start frontend as non-root with local API origin
         shell: bash
@@ -98,13 +105,20 @@ jobs:
             --output /tmp/config.js
 
           grep -Eqi '^strict-transport-security:' /tmp/frontend.headers
-          grep -Eqi '^x-content-type-options: *nosniff\r?$' /tmp/frontend.headers
-          grep -Eqi '^x-frame-options: *DENY\r?$' /tmp/frontend.headers
-          grep -Eqi '^cache-control: .*no-store' /tmp/frontend.headers
-          grep -Eqi '^content-security-policy: .*frame-ancestors .none.' /tmp/frontend.headers
-          grep -Eqi '^content-security-policy: .*object-src .none.' /tmp/frontend.headers
-          grep -Eqi '^content-security-policy: .*connect-src[^;]*http://localhost:8000' /tmp/frontend.headers
+          grep -Eqi '^x-content-type-options:[[:space:]]*nosniff[[:space:]]*$' /tmp/frontend.headers
+          grep -Eqi '^x-frame-options:[[:space:]]*DENY[[:space:]]*$' /tmp/frontend.headers
+          grep -Eqi '^cache-control:.*no-store' /tmp/frontend.headers
+          grep -Eqi '^content-security-policy:.*frame-ancestors .none.' /tmp/frontend.headers
+          grep -Eqi '^content-security-policy:.*object-src .none.' /tmp/frontend.headers
+          grep -Eqi '^content-security-policy:.*connect-src[^;]*http://localhost:8000' /tmp/frontend.headers
           grep -Fq 'apiBaseUrl: "http://localhost:8000"' /tmp/config.js
+
+          docker logs marketlens-frontend-smoke > /tmp/frontend.log 2>&1
+          if grep -Eqi '(emerg|crit|alert|exec format error)' /tmp/frontend.log; then
+            cat /tmp/frontend.log
+            echo 'Frontend emitted a fatal runtime error.'
+            exit 1
+          fi
 
       - name: Upload smoke evidence
         if: always()
@@ -115,9 +129,11 @@ jobs:
             /tmp/backend-health.json
             /tmp/backend.headers
             /tmp/backend.body
+            /tmp/backend.log
             /tmp/frontend-root.html
             /tmp/frontend.headers
             /tmp/frontend.body
+            /tmp/frontend.log
             /tmp/config.js
           if-no-files-found: warn
           retention-days: 30
