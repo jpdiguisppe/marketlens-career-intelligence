@@ -57,7 +57,7 @@ jobs:
           python -m pytest -q 2>&1 | tee backend-compatibility-tests.txt
       - name: Upload evidence provenance reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: evidence-provenance-report
           path: |
