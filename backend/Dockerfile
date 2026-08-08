@@ -1,4 +1,4 @@
-FROM python:3.12.13-slim-bookworm
+FROM python:3.12.13-alpine3.23
 
 WORKDIR /app
 
@@ -9,8 +9,8 @@ COPY requirements.txt .
 RUN python -m pip install --upgrade pip \
     && python -m pip install --no-cache-dir -r requirements.txt \
     && python -m pip uninstall --yes setuptools pip \
-    && addgroup --system marketlens \
-    && adduser --system --ingroup marketlens --home /app marketlens
+    && addgroup -S marketlens \
+    && adduser -S -G marketlens -h /app marketlens
 
 COPY --chown=marketlens:marketlens app ./app
 
