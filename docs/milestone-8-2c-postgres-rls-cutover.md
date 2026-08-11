@@ -6,6 +6,27 @@ This runbook describes the controlled production rollout for MarketLens database
 
 This document intentionally contains no database URLs, passwords, tokens, or other credentials.
 
+## Current production status
+
+The live restricted-runtime cutover was performed on 2026-08-10 against production candidate:
+
+```text
+39570fb853be4f9cd670ea6d4670d334abcdd758
+```
+
+Recorded production evidence so far:
+
+- `backend/scripts/apply_database_security_migrations.py` completed successfully and reported restricted-role/forced-RLS verification success
+- the runtime role was verified as login-capable, non-superuser, unable to create databases or roles, `NOINHERIT`, and `NOBYPASSRLS`
+- the runtime role does not own protected tables, cannot create objects in the public schema, and cannot read migration metadata
+- RLS is enabled and forced on `saved_jobs`, `saved_reports`, `career_plan_runs`, `career_plan_steps`, and `career_plan_audit_events`
+- Railway backend `DATABASE_URL` was switched to the restricted runtime role and the backend redeployed successfully
+- `/health` and `/deployment/status` returned healthy responses on the exact production candidate
+- a direct restricted-runtime check showed default-deny behavior with no authenticated request identity
+- an authenticated synthetic Career Plan flow returned `201` on create, `200` on execute, reached `awaiting_approval` with seven persisted steps, and returned `200` on cleanup
+
+The remaining acceptance evidence is the final post-cutover two-independent-user live verification for saved jobs, saved reports, and Career Plans, plus final owner/evidence checklist items such as backup confirmation and secret/log/artifact review. No final Milestone 8.2 GO is claimed by this status update.
+
 ## Target state
 
 After cutover:
