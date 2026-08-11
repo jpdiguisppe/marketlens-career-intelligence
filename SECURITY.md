@@ -20,20 +20,24 @@ Production authentication uses Clerk bearer-token verification. Production confi
 
 Private saved jobs, saved reports, and Career Plans retain application-level ownership checks. Cross-user object access is designed to return `404` rather than reveal another user's object existence.
 
-Milestone 8.2C also includes PostgreSQL row-level-security migrations, a restricted non-owner runtime role, transaction-local authenticated-user context, forced ownership policies, and direct two-user PostgreSQL isolation tests. The code and tests are merged, but the live Railway database must still complete the documented owner-level migration and restricted-runtime credential cutover before production RLS is considered active.
+PostgreSQL row-level security is now active in production. The live Railway backend uses a restricted non-owner runtime role rather than the migration/table-owner credential, and authenticated private requests bind transaction-local user identity through `app.current_user_id`.
 
 ## Database isolation
 
-The intended PostgreSQL production posture is:
+The current PostgreSQL production posture is:
 
-- schema/security migrations run only with a separate owner or migration credential
-- the application runtime role is non-owner, `NOBYPASSRLS`, and unable to create schema objects
-- RLS is enabled and forced on user-owned root tables
-- Career Plan child tables inherit isolation through parent-run ownership policies
+- schema/security migrations use a separate owner or migration credential
+- the application runtime role is non-owner, `NOBYPASSRLS`, and unable to create databases, roles, or public-schema objects
+- the runtime role does not own protected tables and cannot read migration metadata
+- RLS is enabled and forced on `saved_jobs`, `saved_reports`, `career_plan_runs`, `career_plan_steps`, and `career_plan_audit_events`
+- Career Plan child-table policies enforce ownership through the parent run
 - authenticated user identity is applied with transaction-local PostgreSQL context and reapplied on each new SQLAlchemy transaction
-- pooled connections do not retain another request's user identity
+- pooled connections are designed not to retain another request's user identity
+- requests without an authenticated database user context fail closed against protected data
 
-Application-level ownership filters remain in place as an independent layer even after RLS is active.
+Application-level ownership filters remain in place as an independent layer above database-enforced RLS.
+
+The production cutover was performed on candidate revision `39570fb853be4f9cd670ea6d4670d334abcdd758`. A synthetic authenticated Career Plan was successfully created, executed to `awaiting_approval` with all seven persisted steps, and deleted through the restricted runtime credential. Final Milestone 8.2 sign-off still requires the remaining post-cutover two-independent-user live isolation evidence and final owner/evidence review.
 
 ## API and upload protections
 
@@ -87,8 +91,8 @@ The static admin-key model remains a residual risk compared with short-lived sco
 
 Milestone 8.2 is not complete until all final production checks pass. In particular:
 
-- the live Railway PostgreSQL database still requires the restricted-runtime/RLS cutover and verification
-- final two-independent-user production isolation testing has not yet been recorded
+- final post-cutover two-independent-user production isolation evidence for saved jobs, saved reports, and Career Plans still needs to be recorded
+- final owner/evidence checks still need to record backup confirmation, runtime absence of the migration credential, and secret/log/artifact review
 - rate limiting is process-local rather than distributed
 - reviewed Clerk-transitive `cryptography` advisories remain under the explicit exception policy until the dependency chain can be upgraded
 - no external-user beta validation is claimed
