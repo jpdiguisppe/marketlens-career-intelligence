@@ -2,13 +2,13 @@
 
 ## Current decision
 
-**PRE-SIGN-OFF — NO-GO FOR SENSITIVE DATA UNTIL THE PRODUCTION RLS CUTOVER AND LIVE TWO-USER ISOLATION TEST ARE COMPLETE.**
+**POST-CUTOVER PRE-SIGN-OFF — PRODUCTION RLS IS LIVE; FINAL GO REMAINS BLOCKED ON THE REMAINING MANUAL TWO-USER AND EVIDENCE CHECKS.**
 
 This document is the final release checklist for Milestone 8.2. It deliberately separates repository-proven controls from production controls that require owner-level Railway/PostgreSQL access.
 
 ## Repository-complete controls
 
-The following work is expected to be complete and green before the production database cutover:
+The following work is complete and green:
 
 - threat model and security audit baseline
 - production development-auth fail-closed guard
@@ -31,33 +31,36 @@ The following work is expected to be complete and green before the production da
 
 ## Production checks that can run without private user credentials
 
-Before final GO, record successful exact-revision evidence for:
+Successful exact-revision evidence has been recorded for production candidate `39570fb853be4f9cd670ea6d4670d334abcdd758`:
 
-- [ ] both Railway services deployed successfully for the final candidate SHA
-- [ ] backend `/deployment/status` reports the exact final candidate SHA
-- [ ] unauthenticated private routes return 401/403
-- [ ] production `/docs`, `/redoc`, and `/openapi.json` are unavailable
-- [ ] hostile CORS origins are rejected
-- [ ] the deployed frontend origin is explicitly allowed
-- [ ] frontend and backend required security headers are present
-- [ ] backend API responses use no-store protection
-- [ ] normal production health and Career Plan canaries pass
-- [ ] occupation/provider/reliability production gates remain green
+- [x] both Railway services deployed successfully for the candidate SHA
+- [x] backend `/deployment/status` reports the exact candidate SHA
+- [x] unauthenticated private routes return 401/403
+- [x] production `/docs`, `/redoc`, and `/openapi.json` are unavailable
+- [x] hostile CORS origins are rejected
+- [x] the deployed frontend origin is explicitly allowed
+- [x] frontend and backend required security headers are present
+- [x] backend API responses use no-store protection
+- [x] normal production health and public Career Plan canary checks pass
+- [x] production security-surface verification passed on the exact candidate
+
+Occupation/provider/reliability gates were green on the security candidate before the owner-controlled database cutover and remain part of the final evidence review.
 
 ## Owner-required production database cutover
 
-These steps require Railway/PostgreSQL owner access and must not be automated from ordinary CI:
+The live cutover was performed on 2026-08-10. Current recorded state:
 
-- [ ] current production database backup/snapshot confirmed
-- [ ] migration/owner credential available privately
-- [ ] unique restricted runtime-role password created and stored only in Railway/provider secret storage
-- [ ] short maintenance window established
-- [ ] `backend/scripts/apply_database_security_migrations.py` succeeds using the owner/migration connection
-- [ ] runtime role is verified non-owner, `NOBYPASSRLS`, unable to administer schema/RLS, and unable to read migration metadata
-- [ ] RLS is enabled and forced on all five protected tables
-- [ ] Railway backend `DATABASE_URL` is switched to the restricted runtime role
-- [ ] owner/migration credential is absent from ongoing application runtime variables
-- [ ] backend redeploy succeeds using the restricted credential
+- [ ] current production database backup/snapshot confirmation recorded in final evidence
+- [x] migration/owner credential was available privately for the migration
+- [x] unique restricted runtime-role password was created and handled through private secret controls
+- [x] `backend/scripts/apply_database_security_migrations.py` succeeded using the owner/migration connection
+- [x] runtime role was verified non-owner, `NOBYPASSRLS`, unable to administer schema/RLS, and unable to read migration metadata
+- [x] RLS is enabled and forced on all five protected tables
+- [x] Railway backend `DATABASE_URL` was switched to the restricted runtime role
+- [ ] owner/migration credential absence from ongoing application runtime variables recorded in final evidence
+- [x] backend redeploy succeeded using the restricted credential
+- [x] restricted-runtime default-deny behavior was verified with no request identity
+- [x] an authenticated synthetic Career Plan create/execute/delete flow succeeded through the restricted runtime role
 
 The detailed procedure and rollback plan are in `docs/milestone-8-2c-postgres-rls-cutover.md`.
 
@@ -88,7 +91,7 @@ Before GO:
 
 - [ ] production responses do not expose secrets, tokens, database URLs, or stack traces
 - [ ] reviewed logs do not contain submitted resume/job-document bodies or authentication secrets
-- [ ] migration output contains no credentials
+- [x] observed migration output contained no credentials
 - [ ] CI artifacts contain only intended security evidence and no production credentials/private user data
 
 ## Residual risks that may remain after GO
