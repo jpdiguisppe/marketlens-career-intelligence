@@ -6,6 +6,35 @@ This runbook describes the controlled production rollout for MarketLens database
 
 This document intentionally contains no database URLs, passwords, tokens, or other credentials.
 
+## Current production status
+
+**COMPLETE — production restricted-runtime/RLS cutover and post-cutover isolation verification succeeded.**
+
+The live restricted-runtime cutover and final verification were completed against functional production candidate:
+
+```text
+39570fb853be4f9cd670ea6d4670d334abcdd758
+```
+
+Recorded production evidence:
+
+- `backend/scripts/apply_database_security_migrations.py` completed successfully and reported restricted-role/forced-RLS verification success
+- the runtime role was verified as login-capable, non-superuser, unable to create databases or roles, `NOINHERIT`, and `NOBYPASSRLS`
+- the runtime role does not own protected tables, cannot create objects in the public schema, and cannot read migration metadata
+- RLS is enabled and forced on `saved_jobs`, `saved_reports`, `career_plan_runs`, `career_plan_steps`, and `career_plan_audit_events`
+- Railway backend `DATABASE_URL` was switched to the restricted runtime role and the backend redeployed successfully
+- `/health` and `/deployment/status` returned healthy responses on the exact functional production candidate
+- a direct restricted-runtime check showed default-deny behavior with no authenticated request identity
+- an authenticated synthetic Career Plan flow returned `201` on create, `200` on execute, reached `awaiting_approval` with seven persisted steps, and returned `200` on cleanup
+- two distinct live users passed post-cutover isolation checks: User B received `404` for User A saved-job read/delete, saved-report read/delete, and Career Plan read/execute/delete attempts
+- User B's own saved-job, saved-report, and Career Plan create/read/delete operations worked normally
+- User A's records remained intact after User B's attempted access and the final synthetic verification records were cleaned up successfully
+- the ongoing backend variable set was reviewed with values masked and contained the intended runtime database connection but no migration/owner database connection variable
+- backend production logs around the verification window were reviewed and exposed request metadata only, with no observed bearer/JWT tokens, database credentials, stack traces, or submitted test payload/document bodies
+- Railway-managed backup/PITR is unavailable on the current plan; a pre-cutover production PostgreSQL backup was created on owner-controlled local Mac storage as the rollback safeguard
+
+Milestone 8.2C issue #122 and umbrella issue #120 are closed as completed. The final GO record is in `docs/milestone-8-2f-security-signoff.md` and issue #120.
+
 ## Target state
 
 After cutover:
@@ -20,6 +49,8 @@ After cutover:
 - pooled PostgreSQL connections do not retain one request's user identity
 - PostgreSQL schema/security changes use a separate migration/owner credential that is never the application runtime credential
 
+The production state above now matches this target posture.
+
 ## Pre-cutover requirements
 
 Do not touch production until all of these are true:
@@ -28,10 +59,12 @@ Do not touch production until all of these are true:
 2. The deployed backend reports the exact merged revision and normal health/canary checks are green.
 3. The dedicated ephemeral PostgreSQL RLS gate passes all direct two-user isolation tests.
 4. Full backend, frontend, Docker, security, provider, and reliability gates are green.
-5. A current database backup/snapshot is available through the database provider.
+5. A current rollback backup is available through the database provider or an owner-controlled database dump stored outside the application runtime.
 6. The current PostgreSQL administration credential is available only to the person performing the migration.
 7. A strong unique password has been generated for the restricted runtime role and is stored only in the deployment secret manager.
 8. The production database role is confirmed capable of creating/altering the restricted runtime role. If the provider does not grant that capability, stop and use the provider-supported role-management path instead of weakening the migration.
+
+For the completed MarketLens cutover, Railway-managed backup/PITR was unavailable on the current plan, so the rollback backup was created locally on owner-controlled Mac storage before the migration.
 
 ## Why the code must deploy before RLS is enabled
 
@@ -187,13 +220,16 @@ If disabling RLS is required as a last-resort incident action, record the exact 
 
 ## Acceptance evidence before 8.2C closes
 
-8.2C should not be marked complete until the repository records:
+All required 8.2C evidence has now been recorded:
 
-- passing direct PostgreSQL two-user tests
-- passing full application/security gates
-- exact PR merge revision
-- exact production deployment revision
-- successful production migration verification
-- successful restricted-runtime application verification
-- confirmation that production `DATABASE_URL` no longer uses the migration/table-owner role
-- no unresolved critical/high security finding introduced by the cutover
+- [x] passing direct PostgreSQL two-user tests
+- [x] passing full application/security gates
+- [x] exact PR merge revision
+- [x] exact production deployment revision
+- [x] successful production migration verification
+- [x] successful restricted-runtime application verification
+- [x] confirmation that production `DATABASE_URL` no longer uses the migration/table-owner role
+- [x] post-cutover live two-user isolation for saved jobs, saved reports, and Career Plans
+- [x] no unresolved critical/high security finding introduced by the cutover outside the explicit reviewed exception policy
+
+Milestone 8.2C is complete.

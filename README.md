@@ -17,7 +17,8 @@ The product has two connected workspaces:
 - **Deterministic authority:** job selection, scores, evidence, hard requirements, provenance, opportunity categories, and the action set remain deterministic.
 - **Optional AI organization:** one strict-schema model call may organize existing IDs and priorities but cannot create facts, alter scores, approve a plan, or take external action.
 - **Private resumable workflows:** authenticated users can create, cancel, retry, edit, approve, reject, reopen, and delete owned plans.
-- **Production-oriented validation:** adversarial fixtures, ownership attacks, provider failures, cancellation recovery, privacy checks, explicit budgets, 528 backend tests, frontend and Docker builds, and exact-revision production canaries.
+- **Production security hardening:** Clerk authorization, application ownership checks, forced PostgreSQL row-level security, a restricted non-owner runtime database role, request/parser bounds, security headers, non-root containers, dependency/SAST/secret scanning, production-image scanning, and CycloneDX SBOM evidence.
+- **Final production security sign-off:** Milestone 8.2 completed with live two-user tenant-isolation verification, owner-controlled rollback evidence, runtime-credential review, production-log review, and explicit residual-risk documentation.
 
 ## Tech stack
 
@@ -25,8 +26,8 @@ The product has two connected workspaces:
 | --- | --- |
 | Frontend | React, TypeScript, Vite, CSS |
 | Backend | Python, FastAPI, Pydantic, SQLAlchemy |
-| Database | SQLite locally; PostgreSQL through `DATABASE_URL` in production |
-| Authentication | Clerk frontend sessions with backend token verification |
+| Database | SQLite locally; PostgreSQL through a restricted runtime role in production |
+| Authentication | Clerk frontend sessions with backend bearer-token verification |
 | Job sources | Greenhouse, Lever, named SmartRecruiters employer boards, Remote OK, Remotive |
 | AI integration | Backend-only Responses API configuration, strict schemas, deterministic fallback |
 | Testing | pytest, deterministic evaluators, adversarial fixtures, GitHub Actions, Docker builds |
@@ -35,14 +36,18 @@ The product has two connected workspaces:
 ## Live demo and evidence
 
 - **Frontend:** [MarketLens live demo](https://marketlens-career-intelligence-production-8a34.up.railway.app)
-- **Backend API docs:** [FastAPI Swagger UI](https://marketlens-career-intelligence-production.up.railway.app/docs)
 - **Backend health:** [API health endpoint](https://marketlens-career-intelligence-production.up.railway.app/health)
 - **Deployment identity:** [Safe backend revision endpoint](https://marketlens-career-intelligence-production.up.railway.app/deployment/status)
 - **Portfolio walkthrough:** [How to demo MarketLens](docs/portfolio-demo-walkthrough.md)
 - **Career Plan evaluation:** [Milestone 8.1 agent evaluation](docs/milestone-8-1-agent-evaluation.md)
 - **Career Plan sign-off:** [Milestone 8.1 completion record](docs/milestone-8-1-completion.md)
 - **Universal-search evaluation:** [Milestone 8.1I held-out occupation evaluation](docs/milestone-8-1i-held-out-occupation-evaluation.md)
-- **Milestone 8 final sign-off:** [Universal search production sign-off](docs/milestone-8-universal-search-signoff.md)
+- **Milestone 8 search sign-off:** [Universal search production sign-off](docs/milestone-8-universal-search-signoff.md)
+- **Security audit:** [Milestone 8.2 security audit baseline](docs/milestone-8-2-security-audit.md)
+- **RLS production cutover:** [Milestone 8.2C PostgreSQL RLS cutover](docs/milestone-8-2c-postgres-rls-cutover.md)
+- **Final security sign-off:** [Milestone 8.2F security sign-off](docs/milestone-8-2f-security-signoff.md)
+
+Production FastAPI `/docs`, `/redoc`, and `/openapi.json` are intentionally disabled as part of the hardened production surface.
 
 MarketLens is a portfolio product. Do not upload secrets, API keys, confidential employer/customer data, or highly sensitive personal information.
 
@@ -226,21 +231,69 @@ Signed-in users can additionally:
 Current controls include:
 
 - Clerk-managed authentication instead of custom password storage
-- backend verification of Clerk session tokens
-- server-side ownership filters for every private resource
-- cross-user private-record access returning `404`
+- backend verification of Clerk session tokens and authorized parties
+- server-side ownership filters for every private resource, with cross-user object access returning non-enumerating `404` responses where designed
+- a PostgreSQL restricted runtime role separated from the migration/table-owner credential
+- forced PostgreSQL row-level security on `saved_jobs`, `saved_reports`, `career_plan_runs`, `career_plan_steps`, and `career_plan_audit_events`
+- transaction-local authenticated-user database context through `app.current_user_id`
+- runtime-role restrictions including no superuser, role/database creation, inheritance, RLS bypass, protected-table ownership, public-schema creation, or migration-metadata access
 - no automatic persistence of analysis inputs
 - raw résumé text and full job descriptions excluded from Career Plan and saved-report records
 - backend-only model-provider keys
-- request-scoped redaction and sensitive-log context
+- request-scoped credential/document redaction and safe HTTP error behavior
 - strict model response schemas and reference validation
-- public request, file, CSV, search, provider, and workflow bounds
+- public request, file, CSV, search, provider, and workflow bounds, including a 2 MB request-body ceiling
+- DOCX archive/decompression/XML limits and PDF page/decompression/content limits
 - safe HTTPS application-link validation
-- SQLAlchemy ORM usage
-- secret scanning and log-redaction CI
+- production CSP, HSTS, frame, MIME-sniffing, referrer, permissions, and no-store controls
+- production API documentation disabled
+- backend and frontend production containers running as non-root users
+- Python/npm dependency audits, Bandit, CodeQL, full-history secret scanning, and safe-log regression tests
+- Trivy scans of the actual production images, machine-enforced critical/high policy, and CycloneDX SBOM evidence
 - explicit deterministic fallback for provider or model failure
 
-See [`SECURITY.md`](SECURITY.md) for the security policy and limitations.
+See [`SECURITY.md`](SECURITY.md) for the current security policy and limitations.
+
+## Milestone 8.2 production security sign-off
+
+Milestone 8.2A–8.2F is complete.
+
+- **8.2A — Threat model and audit baseline:** complete
+- **8.2B — Production authentication and authorization hardening:** complete
+- **8.2C — PostgreSQL RLS and least privilege:** complete, including the owner-controlled production restricted-runtime/RLS cutover
+- **8.2D — API, upload, browser, and container hardening:** complete and production verified
+- **8.2E — Security CI and supply-chain gates:** complete
+- **8.2F — Final production security sign-off:** complete
+
+The functional production security candidate used for the final evidence is:
+
+```text
+39570fb853be4f9cd670ea6d4670d334abcdd758
+```
+
+Final evidence includes:
+
+- backend health and deployment identity returning the exact functional candidate revision
+- frontend exact-revision production verification
+- successful Production Security Surface checks for private-route authentication boundaries, disabled API documentation, CORS, security headers, CSP, and no-store behavior
+- successful PostgreSQL security migration and restricted-runtime verification
+- forced RLS enabled on all five protected tables
+- Railway backend switched from the migration/table-owner credential to the restricted runtime database role
+- direct restricted-runtime default-deny behavior with no request identity
+- an authenticated synthetic production Career Plan flow successfully creating a run (`201`), executing it (`200`), reaching `awaiting_approval` with all seven workflow steps, and deleting the test run (`200`)
+- live two-independent-user isolation across saved jobs, saved reports, and Career Plans, with cross-user access returning `404` where designed while same-user operations continued to work normally
+- owner review confirming the ongoing backend runtime variable set does not contain the migration/owner database connection
+- owner review of production logs around the verification window showing request metadata only and no observed bearer/JWT tokens, database credentials, stack traces, or submitted test bodies
+- a pre-cutover production PostgreSQL backup created on owner-controlled local Mac storage because Railway-managed backup/PITR is unavailable on the current plan
+- final residual risks recorded explicitly rather than hidden
+
+Final decision:
+
+```text
+GO — MILESTONE 8.2 SECURITY HARDENING COMPLETE
+```
+
+GitHub issue #122 and umbrella issue #120 are closed as completed.
 
 ## Evaluation and production validation
 
@@ -278,20 +331,25 @@ The final Milestone 8 universal-search validation passed:
 | Production career spheres | 14 |
 | Manually reviewed production titles | 47 / 47 relevant |
 | Returned-title precision | 100.0% |
-| Backend test suite | 528 / 528 |
+| Backend test suite at universal-search sign-off | 528 / 528 |
 
-The final production audit ran against functional runtime revision:
+The final universal-search production audit ran against functional runtime revision:
 
 ```text
 9bd59046bc9c1f4efedc2ab13f2708c142a353e5
 ```
 
-Both Railway services, the Production Career Plan Canary, the Milestone 8E Production Canary, and the Production Occupation Audit passed. The final README/sign-off merge is a documentation-only descendant and must pass the same repository and exact-revision production gates before the GitHub umbrella closes.
+Both Railway services, the Production Career Plan Canary, the Milestone 8E Production Canary, and the Production Occupation Audit passed for that sign-off.
+
+### Security hardening validation
+
+The Milestone 8.2 security workstream recorded 539 normal backend tests, with the 7 PostgreSQL-specific security tests separated from that run, plus a dedicated 7/7 PostgreSQL RLS/verifier gate. It also included frontend and Docker builds, dependency audits, Bandit, CodeQL, full-history secret/log safety, production-image scanning, SBOM generation, and exact-revision production security checks.
 
 See:
 
 - [`docs/milestone-8-1i-held-out-occupation-evaluation.md`](docs/milestone-8-1i-held-out-occupation-evaluation.md)
 - [`docs/milestone-8-universal-search-signoff.md`](docs/milestone-8-universal-search-signoff.md)
+- [`docs/milestone-8-2f-security-signoff.md`](docs/milestone-8-2f-security-signoff.md)
 
 ## Backend API
 
@@ -376,12 +434,12 @@ Full automated authenticated Career Plan mode additionally requires short-lived 
 
 ## Portfolio and interview summary
 
-MarketLens is a deployed, stateful career-intelligence product. It combines SOC-aligned cross-sector occupation interpretation, public job-source integrations, evidence-aware analysis, private workflow persistence, and a bounded AI agent that orchestrates search and Smart Fit tools while preserving deterministic authority and human approval.
+MarketLens is a deployed, stateful career-intelligence product. It combines SOC-aligned cross-sector occupation interpretation, public job-source integrations, evidence-aware analysis, private workflow persistence, a bounded AI agent, database-enforced tenant isolation, and production security/supply-chain gates while preserving deterministic authority and human approval.
 
 Suggested résumé bullet:
 
 ```text
-Built and deployed MarketLens, a React/FastAPI career-intelligence platform with SOC-aligned occupation search across all 23 major career groups and a bounded AI planning agent that orchestrates public job sources and evidence-based résumé analysis; validated the system with 528 backend tests, 268 held-out search cases, adversarial/privacy/recovery gates, Docker builds, and exact-revision Railway production audits.
+Built and deployed MarketLens, a React/FastAPI/PostgreSQL career-intelligence platform with SOC-aligned search across all 23 major occupational groups, evidence-based résumé analysis, a bounded AI planning agent, Clerk authentication, forced PostgreSQL row-level security, container/SBOM security gates, and exact-revision Railway production validation.
 ```
 
 ## Milestone status
@@ -395,11 +453,16 @@ Completed:
 - Milestone 8.1H: cross-sector skill-badge precision
 - Milestone 8.1I: independent held-out occupation evaluation and exact-revision 40-search production audit
 - Milestone 8.1J: measured universal-search production sign-off and repository documentation
-- **Milestone 8 workstream: complete**
+- Milestones 8.2A and 8.2B: threat model, audit baseline, authentication, and authorization hardening
+- Milestone 8.2C: PostgreSQL RLS/least-privilege implementation and completed production restricted-runtime cutover
+- Milestone 8.2D: API, upload, browser, and container hardening
+- Milestone 8.2E: security CI, production-image scanning, and SBOM/supply-chain gates
+- Milestone 8.2F: final production security validation and GO decision
+- **Milestone 8.2 security hardening workstream: complete**
 
 ## Explicit post-launch roadmap
 
-The following are not implemented by the completed Milestone 8 production scope:
+The following are not implemented by the completed product scope:
 
 - autonomous or mass job applications
 - recruiter messaging or email automation

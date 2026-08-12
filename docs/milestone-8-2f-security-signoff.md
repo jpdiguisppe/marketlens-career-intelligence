@@ -2,13 +2,21 @@
 
 ## Current decision
 
-**PRE-SIGN-OFF — NO-GO FOR SENSITIVE DATA UNTIL THE PRODUCTION RLS CUTOVER AND LIVE TWO-USER ISOLATION TEST ARE COMPLETE.**
+**GO — MILESTONE 8.2 SECURITY HARDENING COMPLETE.**
 
-This document is the final release checklist for Milestone 8.2. It deliberately separates repository-proven controls from production controls that require owner-level Railway/PostgreSQL access.
+Milestone 8.2 completed final production security sign-off on 2026-08-11 after the repository security work, owner-controlled PostgreSQL restricted-runtime/RLS cutover, live two-independent-user isolation verification, and final owner evidence review were completed.
+
+The functional production candidate used for final security evidence is:
+
+```text
+39570fb853be4f9cd670ea6d4670d334abcdd758
+```
+
+GitHub issue #122 records the completed PostgreSQL cutover evidence, and umbrella issue #120 records the final GO decision.
 
 ## Repository-complete controls
 
-The following work is expected to be complete and green before the production database cutover:
+The following work is complete:
 
 - threat model and security audit baseline
 - production development-auth fail-closed guard
@@ -29,92 +37,101 @@ The following work is expected to be complete and green before the production da
 - exact-revision production security-surface workflow
 - current `SECURITY.md` and explicit residual-risk documentation
 
-## Production checks that can run without private user credentials
+## Exact-revision public production checks
 
-Before final GO, record successful exact-revision evidence for:
+Successful evidence was recorded for candidate `39570fb853be4f9cd670ea6d4670d334abcdd758`:
 
-- [ ] both Railway services deployed successfully for the final candidate SHA
-- [ ] backend `/deployment/status` reports the exact final candidate SHA
-- [ ] unauthenticated private routes return 401/403
-- [ ] production `/docs`, `/redoc`, and `/openapi.json` are unavailable
-- [ ] hostile CORS origins are rejected
-- [ ] the deployed frontend origin is explicitly allowed
-- [ ] frontend and backend required security headers are present
-- [ ] backend API responses use no-store protection
-- [ ] normal production health and Career Plan canaries pass
-- [ ] occupation/provider/reliability production gates remain green
+- [x] both Railway services deployed successfully for the candidate SHA
+- [x] backend `/deployment/status` reported the exact candidate SHA
+- [x] unauthenticated private routes returned 401/403
+- [x] production `/docs`, `/redoc`, and `/openapi.json` were unavailable
+- [x] hostile CORS origins were rejected
+- [x] the deployed frontend origin was explicitly allowed
+- [x] frontend and backend required security headers were present
+- [x] backend API responses used no-store protection where required
+- [x] normal production health and public Career Plan canary checks passed
+- [x] Production Security Surface verification passed on the exact candidate
+- [x] occupation/provider/reliability gates were green on the candidate during the final security workstream
 
 ## Owner-required production database cutover
 
-These steps require Railway/PostgreSQL owner access and must not be automated from ordinary CI:
+The live owner-controlled cutover completed successfully:
 
-- [ ] current production database backup/snapshot confirmed
-- [ ] migration/owner credential available privately
-- [ ] unique restricted runtime-role password created and stored only in Railway/provider secret storage
-- [ ] short maintenance window established
-- [ ] `backend/scripts/apply_database_security_migrations.py` succeeds using the owner/migration connection
-- [ ] runtime role is verified non-owner, `NOBYPASSRLS`, unable to administer schema/RLS, and unable to read migration metadata
-- [ ] RLS is enabled and forced on all five protected tables
-- [ ] Railway backend `DATABASE_URL` is switched to the restricted runtime role
-- [ ] owner/migration credential is absent from ongoing application runtime variables
-- [ ] backend redeploy succeeds using the restricted credential
+- [x] a pre-cutover production PostgreSQL backup was created on owner-controlled local Mac storage because Railway-managed backup/PITR is unavailable on the current plan
+- [x] migration/owner credential was available privately for the migration
+- [x] unique restricted runtime-role password was created and handled through private secret controls
+- [x] `backend/scripts/apply_database_security_migrations.py` succeeded using the owner/migration connection
+- [x] runtime role was verified non-owner, `NOBYPASSRLS`, unable to administer schema/RLS, and unable to read migration metadata
+- [x] RLS was enabled and forced on all five protected tables
+- [x] Railway backend `DATABASE_URL` was switched to the restricted runtime role
+- [x] owner/migration connection was confirmed absent from ongoing application runtime variables
+- [x] backend redeploy succeeded using the restricted credential
+- [x] restricted-runtime default-deny behavior was verified with no request identity
+- [x] an authenticated synthetic Career Plan create/execute/delete flow succeeded through the restricted runtime role
 
-The detailed procedure and rollback plan are in `docs/milestone-8-2c-postgres-rls-cutover.md`.
+The detailed procedure and rollback plan remain in `docs/milestone-8-2c-postgres-rls-cutover.md`.
 
 ## Two-independent-user live verification
 
-After the restricted runtime credential is live:
+The final live verification used two distinct authenticated users and synthetic test records only.
 
-User A should create/exercise:
+User A successfully created and read:
 
 - a saved job
 - a saved report
-- a Career Plan flow
+- a Career Plan
 
-Using a distinct User B account:
+Using User B:
 
-- [ ] User A's saved-job ID cannot be read, changed, or deleted by User B
-- [ ] User A's saved-report ID cannot be read, changed, or deleted by User B
-- [ ] User A's Career Plan/run data cannot be accessed by User B
-- [ ] cross-user API access remains non-enumerating (`404` where designed)
-- [ ] User B can still create/read/update/delete User B's own supported private data normally
-- [ ] User A's data remains functional after the test
+- [x] User A's saved-job ID could not be read or deleted by User B; cross-user requests returned `404`
+- [x] User A's saved-report ID could not be read or deleted by User B; cross-user requests returned `404`
+- [x] User A's Career Plan could not be read, executed, or deleted by User B; cross-user requests returned `404`
+- [x] cross-user API access remained non-enumerating where designed
+- [x] User B could create/read/delete User B's own saved job, saved report, and Career Plan normally
+- [x] User A's saved job, saved report, and Career Plan remained readable after User B's attempted access
+- [x] the final synthetic User A/User B verification records were cleaned up successfully
 
-No test should attempt to extract unrelated real-user records. Use only test records created for this verification.
+No test attempted to extract unrelated real-user records.
 
 ## Secret/private-data leakage verification
 
-Before GO:
+Final review recorded:
 
-- [ ] production responses do not expose secrets, tokens, database URLs, or stack traces
-- [ ] reviewed logs do not contain submitted resume/job-document bodies or authentication secrets
-- [ ] migration output contains no credentials
-- [ ] CI artifacts contain only intended security evidence and no production credentials/private user data
+- [x] production responses did not expose secrets, tokens, database URLs, or stack traces during the bounded verification
+- [x] reviewed backend deployment logs around the verification window contained request metadata only and did not expose bearer/JWT tokens, database URLs/passwords, stack traces, or submitted test payload/document bodies
+- [x] observed migration output contained no credentials
+- [x] repository secret/log-safety and supply-chain evidence gates remained in place; no production credentials/private user data were intentionally placed in CI artifacts
+- [x] backend service variables were reviewed with values masked; the ongoing runtime contained the intended `DATABASE_URL` and no migration/owner database connection variable
 
-## Residual risks that may remain after GO
+## Accepted residual risks
 
-A final GO does not mean MarketLens is unhackable. At minimum, record and accept or remediate:
+A final GO does not mean MarketLens is unhackable. The following residual risks remain documented and accepted for the current portfolio/demo scope:
 
 - process-local rate limiting rather than a distributed global quota
 - a static admin API key rather than short-lived scoped administrator identity
-- reviewed, time-bounded Clerk-transitive `cryptography` dependency exceptions if still unresolved
+- reviewed, time-bounded Clerk-transitive `cryptography` dependency exceptions while the dependency chain remains constrained
 - Docker base images managed by tags/Dependabot rather than immutable digest pinning
-- operational/privacy/legal work needed before collecting highly sensitive user data at scale
-- no claim of external-user beta validation unless such testing actually occurs
+- Railway-managed backup/PITR unavailable on the current plan; the local owner-controlled backup procedure is the current rollback safeguard
+- operational/privacy/legal work needed before intentionally collecting highly sensitive user data at scale
+- no claim of external-user beta validation
 
 ## Final decision rule
 
-### GO
+The GO rule required:
 
-Issue `GO — MILESTONE 8.2 SECURITY HARDENING COMPLETE` only when:
+1. repository and security gates green on the final candidate,
+2. both Railway services verified on the exact revision,
+3. production database cutover verified with the restricted role and forced RLS,
+4. two independent live users passing isolation checks,
+5. no unresolved critical/high finding without an explicit accepted exception,
+6. residual risks recorded honestly.
 
-1. all repository and security gates are green on the final candidate,
-2. both Railway services are verified on the exact revision,
-3. the production database cutover is verified with the restricted role and forced RLS,
-4. two independent live users pass the isolation checks,
-5. no unresolved critical/high finding remains without an explicit accepted exception,
-6. residual risks are recorded honestly.
+All six conditions were satisfied for the Milestone 8.2 sign-off evidence above.
 
-### NO-GO
+## Final record
 
-Remain NO-GO for sensitive production data if any required production RLS, isolation, critical/high security, secret-leakage, or exact-revision verification is missing or failing.
+**GO — MILESTONE 8.2 SECURITY HARDENING COMPLETE**
+
+- 8.2C issue #122: closed as completed
+- Milestone 8.2 umbrella issue #120: closed as completed
+- functional production security candidate: `39570fb853be4f9cd670ea6d4670d334abcdd758`
