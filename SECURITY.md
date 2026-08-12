@@ -1,6 +1,6 @@
 # Security Policy
 
-MarketLens is a portfolio/demo career-intelligence application. Until Milestone 8.2 receives final production security sign-off, the live deployment should not be treated as a service for highly sensitive personal, employer, medical, financial, legal, or government-identification data.
+MarketLens is a portfolio/demo career-intelligence application with completed Milestone 8.2 production security sign-off. The live deployment has database-enforced tenant isolation, production auth hardening, security/supply-chain gates, and documented residual risks, but it is still not presented as a service for highly sensitive or regulated data at scale.
 
 ## Supported use
 
@@ -20,7 +20,9 @@ Production authentication uses Clerk bearer-token verification. Production confi
 
 Private saved jobs, saved reports, and Career Plans retain application-level ownership checks. Cross-user object access is designed to return `404` rather than reveal another user's object existence.
 
-PostgreSQL row-level security is now active in production. The live Railway backend uses a restricted non-owner runtime role rather than the migration/table-owner credential, and authenticated private requests bind transaction-local user identity through `app.current_user_id`.
+PostgreSQL row-level security is active in production. The live Railway backend uses a restricted non-owner runtime role rather than the migration/table-owner credential, and authenticated private requests bind transaction-local user identity through `app.current_user_id`.
+
+The final live two-user verification used synthetic records only and confirmed that User B received non-enumerating `404` responses when attempting to read/delete User A saved jobs and saved reports or read/execute/delete User A Career Plans, while both users' own supported private operations continued to work normally.
 
 ## Database isolation
 
@@ -37,7 +39,7 @@ The current PostgreSQL production posture is:
 
 Application-level ownership filters remain in place as an independent layer above database-enforced RLS.
 
-The production cutover was performed on candidate revision `39570fb853be4f9cd670ea6d4670d334abcdd758`. A synthetic authenticated Career Plan was successfully created, executed to `awaiting_approval` with all seven persisted steps, and deleted through the restricted runtime credential. Final Milestone 8.2 sign-off still requires the remaining post-cutover two-independent-user live isolation evidence and final owner/evidence review.
+The production cutover and final live verification were completed against functional candidate revision `39570fb853be4f9cd670ea6d4670d334abcdd758`. The restricted runtime path was verified through authenticated create/execute/delete behavior, and the owner-controlled final sign-off also confirmed that the migration/owner connection is absent from the ongoing backend runtime variable set.
 
 ## API and upload protections
 
@@ -87,16 +89,19 @@ Admin write/delete routes use a server-side `X-Admin-API-Key` and have a dedicat
 
 The static admin-key model remains a residual risk compared with short-lived scoped administrative identity. Rotation, scope reduction, or replacement should be considered before MarketLens becomes a broader multi-user production service.
 
-## Current production limitations
+## Current production limitations and accepted residual risks
 
-Milestone 8.2 is not complete until all final production checks pass. In particular:
+Milestone 8.2 is complete, but the final GO does not mean MarketLens is unhackable or ready for arbitrary sensitive-data workloads. Accepted residual risks include:
 
-- final post-cutover two-independent-user production isolation evidence for saved jobs, saved reports, and Career Plans still needs to be recorded
-- final owner/evidence checks still need to record backup confirmation, runtime absence of the migration credential, and secret/log/artifact review
 - rate limiting is process-local rather than distributed
-- reviewed Clerk-transitive `cryptography` advisories remain under the explicit exception policy until the dependency chain can be upgraded
+- reviewed Clerk-transitive `cryptography` advisories remain under the explicit time-bounded exception policy until the dependency chain can be upgraded
+- the administrator model still relies on a static server-side admin key rather than short-lived scoped admin identity
+- Docker base images are managed through tags/Dependabot rather than immutable digest pins
+- Railway-managed backup/PITR is unavailable on the current plan; the completed cutover used an owner-controlled local pre-cutover PostgreSQL backup as the rollback safeguard
 - no external-user beta validation is claimed
 - privacy policy/terms and operational incident-response processes would need additional work before collecting sensitive real-user data at scale
+
+The final Milestone 8.2 security record is documented in `docs/milestone-8-2f-security-signoff.md` and GitHub issue #120.
 
 ## Reporting a vulnerability
 
