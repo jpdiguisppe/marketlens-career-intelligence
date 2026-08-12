@@ -11,13 +11,14 @@ The product has two connected workspaces:
 
 - **Deployed full-stack product:** React, TypeScript, FastAPI, Pydantic, SQLAlchemy, Clerk authentication, PostgreSQL, Docker, and Railway.
 - **Universal cross-sector occupation search:** all 23 SOC major occupational groups are represented through 214 occupation concepts, 454 accepted titles, and 33 explicitly ambiguous acronyms.
-- **Measured search quality:** 268/268 held-out occupation queries, 92/92 held-out title checks, and a 40/40 exact-revision production audit passed; all 47 manually reviewed returned live titles were relevant.
-- **Bounded Career Planning Agent:** a durable seven-step workflow orchestrates job search and Smart Fit rather than reproducing those systems inside prompts.
-- **Deterministic authority:** job selection, scores, evidence, hard requirements, provenance, opportunity categories, and proposed actions remain deterministic.
-- **Optional AI organization:** one strict-schema model call may organize existing IDs and priorities but cannot invent facts, change scores, approve a plan, or take external action.
+- **Strict search correctness:** canonical titles, alternate titles, spelling variants, safe abbreviations, level modifiers, and locations are handled independently; ambiguous or unknown queries are stopped rather than guessed.
+- **Measured production precision:** 268/268 held-out queries, 92/92 title checks, and a 40/40 exact-revision production audit passed; all 47 returned live titles were relevant after manual review.
+- **Bounded Career Planning Agent:** a durable seven-step workflow orchestrates the existing search and Smart Fit systems rather than reproducing their logic inside prompts.
+- **Deterministic authority:** job selection, scores, evidence, hard requirements, provenance, opportunity categories, and the action set remain deterministic.
+- **Optional AI organization:** one strict-schema model call may organize existing IDs and priorities but cannot create facts, alter scores, approve a plan, or take external action.
 - **Private resumable workflows:** authenticated users can create, cancel, retry, edit, approve, reject, reopen, and delete owned plans.
-- **Production security hardening:** Clerk authorization, application ownership checks, PostgreSQL forced row-level security, a restricted non-owner runtime database role, request and parser bounds, security headers, non-root containers, dependency/SAST/secret scanning, production image scanning, and SBOM evidence.
-- **Final production security sign-off:** Milestone 8.2 completed with live two-user tenant-isolation verification, owner-controlled database rollback evidence, runtime credential review, production log review, and an explicit residual-risk record.
+- **Production security hardening:** Clerk authorization, application ownership checks, forced PostgreSQL row-level security, a restricted non-owner runtime database role, request/parser bounds, security headers, non-root containers, dependency/SAST/secret scanning, production-image scanning, and CycloneDX SBOM evidence.
+- **Final production security sign-off:** Milestone 8.2 completed with live two-user tenant-isolation verification, owner-controlled rollback evidence, runtime-credential review, production-log review, and explicit residual-risk documentation.
 
 ## Tech stack
 
@@ -25,11 +26,11 @@ The product has two connected workspaces:
 | --- | --- |
 | Frontend | React, TypeScript, Vite, CSS |
 | Backend | Python, FastAPI, Pydantic, SQLAlchemy |
-| Database | SQLite locally; PostgreSQL in production |
+| Database | SQLite locally; PostgreSQL through a restricted runtime role in production |
 | Authentication | Clerk frontend sessions with backend bearer-token verification |
 | Job sources | Greenhouse, Lever, named SmartRecruiters employer boards, Remote OK, Remotive |
 | AI integration | Backend-only Responses API configuration, strict schemas, deterministic fallback |
-| Testing | pytest, deterministic evaluators, adversarial fixtures, GitHub Actions, Docker |
+| Testing | pytest, deterministic evaluators, adversarial fixtures, GitHub Actions, Docker builds |
 | Deployment | Railway frontend and backend services |
 
 ## Live demo and evidence
@@ -43,10 +44,10 @@ The product has two connected workspaces:
 - **Universal-search evaluation:** [Milestone 8.1I held-out occupation evaluation](docs/milestone-8-1i-held-out-occupation-evaluation.md)
 - **Milestone 8 search sign-off:** [Universal search production sign-off](docs/milestone-8-universal-search-signoff.md)
 - **Security audit:** [Milestone 8.2 security audit baseline](docs/milestone-8-2-security-audit.md)
-- **RLS production cutover runbook:** [Milestone 8.2C PostgreSQL RLS cutover](docs/milestone-8-2c-postgres-rls-cutover.md)
+- **RLS production cutover:** [Milestone 8.2C PostgreSQL RLS cutover](docs/milestone-8-2c-postgres-rls-cutover.md)
 - **Final security sign-off:** [Milestone 8.2F security sign-off](docs/milestone-8-2f-security-signoff.md)
 
-Production FastAPI `/docs`, `/redoc`, and `/openapi.json` are intentionally disabled as part of the production security surface.
+Production FastAPI `/docs`, `/redoc`, and `/openapi.json` are intentionally disabled as part of the hardened production surface.
 
 MarketLens is a portfolio product. Do not upload secrets, API keys, confidential employer/customer data, or highly sensitive personal information.
 
@@ -87,6 +88,8 @@ A production run was cancelled after search and successfully completed as attemp
 User edits remain separate from the immutable generated proposal and persist after approval, refresh, and reopening.
 
 ![Career Plans approved edited action](docs/screenshots/milestone-8-1/approved-edited-action.svg)
+
+The privacy-safe Career Plans visuals reproduce captured production states while excluding raw résumé text and account details. Responsive behavior was separately validated at a 400 × 770 viewport.
 
 ## Current product workflow
 
@@ -147,9 +150,19 @@ MarketLens evaluates occupation, experience level, industry, and location as sep
 
 The occupation layer recognizes canonical titles, accepted alternate titles, spelling and punctuation variants, reordered phrases, and safe abbreviations across every SOC major group. Bare ambiguous acronyms such as `SAE`, `PM`, `PA`, and `SE` are not silently expanded; MarketLens asks the user to choose a meaning before any provider search.
 
-Specific occupations require title-level evidence. A shared word such as `engineer`, `analyst`, `assistant`, `technician`, `editor`, or `manager` is not sufficient by itself. Production guards protect distinctions including accountant vs. accountant partner programs, financial analyst vs. generic finance fellowships, RN vs. LPN/LVN, medical assistant vs. medical fellowships, electrician vs. electrical engineer, and policy analyst vs. data analyst.
+Specific occupations require title-level evidence. A shared word such as `engineer`, `analyst`, `assistant`, `technician`, `editor`, or `manager` is not sufficient by itself. Production guards protect distinctions including:
+
+- accountant vs. accountant partner programs or generic rotations
+- financial analyst vs. generic finance fellowships
+- registered nurse vs. LPN/LVN and advanced-practice titles
+- medical assistant vs. medical fellowships
+- electrician vs. electrical engineer
+- policy analyst vs. data analyst
+- journalism editor vs. video editor
 
 Unknown nonsense phrases stop without provider requests. Recognized occupations with no current configured-source result receive an explicit explanation and canonical continuation links rather than loosely related filler jobs.
+
+Supported experience levels are `any`, `intern`, `entry`, `mid`, and `senior`. Explicit city searches use bounded metro aliases rather than unrestricted location matching.
 
 MarketLens uses public APIs rather than scraping closed platforms:
 
@@ -176,25 +189,63 @@ The agent:
 - returns a complete deterministic plan when AI is disabled or fails
 - requires an explicit user decision before a plan becomes approved or rejected
 
-The model cannot change Smart Fit scores, override hard requirements, add jobs, invent résumé evidence, apply to jobs, message recruiters, edit external profiles, purchase services, bypass authentication, or predict hiring outcomes.
+The model cannot:
+
+- change Smart Fit scores or confidence
+- change evidence statuses or provenance
+- override hard-requirement findings
+- add jobs or deterministic actions
+- invent experience, credentials, projects, or résumé claims
+- apply to jobs, message recruiters, edit profiles, or purchase services
+- bypass authentication or human approval
+- predict interviews, offers, salary, or hiring probability
+
+## Current capabilities
+
+All visitors can:
+
+- upload `.txt`, `.md`, `.pdf`, or `.docx` résumés for request-time extraction
+- paste résumé text manually
+- search configured public sources across a SOC-aligned cross-sector occupation registry
+- receive clarification instead of guessed results for ambiguous occupation acronyms
+- receive safe-stop guidance for unsupported unknown queries
+- inspect provider-by-provider coverage, warnings, suggestions, and continuation links
+- compare one to ten searched or manually pasted jobs through Smart Fit
+- review requirements, evidence, rankings, gaps, limitations, and coaching actions
+- use deterministic analysis when model-assisted stages are unavailable
+
+Signed-in users can additionally:
+
+- save, reopen, and delete jobs privately
+- save and delete reduced Smart Fit summaries
+- create private Career Plan runs
+- inspect all seven workflow steps and safe audit history
+- cancel and retry active or failed runs
+- review selected and excluded candidates with deterministic reason codes
+- inspect opportunity categories, repeated strengths, repeated gaps, and proposed actions
+- request bounded explanations from saved plan data
+- edit, approve, reject, reopen, and delete owned plans
 
 ## Security and privacy
 
 Current controls include:
 
-- Clerk-managed authentication and backend session-token verification
-- exact application-level ownership filters for private resources, with cross-user object access returning non-enumerating `404` responses where designed
-- a PostgreSQL restricted runtime role that is separate from the migration/table-owner credential
+- Clerk-managed authentication instead of custom password storage
+- backend verification of Clerk session tokens and authorized parties
+- server-side ownership filters for every private resource, with cross-user object access returning non-enumerating `404` responses where designed
+- a PostgreSQL restricted runtime role separated from the migration/table-owner credential
 - forced PostgreSQL row-level security on `saved_jobs`, `saved_reports`, `career_plan_runs`, `career_plan_steps`, and `career_plan_audit_events`
-- transaction-local authenticated-user context through `app.current_user_id`
+- transaction-local authenticated-user database context through `app.current_user_id`
 - runtime-role restrictions including no superuser, role/database creation, inheritance, RLS bypass, protected-table ownership, public-schema creation, or migration-metadata access
-- no automatic persistence of raw analysis inputs
+- no automatic persistence of analysis inputs
 - raw résumé text and full job descriptions excluded from Career Plan and saved-report records
+- backend-only model-provider keys
 - request-scoped credential/document redaction and safe HTTP error behavior
 - strict model response schemas and reference validation
-- route-specific request/rate bounds and a 2 MB request-body ceiling
+- public request, file, CSV, search, provider, and workflow bounds, including a 2 MB request-body ceiling
 - DOCX archive/decompression/XML limits and PDF page/decompression/content limits
-- production CSP, HSTS, clickjacking, MIME-sniffing, referrer, permissions, and no-store controls
+- safe HTTPS application-link validation
+- production CSP, HSTS, frame, MIME-sniffing, referrer, permissions, and no-store controls
 - production API documentation disabled
 - backend and frontend production containers running as non-root users
 - Python/npm dependency audits, Bandit, CodeQL, full-history secret scanning, and safe-log regression tests
@@ -248,11 +299,26 @@ GitHub issue #122 and umbrella issue #120 are closed as completed.
 
 ### Career Planning Agent
 
-The original Milestone 8.1 Career Planning Agent sign-off covered ten representative career sectors, repeated deterministic executions, prompt-injection inputs, model/provider failure modes, cancellation/retry recovery, production ownership isolation, provider telemetry, cost/token policies, Docker builds, and exact-revision Railway validation.
+The original Milestone 8.1 Career Planning Agent sign-off included:
+
+- ten representative career sectors
+- ten committed task-level cases
+- three repeated deterministic executions per case
+- thirty stable agent executions with zero failed cases
+- prompt-injection inputs across descriptions, titles, company metadata, URLs, and authenticated résumé text
+- model timeout, transport, HTTP, invalid JSON, schema, reference, duplicate, and policy-changing output cases
+- cancellation and failed-run retry recovery without duplicated actions
+- automated and production ownership-isolation checks
+- provider telemetry, cost, token, payload, and latency policies
+- 447 backend tests at the original agent sign-off
+- frontend production build and both Docker images
+- exact-revision Railway canaries and authenticated browser validation
 
 See [`docs/milestone-8-1-completion.md`](docs/milestone-8-1-completion.md) for the full agent evidence.
 
 ### Universal occupation search
+
+The final Milestone 8 universal-search validation passed:
 
 | Measurement | Result |
 | --- | ---: |
@@ -265,10 +331,19 @@ See [`docs/milestone-8-1-completion.md`](docs/milestone-8-1-completion.md) for t
 | Production career spheres | 14 |
 | Manually reviewed production titles | 47 / 47 relevant |
 | Returned-title precision | 100.0% |
+| Backend test suite at universal-search sign-off | 528 / 528 |
+
+The final universal-search production audit ran against functional runtime revision:
+
+```text
+9bd59046bc9c1f4efedc2ab13f2708c142a353e5
+```
+
+Both Railway services, the Production Career Plan Canary, the Milestone 8E Production Canary, and the Production Occupation Audit passed for that sign-off.
 
 ### Security hardening validation
 
-The final security workstream recorded 539 normal backend tests with PostgreSQL-specific cases separated from that run, plus a dedicated 7/7 PostgreSQL RLS/verifier gate. It also included frontend and Docker builds, dependency audits, Bandit, CodeQL, secret/log safety, production image scanning, SBOM generation, and exact-revision production security checks.
+The Milestone 8.2 security workstream recorded 539 normal backend tests, with the 7 PostgreSQL-specific security tests separated from that run, plus a dedicated 7/7 PostgreSQL RLS/verifier gate. It also included frontend and Docker builds, dependency audits, Bandit, CodeQL, full-history secret/log safety, production-image scanning, SBOM generation, and exact-revision production security checks.
 
 See:
 
@@ -323,7 +398,7 @@ npm install
 npm run dev
 ```
 
-The frontend reads `VITE_API_BASE_URL` and `VITE_CLERK_PUBLISHABLE_KEY`.
+The frontend reads `VITE_API_BASE_URL` and `VITE_CLERK_PUBLISHABLE_KEY`. Railway runtime configuration also exposes a sanitized deployment revision through `config.js`.
 
 ### Quality checks
 
@@ -346,6 +421,17 @@ docker build -t marketlens-backend ./backend
 docker build --build-arg VITE_API_BASE_URL=http://localhost:8000 -t marketlens-frontend ./frontend
 ```
 
+Exact-revision production occupation audit:
+
+```bash
+cd backend
+EXPECTED_REVISION=<40-character-sha> \
+AUDIT_WAIT_SECONDS=900 \
+python scripts/run_production_occupation_audit.py
+```
+
+Full automated authenticated Career Plan mode additionally requires short-lived canary bearer tokens stored outside the repository.
+
 ## Portfolio and interview summary
 
 MarketLens is a deployed, stateful career-intelligence product. It combines SOC-aligned cross-sector occupation interpretation, public job-source integrations, evidence-aware analysis, private workflow persistence, a bounded AI agent, database-enforced tenant isolation, and production security/supply-chain gates while preserving deterministic authority and human approval.
@@ -353,7 +439,7 @@ MarketLens is a deployed, stateful career-intelligence product. It combines SOC-
 Suggested résumé bullet:
 
 ```text
-Built and deployed MarketLens, a React/FastAPI/PostgreSQL career-intelligence platform with SOC-aligned job search, evidence-based résumé analysis, a bounded AI planning agent, Clerk authentication, forced PostgreSQL row-level security, container/SBOM security gates, and exact-revision Railway production validation.
+Built and deployed MarketLens, a React/FastAPI/PostgreSQL career-intelligence platform with SOC-aligned search across all 23 major occupational groups, evidence-based résumé analysis, a bounded AI planning agent, Clerk authentication, forced PostgreSQL row-level security, container/SBOM security gates, and exact-revision Railway production validation.
 ```
 
 ## Milestone status
@@ -365,12 +451,12 @@ Completed:
 - Milestones 8.1A–8.1F: bounded Career Planning Agent architecture, orchestration, optional AI organization, authenticated UI, permanent evaluation, and production sign-off
 - Milestone 8.1G: universal occupation-search foundation and production hardening
 - Milestone 8.1H: cross-sector skill-badge precision
-- Milestone 8.1I: independent held-out occupation evaluation and exact-revision production audit
-- Milestone 8.1J: measured universal-search production sign-off
+- Milestone 8.1I: independent held-out occupation evaluation and exact-revision 40-search production audit
+- Milestone 8.1J: measured universal-search production sign-off and repository documentation
 - Milestones 8.2A and 8.2B: threat model, audit baseline, authentication, and authorization hardening
-- Milestone 8.2C: PostgreSQL RLS/least privilege implementation and completed production restricted-runtime cutover
+- Milestone 8.2C: PostgreSQL RLS/least-privilege implementation and completed production restricted-runtime cutover
 - Milestone 8.2D: API, upload, browser, and container hardening
-- Milestone 8.2E: security CI, production image scanning, and SBOM/supply-chain gates
+- Milestone 8.2E: security CI, production-image scanning, and SBOM/supply-chain gates
 - Milestone 8.2F: final production security validation and GO decision
 - **Milestone 8.2 security hardening workstream: complete**
 
