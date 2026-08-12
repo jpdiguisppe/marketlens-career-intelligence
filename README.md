@@ -17,6 +17,7 @@ The product has two connected workspaces:
 - **Optional AI organization:** one strict-schema model call may organize existing IDs and priorities but cannot invent facts, change scores, approve a plan, or take external action.
 - **Private resumable workflows:** authenticated users can create, cancel, retry, edit, approve, reject, reopen, and delete owned plans.
 - **Production security hardening:** Clerk authorization, application ownership checks, PostgreSQL forced row-level security, a restricted non-owner runtime database role, request and parser bounds, security headers, non-root containers, dependency/SAST/secret scanning, production image scanning, and SBOM evidence.
+- **Final production security sign-off:** Milestone 8.2 completed with live two-user tenant-isolation verification, owner-controlled database rollback evidence, runtime credential review, production log review, and an explicit residual-risk record.
 
 ## Tech stack
 
@@ -43,7 +44,7 @@ The product has two connected workspaces:
 - **Milestone 8 search sign-off:** [Universal search production sign-off](docs/milestone-8-universal-search-signoff.md)
 - **Security audit:** [Milestone 8.2 security audit baseline](docs/milestone-8-2-security-audit.md)
 - **RLS production cutover runbook:** [Milestone 8.2C PostgreSQL RLS cutover](docs/milestone-8-2c-postgres-rls-cutover.md)
-- **Final security checklist:** [Milestone 8.2F security sign-off](docs/milestone-8-2f-security-signoff.md)
+- **Final security sign-off:** [Milestone 8.2F security sign-off](docs/milestone-8-2f-security-signoff.md)
 
 Production FastAPI `/docs`, `/redoc`, and `/openapi.json` are intentionally disabled as part of the production security surface.
 
@@ -202,26 +203,26 @@ Current controls include:
 
 See [`SECURITY.md`](SECURITY.md) for the current security policy and limitations.
 
-## Milestone 8.2 production security progress
+## Milestone 8.2 production security sign-off
 
-Milestone 8.2 is in final production sign-off. The implementation-heavy workstreams are complete:
+Milestone 8.2A–8.2F is complete.
 
 - **8.2A — Threat model and audit baseline:** complete
 - **8.2B — Production authentication and authorization hardening:** complete
-- **8.2C — PostgreSQL RLS and least privilege:** implementation complete and the live restricted-runtime production cutover was performed on 2026-08-10
+- **8.2C — PostgreSQL RLS and least privilege:** complete, including the owner-controlled production restricted-runtime/RLS cutover
 - **8.2D — API, upload, browser, and container hardening:** complete and production verified
 - **8.2E — Security CI and supply-chain gates:** complete
-- **8.2F — Final production security sign-off:** in progress
+- **8.2F — Final production security sign-off:** complete
 
-The current production security candidate is:
+The functional production security candidate used for the final evidence is:
 
 ```text
 39570fb853be4f9cd670ea6d4670d334abcdd758
 ```
 
-Production evidence recorded on this candidate includes:
+Final evidence includes:
 
-- backend health and deployment identity returning the exact candidate revision
+- backend health and deployment identity returning the exact functional candidate revision
 - frontend exact-revision production verification
 - successful Production Security Surface checks for private-route authentication boundaries, disabled API documentation, CORS, security headers, CSP, and no-store behavior
 - successful PostgreSQL security migration and restricted-runtime verification
@@ -229,10 +230,19 @@ Production evidence recorded on this candidate includes:
 - Railway backend switched from the migration/table-owner credential to the restricted runtime database role
 - direct restricted-runtime default-deny behavior with no request identity
 - an authenticated synthetic production Career Plan flow successfully creating a run (`201`), executing it (`200`), reaching `awaiting_approval` with all seven workflow steps, and deleting the test run (`200`)
+- live two-independent-user isolation across saved jobs, saved reports, and Career Plans, with cross-user access returning `404` where designed while same-user operations continued to work normally
+- owner review confirming the ongoing backend runtime variable set does not contain the migration/owner database connection
+- owner review of production logs around the verification window showing request metadata only and no observed bearer/JWT tokens, database credentials, stack traces, or submitted test bodies
+- a pre-cutover production PostgreSQL backup created on owner-controlled local Mac storage because Railway-managed backup/PITR is unavailable on the current plan
+- final residual risks recorded explicitly rather than hidden
 
-The remaining work is intentionally manual final-sign-off evidence, not another implementation phase. Before issuing the final Milestone 8.2 GO decision, the project still needs the post-cutover two-independent-user live isolation evidence for saved jobs, saved reports, and Career Plans, plus the final owner/evidence checklist such as backup confirmation and secret/log/artifact review.
+Final decision:
 
-No final `GO — MILESTONE 8.2 SECURITY HARDENING COMPLETE` is claimed until those checks are recorded.
+```text
+GO — MILESTONE 8.2 SECURITY HARDENING COMPLETE
+```
+
+GitHub issue #122 and umbrella issue #120 are closed as completed.
 
 ## Evaluation and production validation
 
@@ -256,10 +266,15 @@ See [`docs/milestone-8-1-completion.md`](docs/milestone-8-1-completion.md) for t
 | Manually reviewed production titles | 47 / 47 relevant |
 | Returned-title precision | 100.0% |
 
+### Security hardening validation
+
+The final security workstream recorded 539 normal backend tests with PostgreSQL-specific cases separated from that run, plus a dedicated 7/7 PostgreSQL RLS/verifier gate. It also included frontend and Docker builds, dependency audits, Bandit, CodeQL, secret/log safety, production image scanning, SBOM generation, and exact-revision production security checks.
+
 See:
 
 - [`docs/milestone-8-1i-held-out-occupation-evaluation.md`](docs/milestone-8-1i-held-out-occupation-evaluation.md)
 - [`docs/milestone-8-universal-search-signoff.md`](docs/milestone-8-universal-search-signoff.md)
+- [`docs/milestone-8-2f-security-signoff.md`](docs/milestone-8-2f-security-signoff.md)
 
 ## Backend API
 
@@ -353,13 +368,11 @@ Completed:
 - Milestone 8.1I: independent held-out occupation evaluation and exact-revision production audit
 - Milestone 8.1J: measured universal-search production sign-off
 - Milestones 8.2A and 8.2B: threat model, audit baseline, authentication, and authorization hardening
-- Milestone 8.2C implementation plus production restricted-runtime/RLS cutover
+- Milestone 8.2C: PostgreSQL RLS/least privilege implementation and completed production restricted-runtime cutover
 - Milestone 8.2D: API, upload, browser, and container hardening
 - Milestone 8.2E: security CI, production image scanning, and SBOM/supply-chain gates
-
-In progress:
-
-- **Milestone 8.2F: final production security sign-off and remaining manual two-user evidence**
+- Milestone 8.2F: final production security validation and GO decision
+- **Milestone 8.2 security hardening workstream: complete**
 
 ## Explicit post-launch roadmap
 
