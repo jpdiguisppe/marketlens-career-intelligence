@@ -67,7 +67,7 @@ jobs:
           retention-days: 90
 
       - name: Publish production occupation audit status
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const passed = '${{ steps.audit.outputs.status }}' === '0';
