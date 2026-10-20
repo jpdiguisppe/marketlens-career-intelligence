@@ -59,7 +59,7 @@ jobs:
           exit 0
 
       - name: Upload production occupation audit evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: marketlens-production-occupation-audit
           path: /tmp/marketlens-production-occupation-audit.txt
