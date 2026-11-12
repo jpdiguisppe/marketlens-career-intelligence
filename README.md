@@ -1,24 +1,29 @@
 # MarketLens Career Intelligence
 
-MarketLens is a deployed full-stack career-intelligence platform that searches configured public job sources, compares résumé evidence against real job descriptions, ranks role fit, and turns opportunities, strengths, and evidence gaps into a reviewable career plan.
+**[Live application](https://marketlens-career-intelligence-production-8a34.up.railway.app)** · **[Demo walkthrough](docs/portfolio-demo-walkthrough.md)**
 
-The product has two connected workspaces:
+MarketLens is a full-stack career-intelligence application for finding relevant jobs, comparing job requirements with résumé evidence, and building a career plan that a user can review and approve. It combines public job sources and deterministic analysis with an optional, bounded AI step for organizing a plan—not deciding scores, inventing evidence, or taking actions on a user's behalf.
 
-1. **Job Intelligence** — SOC-aligned public-source job search and evidence-aware Smart Fit comparison.
-2. **Career Plans** — a private, resumable, bounded AI-agent workflow that searches, selects, analyzes, synthesizes, explains, and proposes next actions while preserving deterministic authority and human control.
+## What the application does
 
-## Project highlights
+- **Job Intelligence:** Search supported public job sources, compare opportunities against a résumé, and inspect role-specific evidence, gaps, and rankings.
+- **Career Plans:** Run a persisted seven-step workflow to evaluate opportunities and propose next steps, with human review, edits, approval, and cancellation or retry support.
 
-- **Deployed full-stack product:** React, TypeScript, FastAPI, Pydantic, SQLAlchemy, Clerk authentication, PostgreSQL, Docker, and Railway.
-- **Universal cross-sector occupation search:** all 23 SOC major occupational groups are represented through 214 occupation concepts, 454 accepted titles, and 33 explicitly ambiguous acronyms.
-- **Strict search correctness:** canonical titles, alternate titles, spelling variants, safe abbreviations, level modifiers, and locations are handled independently; ambiguous or unknown queries are stopped rather than guessed.
-- **Measured production precision:** 268/268 held-out queries, 92/92 title checks, and a 40/40 exact-revision production audit passed; all 47 returned live titles were relevant after manual review.
-- **Bounded Career Planning Agent:** a durable seven-step workflow orchestrates the existing search and Smart Fit systems rather than reproducing their logic inside prompts.
-- **Deterministic authority:** job selection, scores, evidence, hard requirements, provenance, opportunity categories, and the action set remain deterministic.
-- **Optional AI organization:** one strict-schema model call may organize existing IDs and priorities but cannot create facts, alter scores, approve a plan, or take external action.
-- **Private resumable workflows:** authenticated users can create, cancel, retry, edit, approve, reject, reopen, and delete owned plans.
-- **Production security hardening:** Clerk authorization, application ownership checks, forced PostgreSQL row-level security, a restricted non-owner runtime database role, request/parser bounds, security headers, non-root containers, dependency/SAST/secret scanning, production-image scanning, and CycloneDX SBOM evidence.
-- **Final production security sign-off:** Milestone 8.2 completed with live two-user tenant-isolation verification, owner-controlled rollback evidence, runtime-credential review, production-log review, and explicit residual-risk documentation.
+## Explore the project
+
+- [Product screenshots](#product-screenshots) — both workspaces and their main flows
+- [Local setup and quality checks](#running-locally) — run the frontend and API
+- [Evaluation and production validation](#evaluation-and-production-validation) — documented testing
+- [Security and privacy](#security-and-privacy) — authentication, data protection, and safeguards
+- [Full demo walkthrough](docs/portfolio-demo-walkthrough.md) — a guided product tour
+
+## Engineering highlights
+
+- **Full-stack deployment:** React, TypeScript, FastAPI, PostgreSQL, Docker, and Railway, with Clerk authentication.
+- **Search correctness:** Coverage across all 23 SOC major occupational groups, with explicit handling of ambiguous titles and abbreviations rather than guessing.
+- **Documented evaluation:** 268/268 held-out occupation queries and 92/92 title checks passed in the recorded evaluations; see the linked reports for scope and methodology.
+- **Bounded AI workflow:** Deterministic logic controls job selection, scores, source evidence, and proposed actions. An optional structured model call can organize existing information but cannot change those decisions.
+- **Production safeguards:** Ownership checks, PostgreSQL row-level security, bounded requests, container hardening, and documented security verification.
 
 ## Tech stack
 
