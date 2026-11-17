@@ -1,31 +1,30 @@
 # MarketLens Portfolio Demo Walkthrough
 
-This walkthrough is designed for a recruiter, portfolio reviewer, or technical interview. It shows the product value first, then the engineering boundaries that make the Career Planning Agent credible rather than a prompt-only demo.
+These are the steps I use to show MarketLens in a demo or technical interview. The first three examples cover the main features. The last one shows how the app handles failures and restricted actions.
 
-## One-minute project pitch
+## What MarketLens does
 
-MarketLens is a deployed career-intelligence platform that searches public job sources, compares résumé evidence against real postings, ranks role fit, and turns a bounded opportunity set into a private career action plan.
+MarketLens searches supported public job sources and compares them with a resume. It shows why jobs rank where they do, which requirements have supporting evidence, and which gaps someone may need to address. Signed-in users can also build and review a private career plan.
 
-Its Career Planning Agent orchestrates existing search and Smart Fit tools through a persisted seven-step workflow. Deterministic analysis remains authoritative, optional AI can organize only already-validated plan items, and the user must explicitly review and approve every plan.
+Career Plans runs a seven-step workflow using the existing search and Smart Fit features. Job scores and evidence come from the app's analysis rules. An optional AI step can organize the plan, but the user makes the final decision.
 
 ## Live demo links
 
 - Frontend: https://marketlens-career-intelligence-production-8a34.up.railway.app
-- Backend docs: https://marketlens-career-intelligence-production.up.railway.app/docs
 - Backend health: https://marketlens-career-intelligence-production.up.railway.app/health
 - Deployment revision: https://marketlens-career-intelligence-production.up.railway.app/deployment/status
 
-Use only non-sensitive or synthetic résumé information during a demo.
+Use only non-sensitive or synthetic resume information during a demo.
 
 ## Demo path 1: Career Planning Agent
 
-Use this as the main portfolio demonstration after the exact-revision production sign-off is complete.
+Use this example to demonstrate the saved Career Plans workflow.
 
 1. Sign in through Clerk.
 2. Open **Career Plans**.
 3. Enter a target role such as `Software Engineer` or `Data Analyst`.
 4. Choose an experience level, location, work mode, portfolio strategy, and a one-to-five-job analysis bound.
-5. Upload or paste a non-sensitive résumé.
+5. Upload or paste a non-sensitive resume.
 6. Choose deterministic-only planning or optional bounded AI organization.
 7. Create and execute the run.
 8. Watch the seven persisted workflow steps update.
@@ -47,7 +46,7 @@ What to point out:
 
 - Search and Smart Fit are actual tools; their logic is not copied into the model prompt.
 - The workflow survives model failure because the deterministic plan is complete first.
-- Raw résumé text and full job descriptions are not persisted in Career Plan records.
+- Raw resume text and full job descriptions are not persisted in Career Plan records.
 - Every recommendation references saved derived evidence or explicit user preferences.
 - The model cannot change scores, evidence, hard requirements, job selection, action types, or approval state.
 - Approval does not apply to a job or contact anyone; it records the user’s decision about the plan.
@@ -56,7 +55,7 @@ What to point out:
 ## Demo path 2: Online search and ranked Smart Fit
 
 1. Open **Job Intelligence**.
-2. Upload or paste a non-sensitive résumé.
+2. Upload or paste a non-sensitive resume.
 3. Search a role such as `Data Analyst`, `Software Engineer`, or `Mechanical Engineer`.
 4. Choose an experience level and optional location.
 5. Review provider coverage and bounded job cards.
@@ -67,7 +66,7 @@ What to point out:
 
 What to point out:
 
-- The same résumé is evaluated against every selected job.
+- The same resume is evaluated against every selected job.
 - Occupation, experience level, industry, and location are evaluated separately.
 - The ranking explanation identifies why one job scored above another.
 - Missing capabilities are not treated as proof that the user cannot learn or qualify later.
@@ -77,7 +76,7 @@ What to point out:
 
 Use this when a posting comes from a closed or unsupported platform.
 
-1. Paste or upload a résumé.
+1. Paste or upload a resume.
 2. Paste two or more job descriptions.
 3. Separate them with `---`.
 4. Run Smart Fit.
@@ -88,7 +87,7 @@ This path demonstrates that MarketLens remains useful without scraping LinkedIn,
 
 ## Demo path 4: Failure and safety behavior
 
-Good portfolio demos should show controlled failure, not only the happy path.
+If someone asks how the app handles failure, these examples are useful:
 
 Useful examples:
 
@@ -126,8 +125,8 @@ Current controls include:
 
 - backend verification of Clerk session tokens
 - user-owned private records with cross-user `404` behavior
-- request-time résumé processing
-- raw résumé and complete job-description exclusion from saved Career Plans and saved reports
+- request-time resume processing
+- raw resume and complete job-description exclusion from saved Career Plans and saved reports
 - backend-only provider credentials
 - strict schema and reference validation for model output
 - sensitive-log context and secret scanning
@@ -135,14 +134,14 @@ Current controls include:
 - explicit human approval
 - deterministic fallback
 
-## Suggested interview explanation
+## Architecture in brief
 
-> I built MarketLens because career advice is often too vague. It started as evidence-aware job comparison, then I extended it into a bounded AI agent. The agent does not replace the tested search and scoring systems. It orchestrates them, persists each workflow step, creates a deterministic plan first, optionally lets one validated model call organize existing IDs, and requires the user to approve the result. I also built permanent prompt-injection, privacy, provider-failure, cancellation, retry, ownership, budget, Docker, and production-canary gates.
+I built MarketLens around two existing pieces: public job search and Smart Fit comparison. Career Plans brings them together and saves each workflow step so users can return to their plan or retry a failed run. The plan is calculated first using application rules. AI is optional and cannot change the scores, requirements, or approval status. The project also includes tests for privacy, prompt injection, failed providers, cancellation, and production deployment.
 
-## Suggested résumé bullet
+## Short project description for a resume
 
 ```text
-Built and deployed MarketLens, a React/FastAPI career-intelligence platform with a bounded AI planning agent that orchestrates public job search and evidence-based résumé analysis, persists resumable user-owned workflows, falls back deterministically on model failure, and is validated through adversarial, privacy, recovery, Docker, and production canary gates.
+Built MarketLens, a job search and resume comparison app using React, FastAPI, and PostgreSQL. Added private career plans, a seven-step planning workflow, optional AI assistance, and automated tests for privacy and system reliability.
 ```
 
 ## Production evidence rule
