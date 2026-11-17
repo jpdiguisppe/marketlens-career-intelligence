@@ -12,7 +12,7 @@ Use a short fake resume and public/demo job postings only. If a screenshot accid
 
 ### 1. Online job search results
 
-Purpose: show that MarketLens can search configured public job sources and return normalized job cards.
+Show job search results from the supported public sources.
 
 Capture after:
 
@@ -37,7 +37,7 @@ docs/assets/screenshots/online-job-search.png
 
 ### 2. Ranked Smart Fit comparison
 
-Purpose: show the main product value: selecting multiple jobs, comparing them against a resume, and ranking fit.
+Show how someone selects multiple jobs, compares them against a resume, and reviews the rankings.
 
 Capture after selecting two or three jobs and clicking Compare selected.
 
@@ -56,7 +56,7 @@ docs/assets/screenshots/smart-fit-ranking.png
 
 ### 3. Detailed role-aware gap report
 
-Purpose: show that MarketLens explains missing role-specific capabilities instead of only listing keyword overlap.
+Show how MarketLens explains missing requirements for a particular role.
 
 Capture after opening Show details for one ranked job.
 
@@ -86,9 +86,9 @@ Education
 B.S. Computer Science, Expected 2027
 
 Projects
-Market Dashboard — built a Python and SQL dashboard to analyze sample business metrics.
-API Tracker — created a FastAPI backend with REST endpoints, SQLite storage, and basic tests.
-ML Classifier — trained a simple scikit-learn model using Python and evaluated precision/recall.
+Market Dashboard: built a Python and SQL dashboard to analyze sample business metrics.
+API Tracker: created a FastAPI backend with REST endpoints, SQLite storage, and basic tests.
+ML Classifier: trained a simple scikit-learn model using Python and evaluated precision/recall.
 
 Skills
 Python, SQL, Java, C, FastAPI, React, Git, REST APIs, scikit-learn, Excel
