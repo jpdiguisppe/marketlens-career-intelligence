@@ -1,29 +1,29 @@
 # MarketLens Career Intelligence
 
-**[Live application](https://marketlens-career-intelligence-production-8a34.up.railway.app)** · **[Demo walkthrough](docs/portfolio-demo-walkthrough.md)**
+[Try MarketLens](https://marketlens-career-intelligence-production-8a34.up.railway.app) | [Demo guide](docs/portfolio-demo-walkthrough.md)
 
-MarketLens is a full-stack career-intelligence application for finding relevant jobs, comparing job requirements with resume evidence, and building a career plan that a user can review and approve. It combines public job sources and deterministic analysis with an optional, bounded AI step for organizing a plan. it does not decide scores, invent evidence, or take action on a user's behalf.
+MarketLens is a web app I built to make job searches easier to evaluate. It searches supported public job sources, compares job requirements with a resume, and shows the evidence behind each match. People can review a job's requirements, see where their experience fits, and identify gaps worth working on.
 
-## What the application does
+The app has two main parts:
 
-- **Job Intelligence:** Search supported public job sources, compare opportunities against a résumé, and inspect role-specific evidence, gaps, and rankings.
-- **Career Plans:** Run a persisted seven-step workflow to evaluate opportunities and propose next steps, with human review, edits, approval, and cancellation or retry support.
+- **Job Intelligence:** Search for openings, compare jobs against a resume, and see the reasons behind each Smart Fit ranking.
+- **Career Plans:** Choose a target role and create a private plan with suggested next steps. The app tracks each step of the process, and users can edit or approve the final plan. AI can help organize the results, but it cannot change job scores or evidence.
 
-## Explore the project
+## See it in action
 
-- [Product screenshots](#product-screenshots) — both workspaces and their main flows
-- [Local setup and quality checks](#running-locally) — run the frontend and API
-- [Evaluation and production validation](#evaluation-and-production-validation) — documented testing
-- [Security and privacy](#security-and-privacy) — authentication, data protection, and safeguards
-- [Full demo walkthrough](docs/portfolio-demo-walkthrough.md) — a guided product tour
+- [Screenshots](#product-screenshots)
+- [Live demo](https://marketlens-career-intelligence-production-8a34.up.railway.app)
+- [How to run it locally](#running-locally)
+- [Testing results](#evaluation-and-production-validation)
+- [Security and privacy](#security-and-privacy)
 
-## Engineering highlights
+## Technical work
 
-- **Full-stack deployment:** React, TypeScript, FastAPI, PostgreSQL, Docker, and Railway, with Clerk authentication.
-- **Search correctness:** Coverage across all 23 SOC major occupational groups, with explicit handling of ambiguous titles and abbreviations rather than guessing.
-- **Documented evaluation:** 268/268 held-out occupation queries and 92/92 title checks passed in the recorded evaluations; see the linked reports for scope and methodology.
-- **Bounded AI workflow:** Deterministic logic controls job selection, scores, source evidence, and proposed actions. An optional structured model call can organize existing information but cannot change those decisions.
-- **Production safeguards:** Ownership checks, PostgreSQL row-level security, bounded requests, container hardening, and documented security verification.
+- Built the frontend with React and TypeScript and the API with FastAPI, using PostgreSQL in production.
+- Added occupation search coverage across all 23 SOC major groups. Ambiguous titles and abbreviations require clarification instead of returning unrelated jobs.
+- Tested search behavior with 268 held-out occupation queries and 92 title checks. The linked evaluation reports explain what those numbers cover.
+- Used rules-based analysis for scores, job selection, and evidence. The optional AI step only organizes information already produced by the app.
+- Added authentication, ownership checks, PostgreSQL row-level security, and security tests for the production deployment.
 
 ## Tech stack
 
@@ -38,7 +38,7 @@ MarketLens is a full-stack career-intelligence application for finding relevant 
 | Testing | pytest, deterministic evaluators, adversarial fixtures, GitHub Actions, Docker builds |
 | Deployment | Railway frontend and backend services |
 
-## Live demo and evidence
+## Demo and technical reports
 
 - **Frontend:** [MarketLens live demo](https://marketlens-career-intelligence-production-8a34.up.railway.app)
 - **Backend health:** [API health endpoint](https://marketlens-career-intelligence-production.up.railway.app/health)
@@ -52,23 +52,23 @@ MarketLens is a full-stack career-intelligence application for finding relevant 
 - **RLS production cutover:** [Milestone 8.2C PostgreSQL RLS cutover](docs/milestone-8-2c-postgres-rls-cutover.md)
 - **Final security sign-off:** [Milestone 8.2F security sign-off](docs/milestone-8-2f-security-signoff.md)
 
-Production FastAPI `/docs`, `/redoc`, and `/openapi.json` are intentionally disabled as part of the hardened production surface.
+Production FastAPI `/docs`, `/redoc`, and `/openapi.json` are intentionally disabled for security reasons.
 
-MarketLens is a portfolio product. Do not upload secrets, API keys, confidential employer/customer data, or highly sensitive personal information.
+MarketLens is a personal project. Please do not upload secrets, confidential company data, or sensitive personal information.
 
 ## Product screenshots
 
-### Workspace 1 — Job Intelligence
+### Job Intelligence screenshots
 
 MarketLens searches configured public sources and reports which providers were attempted.
 
 ![Job Intelligence public-source search results](docs/screenshots/online-job-search.png)
 
-Users can compare multiple jobs against one résumé and inspect why one opportunity ranked above another.
+Users can compare multiple jobs against one resume and inspect why one opportunity ranked above another.
 
 ![Job Intelligence ranked Smart Fit comparison](docs/screenshots/job-fit-ranking.png)
 
-Reports distinguish direct résumé proof from broader signals and surface role-specific capability gaps.
+Reports distinguish direct resume proof from broader signals and surface role-specific capability gaps.
 
 ![Job Intelligence role-aware gap report](docs/screenshots/role-aware-gap-report.png)
 
@@ -76,7 +76,7 @@ Deterministic recommendations keep hard requirements separate from broader caree
 
 ![Job Intelligence coaching actions and requirement breakdown](docs/screenshots/coaching-actions-breakdown.png)
 
-### Workspace 2 — Career Plans
+### Career Plans screenshots
 
 The authenticated production workspace displays every persisted step and separates deterministic planning from optional bounded AI organization.
 
@@ -94,7 +94,7 @@ User edits remain separate from the immutable generated proposal and persist aft
 
 ![Career Plans approved edited action](docs/screenshots/milestone-8-1/approved-edited-action.svg)
 
-The privacy-safe Career Plans visuals reproduce captured production states while excluding raw résumé text and account details. Responsive behavior was separately validated at a 400 × 770 viewport.
+The privacy-safe Career Plans visuals reproduce captured production states while excluding raw resume text and account details. Responsive behavior was separately validated at a 400 × 770 viewport.
 
 ## Current product workflow
 
@@ -103,7 +103,7 @@ The privacy-safe Career Plans visuals reproduce captured production states while
 ```text
 Open MarketLens
 Optionally sign in for private saving
-Upload or paste a résumé
+Upload or paste a resume
 Search configured public job sources
 Choose occupation, experience level, and optional location
 Inspect interpretation, provider coverage, warnings, and bounded results
@@ -116,7 +116,7 @@ Explicitly save jobs or reduced reports when signed in
 Manual comparison remains available for postings outside configured public sources:
 
 ```text
-Upload or paste a résumé
+Upload or paste a resume
 Paste one or more job descriptions
 Separate multiple postings with ---
 Run Smart Fit and compare results
@@ -129,7 +129,7 @@ Explicitly save a reduced report when signed in
 Sign in
 Open Career Plans
 Define a target occupation and practical constraints
-Provide a résumé for request-time analysis
+Provide a resume for request-time analysis
 Create and execute a bounded planning run
 Watch seven persisted workflow steps
 Inspect source coverage and candidate selection/exclusion reasons
@@ -149,7 +149,7 @@ The seven workflow steps are:
 6. optionally organize the plan with one bounded model call
 7. finalize the proposal for human review
 
-## Universal search correctness contract
+## How job search handles titles and locations
 
 MarketLens evaluates occupation, experience level, industry, and location as separate concerns.
 
@@ -165,7 +165,7 @@ Specific occupations require title-level evidence. A shared word such as `engine
 - policy analyst vs. data analyst
 - journalism editor vs. video editor
 
-Unknown nonsense phrases stop without provider requests. Recognized occupations with no current configured-source result receive an explicit explanation and canonical continuation links rather than loosely related filler jobs.
+Unrecognized searches stop before contacting job providers. Recognized occupations with no current configured-source result receive an explicit explanation and canonical continuation links rather than unrelated jobs.
 
 Supported experience levels are `any`, `intern`, `entry`, `mid`, and `senior`. Explicit city searches use bounded metro aliases rather than unrestricted location matching.
 
@@ -173,13 +173,13 @@ MarketLens uses public APIs rather than scraping closed platforms:
 
 - Greenhouse Job Board API
 - Lever Postings API
-- bounded named SmartRecruiters employer boards
+- selected SmartRecruiters employer boards
 - Remote OK public feed
 - Remotive public API
 
 It does not claim to search all of LinkedIn, Indeed, Handshake, Workday, school portals, or every company career site.
 
-## What makes the agent bounded
+## Limits on AI assistance
 
 MarketLens is not an unrestricted career chatbot and does not autonomously act on a user’s behalf.
 
@@ -190,7 +190,7 @@ The agent:
 - creates at most twenty proposed actions
 - uses at most one Career Plan model call
 - persists workflow state, attempts, safe summaries, and audit events
-- treats job content and résumé content as untrusted data
+- treats job content and resume content as untrusted data
 - returns a complete deterministic plan when AI is disabled or fails
 - requires an explicit user decision before a plan becomes approved or rejected
 
@@ -200,7 +200,7 @@ The model cannot:
 - change evidence statuses or provenance
 - override hard-requirement findings
 - add jobs or deterministic actions
-- invent experience, credentials, projects, or résumé claims
+- invent experience, credentials, projects, or resume claims
 - apply to jobs, message recruiters, edit profiles, or purchase services
 - bypass authentication or human approval
 - predict interviews, offers, salary, or hiring probability
@@ -209,11 +209,11 @@ The model cannot:
 
 All visitors can:
 
-- upload `.txt`, `.md`, `.pdf`, or `.docx` résumés for request-time extraction
-- paste résumé text manually
+- upload `.txt`, `.md`, `.pdf`, or `.docx` resumes for request-time extraction
+- paste resume text manually
 - search configured public sources across a SOC-aligned cross-sector occupation registry
 - receive clarification instead of guessed results for ambiguous occupation acronyms
-- receive safe-stop guidance for unsupported unknown queries
+- receive an explanation for unsupported unknown queries
 - inspect provider-by-provider coverage, warnings, suggestions, and continuation links
 - compare one to ten searched or manually pasted jobs through Smart Fit
 - review requirements, evidence, rankings, gaps, limitations, and coaching actions
@@ -243,7 +243,7 @@ Current controls include:
 - transaction-local authenticated-user database context through `app.current_user_id`
 - runtime-role restrictions including no superuser, role/database creation, inheritance, RLS bypass, protected-table ownership, public-schema creation, or migration-metadata access
 - no automatic persistence of analysis inputs
-- raw résumé text and full job descriptions excluded from Career Plan and saved-report records
+- raw resume text and full job descriptions excluded from Career Plan and saved-report records
 - backend-only model-provider keys
 - request-scoped credential/document redaction and safe HTTP error behavior
 - strict model response schemas and reference validation
@@ -261,14 +261,14 @@ See [`SECURITY.md`](SECURITY.md) for the current security policy and limitations
 
 ## Milestone 8.2 production security sign-off
 
-Milestone 8.2A–8.2F is complete.
+Milestone 8.2A through 8.2F is complete.
 
-- **8.2A — Threat model and audit baseline:** complete
-- **8.2B — Production authentication and authorization hardening:** complete
-- **8.2C — PostgreSQL RLS and least privilege:** complete, including the owner-controlled production restricted-runtime/RLS cutover
-- **8.2D — API, upload, browser, and container hardening:** complete and production verified
-- **8.2E — Security CI and supply-chain gates:** complete
-- **8.2F — Final production security sign-off:** complete
+- **8.2A: Threat model and audit baseline:** complete
+- **8.2B: Production authentication and authorization hardening:** complete
+- **8.2C: PostgreSQL RLS and least privilege:** complete, including the owner-controlled production restricted-runtime/RLS cutover
+- **8.2D: API, upload, browser, and container hardening:** complete and production verified
+- **8.2E: Security CI and supply-chain gates:** complete
+- **8.2F: Final production security sign-off:** complete
 
 The functional production security candidate used for the final evidence is:
 
@@ -295,7 +295,7 @@ Final evidence includes:
 Final decision:
 
 ```text
-GO — MILESTONE 8.2 SECURITY HARDENING COMPLETE
+GO: MILESTONE 8.2 SECURITY HARDENING COMPLETE
 ```
 
 GitHub issue #122 and umbrella issue #120 are closed as completed.
@@ -310,7 +310,7 @@ The original Milestone 8.1 Career Planning Agent sign-off included:
 - ten committed task-level cases
 - three repeated deterministic executions per case
 - thirty stable agent executions with zero failed cases
-- prompt-injection inputs across descriptions, titles, company metadata, URLs, and authenticated résumé text
+- prompt-injection inputs across descriptions, titles, company metadata, URLs, and authenticated resume text
 - model timeout, transport, HTTP, invalid JSON, schema, reference, duplicate, and policy-changing output cases
 - cancellation and failed-run retry recovery without duplicated actions
 - automated and production ownership-isolation checks
@@ -437,35 +437,11 @@ python scripts/run_production_occupation_audit.py
 
 Full automated authenticated Career Plan mode additionally requires short-lived canary bearer tokens stored outside the repository.
 
-## Portfolio and interview summary
+## Project status
 
-MarketLens is a deployed, stateful career-intelligence product. It combines SOC-aligned cross-sector occupation interpretation, public job-source integrations, evidence-aware analysis, private workflow persistence, a bounded AI agent, database-enforced tenant isolation, and production security/supply-chain gates while preserving deterministic authority and human approval.
+Job search, Smart Fit comparison, private Career Plans, and the security work described above are implemented. Testing records and production checks are linked in the [demo and evaluation section](#demo-and-technical-reports). Future work is listed below.
 
-Suggested résumé bullet:
-
-```text
-Built and deployed MarketLens, a React/FastAPI/PostgreSQL career-intelligence platform with SOC-aligned search across all 23 major occupational groups, evidence-based résumé analysis, a bounded AI planning agent, Clerk authentication, forced PostgreSQL row-level security, container/SBOM security gates, and exact-revision Railway production validation.
-```
-
-## Milestone status
-
-Completed:
-
-- Milestones 1–7.1: search, Smart Fit, deployment, authentication, private saving, source coverage, and cross-sector correctness
-- Milestone 8: optional model-assisted extraction and personalized coaching foundations
-- Milestones 8.1A–8.1F: bounded Career Planning Agent architecture, orchestration, optional AI organization, authenticated UI, permanent evaluation, and production sign-off
-- Milestone 8.1G: universal occupation-search foundation and production hardening
-- Milestone 8.1H: cross-sector skill-badge precision
-- Milestone 8.1I: independent held-out occupation evaluation and exact-revision 40-search production audit
-- Milestone 8.1J: measured universal-search production sign-off and repository documentation
-- Milestones 8.2A and 8.2B: threat model, audit baseline, authentication, and authorization hardening
-- Milestone 8.2C: PostgreSQL RLS/least-privilege implementation and completed production restricted-runtime cutover
-- Milestone 8.2D: API, upload, browser, and container hardening
-- Milestone 8.2E: security CI, production-image scanning, and SBOM/supply-chain gates
-- Milestone 8.2F: final production security validation and GO decision
-- **Milestone 8.2 security hardening workstream: complete**
-
-## Explicit post-launch roadmap
+## Not implemented
 
 The following are not implemented by the completed product scope:
 
@@ -478,7 +454,7 @@ The following are not implemented by the completed product scope:
 - full O*NET-generated occupation-registry importer
 - full Career Evidence Graph
 - GitHub evidence verification
-- résumé claim verification
+- resume claim verification
 - complete application tracker and outcome-learning loop
 - long-term labor-market trend forecasting
 - guaranteed interview, offer, salary, or career outcomes
