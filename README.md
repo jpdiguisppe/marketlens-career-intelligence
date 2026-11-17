@@ -2,7 +2,7 @@
 
 **[Live application](https://marketlens-career-intelligence-production-8a34.up.railway.app)** · **[Demo walkthrough](docs/portfolio-demo-walkthrough.md)**
 
-MarketLens is a full-stack career-intelligence application for finding relevant jobs, comparing job requirements with résumé evidence, and building a career plan that a user can review and approve. It combines public job sources and deterministic analysis with an optional, bounded AI step for organizing a plan—not deciding scores, inventing evidence, or taking actions on a user's behalf.
+MarketLens is a full-stack career-intelligence application for finding relevant jobs, comparing job requirements with resume evidence, and building a career plan that a user can review and approve. It combines public job sources and deterministic analysis with an optional, bounded AI step for organizing a plan. it does not decide scores, invent evidence, or take action on a user's behalf.
 
 ## What the application does
 
